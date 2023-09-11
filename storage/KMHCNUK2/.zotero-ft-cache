@@ -1,0 +1,79 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2306.08543
+
+Help | Advanced Search
+Search
+Computer Science > Computation and Language
+(cs)
+[Submitted on 14 Jun 2023]
+Title: Knowledge Distillation of Large Language Models
+Authors: Yuxian Gu , Li Dong , Furu Wei , Minlie Huang
+Download a PDF of the paper titled Knowledge Distillation of Large Language Models, by Yuxian Gu and 3 other authors
+Download PDF
+
+    Abstract: Knowledge Distillation (KD) is a promising technique for reducing the high computational demand of large language models (LLMs). However, previous KD methods are primarily applied to white-box classification models or training small models to imitate black-box model APIs like ChatGPT. How to effectively distill the knowledge from white-box generative LLMs is still under-explored, which becomes more and more important with the prosperity of LLMs. In this work, we propose MiniLLM that distills smaller language models from generative larger language models. We first replace the forward Kullback-Leibler divergence (KLD) objective in the standard KD approaches with reverse KLD, which is more suitable for KD on generative language models, to prevent the student model from overestimating the low-probability regions of the teacher distribution. Then, we derive an effective optimization approach to learn this objective. Extensive experiments in the instruction-following setting show that the MiniLLM models generate more precise responses with the higher overall quality, lower exposure bias, better calibration, and higher long-text generation performance. Our method is also scalable for different model families with 120M to 13B parameters. We will release our code and model checkpoints at this https URL . 
+
+Comments: 	20 pages, 12 figures
+Subjects: 	Computation and Language (cs.CL) ; Artificial Intelligence (cs.AI)
+Cite as: 	arXiv:2306.08543 [cs.CL]
+  	(or arXiv:2306.08543v1 [cs.CL] for this version)
+  	https://doi.org/10.48550/arXiv.2306.08543
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Yuxian Gu [ view email ]
+[v1] Wed, 14 Jun 2023 14:44:03 UTC (143 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Knowledge Distillation of Large Language Models, by Yuxian Gu and 3 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CL
+< prev   |   next >
+new | recent | 2306
+Change to browse by:
+cs
+cs.AI
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

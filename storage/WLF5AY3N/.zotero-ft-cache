@@ -1,0 +1,211 @@
+Enhancing Large Language Models with Climate Resources
+
+arXiv:2304.00116v1 [cs.CL] 31 Mar 2023
+
+Mathias Kraus,1 Julia Anna Bingler,2,5 Markus Leippold,3 Tobias Schimanski,3 Chiara Colesanti
+Senni,3,5 Dominik Stammbach,4 Saeid Ashraf Vagheﬁ,3 Nicolas Webersinke1
+1FAU Erlangen-Nuremberg, Germany 2University of Oxford, United Kingdom
+3University of Zurich, Switzerland 4ETH Zurich, Switzerland
+5Council on Economic Policies
+mathias.kraus@fau.de, julia.bingler@smithschool.ox.ac.uk, markus.leippold@bf.uzh.ch, tobias.schimanski@bf.uzh.ch,
+chiara.colesantisenni@bf.uzh.ch, dominik.stammbach@gess.ethz.ch, saeid.vagheﬁ@geo.uzh.ch, nicolas.webersinke@fau.de
+
+Abstract
+Large language models (LLMs) have signiﬁcantly transformed the landscape of artiﬁcial intelligence by demonstrating their ability in generating human-like text across diverse topics. However, despite their impressive capabilities, LLMs lack recent information and often employ imprecise language, which can be detrimental in domains where accuracy is crucial, such as climate change. In this study, we make use of recent ideas to harness the potential of LLMs by viewing them as agents that access multiple sources, including databases containing recent and precise information about organizations, institutions, and companies. We demonstrate the effectiveness of our method through a prototype agent that retrieves emission data from ClimateWatch (https://www.climatewatchdata.org/) and leverages general Google search. By integrating these resources with LLMs, our approach overcomes the limitations associated with imprecise language and delivers more reliable and accurate information in the critical domain of climate change. This work paves the way for future advancements in LLMs and their application in domains where precision is of paramount importance.
+1 Introduction
+Motivation. Large language models have revolutionized the ﬁeld of artiﬁcial intelligence (AI) in recent years (Brown et al. 2020; Radford et al. 2019; Ouyang et al. 2022). Models such as T0 (Sanh et al. 2021), LLama (Touvron et al. 2023), Palm (Chowdhery et al. 2022), GPT-3 (Brown et al. 2020), GPT-4 (OpenAI 2023a), or instruction ﬁnetuned models, such as ChatGPT (OpenAI 2023b) have demonstrated their exceptional capabilities in generating human-like text across various domains, including language translation, summarization, and question answering. However, despite their impressive performance, LLMs are not without limitations. First, LLMs by themselves only have access to information from their training data (i.e., data from the past). Thus LLMs can not access the most recent information which prohibits usage in the domain of climate change to a large extend. Another critical drawback is their tendency to use imprecise language, which can lead to unreliable or inaccurate predictions in domains where precision and responsibility are cru-
+Working paper.
+
+cial. Thus, criticism of these systems has grown, with a recent letter from several experts in the ﬁeld asking, ”Should we let machines ﬂood our information channels with propaganda and untruth?” (Future of Life Institute 2023).
+One such domain where precision and accuracy are paramount is research on climate reporting (Financial Stability Board 2017a). Accurate data and information are essential for policymakers, scientists, and the general public to understand the magnitude and urgency of the climate crisis and take necessary actions to mitigate its impact (Financial Stability Board 2017b). Inaccurate information, on the other hand, can lead to inappropriate policies or delayed actions, exacerbating the consequences of climate change (Stern 2007). However, retrieving and interpreting accurate data from a vast amount of climate-related information is a challenging task (Bingler et al. 2022). One example of a valuable source of relevant information for understanding a ﬁrm’s climate-related performance is annual reports, which contain both quantitative and qualitative information (Edmans, Heinle, and Huang 2016). However, this type of information is not naturally represented in LLMs and must be retrieved separately.
+Contribution. To address this challenge, we use recent developments in LLMs as agents that access multiple sources, including databases containing precise information about organizations, institutions, and companies. By integrating these resources with LLMs, our approach mitigates the limitations associated with imprecise language, providing more reliable and accurate information in the critical domain of climate change. We present a prototype LLM agent that retrieves emission data from ClimateWatch (https: //www.climatewatchdata.org/) and leverages general Google search. Through two exemplary experiments, we demonstrate the potential of LLMs in the area of climate change. We anticipate that our approach will encourage further research on integrating LLMs with accurate data sources, ultimately fostering more responsible and reliable AI systems.
+Findings. Our study demonstrates the potential of LLMs as agents that access multiple sources of information to deliver reliable and accurate information in the domain of climate change. We have shown how our prototype agent can retrieve and process data from ClimateWatch, a database containing precise information on emissions from coun-
+
+ClimateWatch
+
+EDGAR
+
+Sustainability Reports
+
+General Internet Search
+
+2. Retrieve net zero plans from other companies in the same sector from local database
+"Can you find out if the net zero plans of company A are ambitions given the sector?
+
+1. Find companies from sector of interest
+3. Put plans into comparison to plans of other companies
+
+Figure 1: Setup for LLM agents that can access multiple sources, such as databases or general internet search.
+
+tries. Additionally, our approach leverages general Google search to complement the information retrieved from ClimateWatch and provide additional context to the generated text. Our experiments and analyses showcase how LLM agents can be used to access multiple datasources and combine this information to provide accurate and reliable responses.
+Implications. The implications of our study are signiﬁcant for both practice and research. In practice, this work is not limited to the ﬁeld of climate change but can be used to improve the accuracy and reliability of AI systems in other domains where precision and responsibility are crucial. Policymakers, scientists, and the general public can beneﬁt from more accurate and reliable information to make informed decisions and take necessary actions to mitigate the impact of climate change. In research, our study paves the way for future advancements in LLMs and their application in domains where precision is of paramount importance. Further research is needed to explore the potential of integrating LLMs with other data sources, such as scientiﬁc papers, reports, and databases.
+The remainder of this paper is structured as follows. Section 2 gives a brief overview over recent developments in the ﬁeld of LLMs, LLM agents, NLP in climate change, and use of multiple sources in the context of LLMs. Section 3 describes the setting in which we run our experiments, Section 4 showcases example prompts that need to access information from ClimateWatch, General Internet, or a combination thereof. Section 5 discusses these results and implications of this work. Section 6 concluces this work.
+2 Background
+Large Language Models
+Large language models are a type of artiﬁcial neural network that have demonstrated remarkable ability to generate human-like text across diverse topics (Radford et al. 2019; Brown et al. 2020; Ouyang et al. 2022). These models are primarily transformer models and are trained on massive amounts of text data to learn the patterns and relationships within the data (Vaswani et al. 2017). The recent break-
+
+throughs with models like T0 (Sanh et al. 2021), LLama (Touvron et al. 2023), Palm (Chowdhery et al. 2022), GPT-3 (Brown et al. 2020), and GPT-4 (OpenAI 2023a) have further highlighted the potential of LLMs, with applications ranging from natural language processing to chatbots (OpenAI 2023b) and virtual assistants (Jo 2023). LLMs have also demonstrated the ability to complete tasks that they were not explicitly trained on, making them a versatile tool for a variety of applications. However, despite their impressive capabilities, LLMs are also limited in several ways. One of the primary limitations is their tendency to employ imprecise language, which can be detrimental in domains where accuracy and responsibility are crucial. This has led to concerns about the ethical implications of using LLMs for certain applications, such as automated content creation or decisionmaking. In this view, multiple experts from the ﬁeld demand a pause in development of large AI systems in their letter ”Pause Giant AI Experiments: An Open Letter” (Future of Life Institute 2023).
+LLM Agents
+An LLM agent employs the capabilities of state-of-the-art language models to perform complex tasks and make informed decisions. These agents can autonomously determine which actions to take, including utilizing various tools and observing their outputs or providing responses to user queries (Schick et al. 2023). By leveraging the LLM’s vast knowledge and understanding of natural language, agents can efﬁciently navigate through an array of tools and select the most appropriate one based on the given context. This enables the LLM agent to provide reliable, accurate, and contextually relevant solutions in diverse applications and domains.
+In contrast to a basic LLM, an LLM agent does not only rely on the trained weights in the network, thus it is capable of accessing data generated after the point of training. This is crucial in many contexts, such as in climate change, as there is constantly new information presented from companies, institutions, and organizations that needs to be included into the AI system in order to provide an informed response.
+
+NLP in Climate Change
+Climate change is one of the most pressing challenges facing humanity today, with implications for everything from the environment to the economy (Diaz and Moore 2017). In order to effectively address this challenge, it is critical to have accurate and reliable data about greenhouse gas emissions and other climate-related factors (Mac Dowell et al. 2017). In the ﬁeld of climate change, accurate and up-to-date information is of paramount importance to ensure that decision-makers, researchers, and the public can make informed choices and develop effective strategies (Financial Stability Board 2017b). Recent transformer models have started to be employed within the climate change domain, witnessing improved accuracy in typical classiﬁcation tasks (Ko¨lbel et al. 2020; Bingler et al. 2022; Callaghan et al. 2021; Webersinke et al. 2022; Stammbach et al. 2022). These models are capable of accounting for the context of words, enabling them to detect complex and implicit topic patterns in addition to many trivial cases. However, recent advances in LLMs have pushed the boundary towards more general models which are not restricted to typical classiﬁcation tasks, but which can serve as systems that can potentially be used to make verdicts about quality of climate reporting etc.
+Use of Multiple Data Sources
+Given the challenges associated with obtaining accurate and reliable data, the use of multiple data sources has become increasingly common in research and decision-making in topics related to climate change (Brunetti et al. 2021). By combining data from multiple sources, it is possible to enhance the accuracy and reliability of the results, as well as identify patterns and relationships that might not be apparent from a single data source alone. However, the integration of different data sources can be a challenging task, as the data may be in different formats, have different levels of granularity, or be subject to different biases. This has led to the development of various tools and techniques for data integration (Liang et al. 2023). The potential of combining different data sources to enhance the accuracy and reliability of the results has signiﬁcant implications for a wide range of applications, from scientiﬁc research to business decision-making.
+3 Setting
+LLM Agent
+In this work, we build upon the LangChain package.1 In the LangChain ecosystem, the LLM agent operates by utilizing the ReAct framework. This framework enables the agent to select the most suitable tool based on the tool’s description, given that each tool has an associated description provided. The ReAct framework allows the LLM agent to work with any number of tools. Our LLM agent speciﬁcally employs the ”text-davinci-003” model from OpenAI with a temperature setting of 0. This particular conﬁguration maximizes precision, ensuring that the agent generates appropriate responses while maintaining a high degree of accuracy. The
+1https://github.com/hwchase17/langchain
+
+combination of the ReAct framework and the LLM’s vast knowledge base empowers the agent to autonomously navigate through diverse tasks, making it an invaluable asset in a wide range of applications.
+The use of LLM agents in LangChain offers several advantages, including their ability to process vast amounts of information, understand context, and adapt to new tasks quickly. By harnessing the power of LLMs, agents can efﬁciently handle complex challenges and provide precise solutions that cater to the speciﬁc needs of users. This adaptability enables the LLM agent to continually evolve its understanding and decision-making processes, staying upto-date with the latest developments and trends in various ﬁelds. As a result, the LLM agent becomes a valuable tool for users, researchers, and organizations alike, offering insights and solutions that might otherwise be difﬁcult or timeconsuming to obtain.
+In conclusion, LLM agents represent a signiﬁcant advancement in the ﬁeld of artiﬁcial intelligence, particularly in the context of LangChain and the ReAct framework. By leveraging the extensive knowledge and comprehension abilities of LLMs, these agents can autonomously navigate a diverse array of tools and generate contextually relevant, accurate, and reliable solutions. The versatility and adaptability of LLM agents make them an essential asset in various applications and domains, highlighting the immense potential for their future development and integration into increasingly complex and sophisticated AI systems.
+LLM Tools
+In our setting, we use two tools. Note that this only serves as an exemplary use case and we plan to extend this setting to include multiple data sources.
+The ﬁrst tool employed by our LLM agent is a Pythonbased module that utilizes the powerful pandas library to access and manipulate data stored in dataframes. This tool enables the agent to seamlessly interface with structured data. In our case this tool allows access to data from ClimateWatch and perform complex data processing tasks using Python code. By leveraging the capabilities of pandas, the agent can efﬁciently ﬁlter, sort, aggregate, and transform the data, allowing it to extract precise and relevant information as needed. The integration of this tool with the LLM agent ensures that the AI system has direct access to accurate and up-to-date data, which is vital for generating reliable and responsible insights in the domain of climate change.
+The second tool, ”google-seper,” is designed to facilitate general Google searches within the context of the LLM agent. This tool allows the agent to perform targeted queries on the web, tapping into the vast repository of knowledge available through Google’s search engine. By leveraging ”google-seper,” the LLM agent can complement the information retrieved from structured data sources, such as ClimateWatch, with additional context and insights from various web sources. This integration enables the agent to generate richer, more comprehensive responses to
+
+Input Prompt
+The prompt used in our study consists of a series of instructions that guide the agent on how to answer a given question. The prompt is structured in a way that allows the agent to access multiple sources of information, including ClimateWatch and Google search. Listing 1 shows this input prompt.
+The prompt begins with a section that describes the available tools to the agent, which are ClimateWatch and Serper Search. The agent is instructed to prioritize the use of ClimateWatch for answering general questions about emissions and to only use Google search if necessary for answering questions about current events. The ClimateWatch tool is described to handle pandas dataframes in Python, which suggests that the agent should be able to read and manipulate data in this format.
+The prompt then presents a format for the agent to follow, which consists of ﬁve sections: Question, Thought, Action, Action Input, and Observation. The Question section presents the input question that the agent must answer. The Thought section provides guidance for the agent to think about what to do, and the Action section describes the action that the agent should take. The Action Input section speciﬁes the input to the action, and the Observation section presents the result of the action. These ﬁve sections can repeat multiple times until the agent is conﬁdent that it has the ﬁnal answer, at which point it is instructed to provide the Final Answer.
+The prompt concludes with a reminder to the agent to prioritize the use of ClimateWatch and to only use Google Search if the needed information is not provided by ClimateWatch. This ensures that the agent uses reliable and accurate data sources for generating its response.2
+Overall, the prompt is designed to guide the agent in accessing multiple sources of information and to prioritize the use of precise and reliable data sources for generating its response. By following the format presented in the prompt, the agent is able to systematically retrieve and process information to provide accurate and reliable answers to the input questions.
+Listing 1: Input prompt.
+Answer the following questions as best you can. Prioritize the "ClimateWatch" tool and only use other tools if necessary. You have access to the following tools:
+ClimateWatch: useful for when you need to answer general questions about emissions . You are working with a pandas dataframe in Python.
+Serper Search: A low-cost Google Search API. Useful for when you need to answer
+questions about current events. Input should be a search query.
+Use the following format:
+2In our experiments, we noticed that the agent tends to use Google search, even in cases when the information is available in the more reliable source of ClimateWatch.
+
+Question: the input question you must answer Thought: you should always think about what
+to do Action: the action to take, should be one of
+[ClimateWatch, Serper Search] Action Input: the input to the action Observation: the result of the action ... (this Thought/Action/Action Input/
+Observation can repeat N times) Thought: I now know the final answer Final Answer: the final answer to the
+original input question
+Begin! Remember to prioritize the " ClimateWatch" tool and only use other tools if the needed information is not provided by "ClimateWatch"."
+Question: {input} {agent_scratchpad}
+4 Experiments
+In the following we showcase two experiments, in which the LLM agent should once access only the ClimateWatch tool, and once has to combine information from ClimateWatch and google-seper.
+Example with Single Data Source
+Input: What is the average emission of Italy between 2010 and 2015?
+The example with a single data source illustrates how the LLM agent uses the prompt to answer a speciﬁc question about the average emissions of Italy between 2010 and 2015. Listing 2 shows an extract of the chain of thought of the LLM agent. The steps can be broken down into several steps:
+1. Upon receiving the input question, the LLM agent ﬁrst identiﬁes the goal of ﬁnding the average emission of Italy between 2010 and 2015.
+2. The agent then determines that the best data source for answering this question is the ClimateWatch tool, which is a pandas dataframe in Python.
+3. The agent uses the python repl ast action to print the columns of the dataframe to gain an understanding of the available data.
+4. With this information, the agent determines the relevant columns for answering the question, which are the ones corresponding to Italy and the years 2010 to 2015.
+5. The agent then calculates the average emission of Italy between 2010 and 2015 and provides the ﬁnal answer.
+Overall, the LLM agent follows a systematic approach to answering the input question, starting with identifying the goal and determining the best data source to use. The agent then processes the data to provide the ﬁnal answer, with each step of the process being captured in the prompt response. This approach highlights the potential of LLMs to effectively retrieve and process information from data sources and provide accurate and reliable answers to complex questions.
+
+Listing 2: Chain of thought for input ”What is the average emission of Italy between 2010 and 2015?.”
+Thought: I need to find the average emission of Italy between 2010 and 2015
+Action: ClimateWatch Action Input: pandas dataframe
+Thought: I need to find out what the dataframe contains
+Action: python_repl_ast Action Input: print(df.columns)Index([’
+Country’, ’Data source’, ’Sector’, ’Gas’ , ’Unit’, ’2019’, ’2018’,
+..., ’1990’], dtype=’object’)
+Observation: None Thought: I now know the columns of the
+dataframe ... Thought: I need to filter the dataframe for
+Italy and select the columns from 2010 to 2015 Action: python_repl_ast Action Input: df[df[’Country’] == ’Italy’][[ ’2010’, ’2011’, ’2012’, ’2013’, ’2014’, ’2015’]] Observation: 2010 2011 2012 2013
+2014 2015 448.37 437.82 419.63 387.64 367.92
+379.58 Thought: I now know the final answer Final Answer: Italy’s emissions from 2010 to
+2015 were 448.37 MtCO2e in 2010, 437.82 MtCO2e in 2011, 419.63 MtCO2e in 2012, 387.64 MtCO2e in 2013, 367.92 MtCO2e in 2014, and 379.58 MtCO2e in 2015.
+Thought: I now know the average emission of Italy between 2010 and 2015
+Final Answer: The average emission of Italy between 2010 and 2015 was 406.83 MtCO2e.
+Example with Combined Data Sources
+Input: ”Which European country has the most ambitious net zero plans? How did the emissions of this country develop over the last 10 years? Remember to only include single countries.”
+The example with combined data sources showcases how the LLM agent can effectively combine information from multiple data sources to answer a complex question. In this case, the question asks for the European country with the most ambitious net zero plans and how the emissions of this country developed over the last 10 years. Listing 3 shows an extract of the chain of thought of the LLM agent. The steps can be broken down into several steps:
+1. Upon receiving the input question, the LLM agent determines that it needs to ﬁnd the European country with the most ambitious net zero plans and then look at the emissions data for that country.
+
+2. The agent decides to use the Google Search tool to search for information on the most ambitious net zero plans in Europe.
+3. The agent retrieves information from Google Search that Finland has passed arguably the world’s most ambitious climate target into law, aiming to be the ﬁrst developed country to reach net zero in 2035 and net negative by 2040.
+4. The agent then determines that the best data source to look at Finland’s emissions data is the ClimateWatch tool.
+5. The agent uses the python repl ast action to ﬁlter the ClimateWatch tool’s pandas dataframe to only include data for Finland.
+6. The agent then observes that Finland’s emissions have decreased from 38.54 MtCO2e in 1990 to 58.42 MtCO2e in 2019, providing the ﬁnal answer to the question.
+Overall, the LLM agent demonstrates the potential to effectively combine information from multiple data sources to answer complex questions. Note, however that the LLM agent provides information about the emissions from 1990 to 2019 and not over the last 10 years as asked for. However, with the recent developments, we belief such shortcomings to be solved very soon.3
+Listing 3: Chain of thought for input ”Which european country has the most ambitious net zero plans? How did the emissions of this country develop over the last 10 years? Remember to only include single countries.”
+Thought: I should look for the country with the most ambitious net zero plans and then look at the emissions data for that country.
+
+Action: Serper Search Action Input: "European country with most
+ambitious net zero plans" Observation: Finland has passed arguably the
+world’s most ambitious climate target into law. It aims to be the first developed country to reach net zero, in 2035, and net negative - absorbing more CO2 than it emits - by 2040. May 31, 2022 Thought: I should now look at the emissions data for Finland.
+
+Action: ClimateWatch
+
+Action Input: Finland emissions data
+
+Thought: I need to find the emissions data
+
+for Finland
+
+Action: python_repl_ast
+
+Action Input: df[df[’Country’] == ’Finland’]
+
+Observation:
+
+Country Data source
+
+Sector
+
+Gas Unit
+
+2019 \
+
+82 Finland ClimateWatch Total including
+
+LUCF All GHG MtCO2e 58.42
+
+3Note also, that we did not use the most recent LLM models in these experiments.
+
+2018 2017 2016 2015 ... 1999 1998 1997 1996 1995 1994 \
+82 62.43 60.86 63.65 -0.28 ... 39.51 40.18 43.79 45.69 39.23 43.21
+1993 1992 1991 1990 ...
+Final Answer: Finland has the most ambitious net zero plans and its emissions have
+decreased from 38.54 MtCO2e in 1990 to 58.42 MtCO2e in 2019.
+5 Discussion
+Limitations. While the described approach offers a promising solution for leveraging the potential of LLMs in domains where accuracy and responsibility are crucial, there are also limitations to the current state-of-the-art. One of the primary limitations of current LLMs is their limited context length, which can make it difﬁcult for them to accurately capture complex relationships and patterns that require a broader context. However, progress is being made in this area, with recent models like GPT-4 demonstrating signiﬁcantly improved performance on longer sequences of text (OpenAI 2023a). Another limitation of the LLM agents is the potential for the agent to misunderstand the question such as seen in our second experiment. This highlights the importance of developing robust methods for evaluating the accuracy and reliability of the results. Finally, in this work, we merely used two data sources. In practice, hundreds or thousands of data sources should be used to combine the most precise information on each topic. While this potentially raises technical issues, recent efforts by companies such as Microsoft, which recently published a paper on the use of thousands of tools for NLP applications, are promising and offer potential solutions to overcome these limitations. (Liang et al. 2023).
+Implications for NLP in Climate Change. The described approach has signiﬁcant implications for the ﬁeld of NLP in the context of climate change research and policymaking. By leveraging the potential of LLMs to generate human-like text and integrating multiple data sources, it is possible to enhance the accuracy and reliability of the results, as well as facilitate more informed decision-making. This has signiﬁcant implications for a wide range of applications, from climate modeling to environmental policymaking. Additionally, the used approach offers a solution for addressing some of the limitations associated with LLMs, such as their outdated information stored in the model itself and their tendency to employ imprecise language. By incorporating precise data sources and developing methods for evaluating the accuracy and reliability of the results, it is possible to overcome some of these limitations and enhance the applicability of LLMs in domains where precision and responsibility are crucial.
+Implications for Research. The described approach has implications beyond the speciﬁc application of climate change research and policy-making. It represents a novel solution for leveraging the potential of LLMs in domains
+
+where precision and accuracy are paramount, and highlights the potential of combining multiple data sources to enhance the reliability and accuracy of the results. Potential use cases could include for instance applications in healthcare or legal reasoning. Here, this work can serve as a starting point for future research in this area. While there are still limitations to the current state-of-the-art, the development is of incredible pace and it is only a matter of time until the majority of these limitations are also solved. Overall, the described approach represents a signiﬁcant step forward for the ﬁeld of NLP and has the potential to drive advancements in both research and practice.
+Carbon Footprint. While LLMs have demonstrated impressive capabilities in generating human-like text across diverse topics, they come with a signiﬁcant energy consumption cost (Hershcovich et al. 2022). Training these models requires massive amounts of computational resources, which in turn generates considerable greenhouse gas emissions. Recent estimates suggest that training a single large LLM, like GPT-3, can emit as much as 626,000 pounds of carbon dioxide equivalent, which is roughly equivalent to the lifetime emissions of ﬁve average cars (Hao 2019). These emissions can have a signiﬁcant impact on the environment, particularly in light of the urgent need to reduce global carbon emissions. As such, there is a need for further research into methods for optimizing the training and inference of LLMs to minimize their environmental impact. For example, recent approaches like LoRA (Hu et al. 2021) or lowprecision optimizations (Dettmers et al. 2022a,b) for reducing the energy consumption and carbon emissions associated with LLMs. Further research in this area is crucial to ensure that the beneﬁts of LLMs are not outweighed by their environmental costs, and to enable their widespread adoption in a sustainable manner.
+6 Conclusion
+In conclusion, this paper demonstrates the potential of LLMs in the ﬁeld of climate change by employing an approach that integrates multiple sources of information to correctly answer to questions that can not be answered by using only the original model weights. Our prototype LLM agent retrieves information from general Google search and and emission data from ClimateWatch to provide reliable and accurate information. Through two exemplary experiments, we showcase how such an LLM agent can operate to enhance the accuracy and reliability of climate-related text generation. This work contributes to the exploration of LLM applications in domains where up-to-date and accurate information is critical, and encourages further research on integrating LLMs with external data sources for more responsible and reliable AI systems.
+References
+Bingler, J. A.; Kraus, M.; Leippold, M.; and Webersinke, N. 2022. Cheap talk and cherry-picking: What ClimateBert has to say on corporate climate risk disclosures. Finance Research Letters, 102776.
+Brown, T.; Mann, B.; Ryder, N.; Subbiah, M.; Kaplan, J. D.;
+
+Dhariwal, P.; Neelakantan, A.; Shyam, P.; Sastry, G.; Askell, A.; et al. 2020. Language models are few-shot learners. Advances in neural information processing systems, 33: 1877– 1901.
+Brunetti, C.; Dennis, B.; Gates, D.; Hancock, D.; Ignell, D.; Kiser, E. K.; Kotta, G.; Kovner, A.; Rosen, R. J.; and Tabor, N. K. 2021. Climate Change and Financial Stability. Federal Reserve Notes, (2021-03): 19–3.
+Callaghan, M.; Schleussner, C.-F.; Nath, S.; Lejeune, Q.; Knutson, T. R.; Reichstein, M.; Hansen, G.; Theokritoff, E.; Andrijevic, M.; Brecha, R. J.; et al. 2021. Machine-learningbased evidence and attribution mapping of 100,000 climate impact studies. Nature climate change, 11(11): 966–972.
+Chowdhery, A.; Narang, S.; Devlin, J.; Bosma, M.; Mishra, G.; Roberts, A.; Barham, P.; Chung, H. W.; Sutton, C.; Gehrmann, S.; et al. 2022. Palm: Scaling language modeling with pathways. arXiv preprint arXiv:2204.02311.
+Dettmers, T.; Lewis, M.; Belkada, Y.; and Zettlemoyer, L. 2022a. LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale. arXiv preprint arXiv:2208.07339.
+Dettmers, T.; Lewis, M.; Shleifer, S.; and Zettlemoyer, L. 2022b. 8-bit Optimizers via Block-wise Quantization. 9th International Conference on Learning Representations, ICLR.
+Diaz, D.; and Moore, F. 2017. Quantifying the economic risks of climate change. Nature Climate Change, 7(11): 774–782.
+Edmans, A.; Heinle, M. S.; and Huang, C. 2016. The real costs of ﬁnancial efﬁciency when some information is soft. Review of Finance, 20(6): 2151–2182.
+Financial Stability Board. 2017a. Recommendations of the Task Force on Climate-Related Financial Disclosures. Task force on climate-related ﬁnancial disclosures.
+Financial Stability Board. 2017b. Task force on climaterelated ﬁnancial disclosures: Overview. Task force on climate-related ﬁnancial disclosures.
+Future of Life Institute. 2023. Pause Giant AI Experiments: An Open Letter. https://futureoﬂife.org/pause-giantai-experiments/.
+Hao, K. 2019. Training a single AI model can emit as much carbon as ﬁve cars in their lifetimes. MIT technology Review, 75: 103.
+Hershcovich, D.; Webersinke, N.; Kraus, M.; Bingler, J. A.; and Leippold, M. 2022. Towards Climate Awareness in NLP Research. arXiv preprint arXiv:2205.05071.
+Hu, E. J.; Shen, Y.; Wallis, P.; Allen-Zhu, Z.; Li, Y.; Wang, S.; Wang, L.; and Chen, W. 2021. Lora: Low-rank adaptation of large language models. arXiv preprint arXiv:2106.09685.
+Jo, A. 2023. The Promise and Peril of Generative AI. Nature, 614.
+Ko¨lbel, J. F.; Leippold, M.; Rillaerts, J.; and Wang, Q. 2020. Ask BERT: How regulatory disclosure of transition and physical climate risks affects the CDS term structure. Available at SSRN 3616324.
+
+Liang, Y.; Wu, C.; Song, T.; Wu, W.; Xia, Y.; Liu, Y.; Ou, Y.; Lu, S.; Ji, L.; Mao, S.; Wang, Y.; Shou, L.; Gong, M.; and Duan, N. 2023. TaskMatrix.AI: Completing Tasks by Connecting Foundation Models with Millions of APIs. arXiv preprint arXiv:2303.16434.
+Mac Dowell, N.; Fennell, P. S.; Shah, N.; and Maitland, G. C. 2017. The role of CO2 capture and utilization in mitigating climate change. Nature climate change, 7(4): 243– 249.
+OpenAI. 2023a. GPT-4 Technical Report. Technical report.
+OpenAI. 2023b. InstructGPT: AI for Generating Instructions. https://openai.com/research/instructgpt/.
+Ouyang, L.; Wu, J.; Jiang, X.; Almeida, D.; Wainwright, C.; Mishkin, P.; Zhang, C.; Agarwal, S.; Slama, K.; Ray, A.; et al. 2022. Training language models to follow instructions with human feedback. Advances in Neural Information Processing Systems, 35: 27730–27744.
+Radford, A.; Wu, J.; Child, R.; Luan, D.; Amodei, D.; and Sutskever, I. 2019. Language Models are Unsupervised Multitask Learners. OpenAI Blog.
+Sanh, V.; Webson, A.; Raffel, C.; Bach, S. H.; Sutawika, L.; Alyafeai, Z.; Chafﬁn, A.; Stiegler, A.; Scao, T. L.; Raja, A.; Dey, M.; Bari, M. S.; Xu, C.; Thakker, U.; Sharma, S. S.; Szczechla, E.; Kim, T.; Chhablani, G.; Nayak, N.; Datta, D.; Chang, J.; Jiang, M. T.-J.; Wang, H.; Manica, M.; Shen, S.; Yong, Z. X.; Pandey, H.; Bawden, R.; Wang, T.; Neeraj, T.; Rozen, J.; Sharma, A.; Santilli, A.; Fevry, T.; Fries, J. A.; Teehan, R.; Biderman, S.; Gao, L.; Bers, T.; Wolf, T.; and Rush, A. M. 2021. Multitask Prompted Training Enables Zero-Shot Task Generalization. arXiv:2110.08207.
+Schick, T.; Dwivedi-Yu, J.; Dess`ı, R.; Raileanu, R.; Lomeli, M.; Zettlemoyer, L.; Cancedda, N.; and Scialom, T. 2023. Toolformer: Language models can teach themselves to use tools. arXiv preprint arXiv:2302.04761.
+Stammbach, D.; Webersinke, N.; Bingler, J. A.; Kraus, M.; and Leippold, M. 2022. A Dataset for Detecting Real-World Environmental Claims. arXiv preprint arXiv:2209.00507.
+Stern, N. 2007. The Economics of Climate Change: The Stern Review. Cambridge University Press.
+Touvron, H.; Lavril, T.; Izacard, G.; Martinet, X.; Lachaux, M.-A.; Lacroix, T.; Rozie`re, B.; Goyal, N.; Hambro, E.; Azhar, F.; et al. 2023. Llama: Open and efﬁcient foundation language models. arXiv preprint arXiv:2302.13971.
+Vaswani, A.; Shazeer, N.; Parmar, N.; Uszkoreit, J.; Jones, L.; Gomez, A. N.; Kaiser, Ł.; and Polosukhin, I. 2017. Attention is all you need. In Advances in Neural Information Processing Systems, 5998–6008.
+Webersinke, N.; Kraus, M.; Bingler, J.; and Leippold, M. 2022. ClimateBERT: A Pretrained Language Model for Climate-Related Text. In Proceedings of AAAI 2022 Fall Symposium: The Role of AI in Responding to Climate Challenges.
+

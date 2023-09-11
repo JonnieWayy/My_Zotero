@@ -1,0 +1,547 @@
+Counting Guidance for High Fidelity Text-to-Image Synthesis
+Wonjun Kang1,2, Kevin Galim1, Hyung Il Koo1,3
+1FuriosaAI 2Seoul National University 3Ajou University {kangwj1995, kevin.galim, hikoo}@furiosa.ai
+
+arXiv:2306.17567v1 [cs.CV] 30 Jun 2023
+
+Abstract
+Recently, the quality and performance of text-to-image generation significantly advanced due to the impressive results of diffusion models. However, text-to-image diffusion models still fail to generate high fidelity content with respect to the input prompt. One problem where text-to-diffusion models struggle is generating the exact number of objects specified in the text prompt. E.g. given a prompt ”five apples and ten lemons on a table”, diffusion-generated images usually contain the wrong number of objects. In this paper, we propose a method to improve diffusion models to focus on producing the correct object count given the input prompt. We adopt a counting network that performs reference-less class-agnostic counting for any given image. We calculate the gradients of the counting network and refine the predicted noise for each step. To handle multiple types of objects in the prompt, we use novel attention map guidance to obtain high-fidelity masks for each object. Finally, we guide the denoising process by the calculated gradients for each object. Through extensive experiments and evaluation, we demonstrate that our proposed guidance method greatly improves the fidelity of diffusion models to object count.
+Introduction
+Text-to-image generation aims to generate high-fidelity images given a user-specified text prompt. It has various applications like digital art, design, and graphics and was traditionally performed using GANs since the early start of deep learning (Goodfellow et al. 2014; Karras, Laine, and Aila 2019; Karras et al. 2020, 2021; Zhang et al. 2017, 2018; Xu et al. 2018; Xia et al. 2021; Patashnik et al. 2021). However, GANs suffer from unstable training and a lack of diversity (mode collapse), making GANs only viable when generating images in narrow domains such as faces, animals, or vehicles. Recently, diffusion models (Ho, Jain, and Abbeel 2020; Song and Ermon 2019; Song et al. 2020), a new family of generative models, show impressive, high fidelity and high diversity results with stable training procedures, outperforming GANs and shifting the research focus from GANs to diffusion (Nichol et al. 2021; Ramesh et al. 2022; Saharia et al. 2022; Rombach et al. 2022). While many diffusion models were proposed recently, the open source model Stable Diffusion (Rombach et al. 2022), a latent diffusion model trained on large datasets, has become the global standard of text-toimage generation models.
+
+However, there are still unresolved issues with diffusion models and Stable Diffusion. For example, Stable Diffusion usually shows bad performance for compositional text-toimage synthesis (e.g., “an apple and a lemon on the table”), and various efforts have been made to resolve this problem. Attend-and-Excite (Chefer et al. 2023) proposes novel attention map guidance to generate two different objects successfully. Several other studies suggest layout-based methods for compositional text-to-image synthesis (Li et al. 2023; Lian et al. 2023; Phung, Ge, and Huang 2023). While there is a high interest in compositional text-to-image synthesis, recent studies are only focusing on synthesizing one object of each kind, leaving the problem of synthesizing multiple instances of each object unsolved (e.g., “three apples and five lemons on the table”).
+In this work, we focus on improving diffusion models to generate the exact number of instances per object, as specified in the input prompt. To alleviate this problem, we propose counting guidance by using gradients of a counting network. Specifically, we use RCC (Hobley and Prisacariu 2022) which performs reference-less class-agnostic counting for any given image. While most counting networks adopt a heatmap-based approach, RCC retrieves the object count directly via regression and, thus, allows us to obtain its gradient for classifier guidance (Dhariwal and Nichol 2021; Bansal et al. 2023).
+Furthermore, to handle multiple object types, we investigate the semantic information mixing problem of Stable Diffusion. For instance, the text prompt “three apples and four donuts on the table.” usually causes diffusion models to mix semantic information between apples and donuts leading to poor results and making it hard to enforce the correct object count per object type. We propose novel attention map guidance to separate semantic information between nouns in the prompt by obtaining masks for each object from the corresponding attention map. Fig. 1 compares Stable Diffusion with our method for single and multiple object types. Our approach successfully generates the right amount of each object, while Stable Diffusion fails in these scenarios. To the best of our knowledge, our work is the first attempt to generate the exact number of each object using a counting network for text-to-image synthesis. Our contributions can be summarized as follows:
+• We present counting network guidance to improve pre-
+
+Stable Diffusion (Rombach et al. 2022)
+
+Ours
+
+“six bananas”
+
+“five apples”
+
+“four donuts”
+
+“three apples and two donuts”
+
+Figure 1: Our text-to-generation method generates the exact number of each object for a given prompt. The first row shows the result of Stable Diffusion (Rombach et al. 2022) while the second row shows our method’s result.
+
+trained diffusion models to generate the exact number of objects specified in the prompt. Our approach can be applied to any diffusion model requiring no retraining or finetuning.
+• We propose novel attention map guidance to solve the semantic information mixing problem and obtain highfidelity masks for each object.
+• We demonstrate the effectiveness of our method by qualitative and quantitative comparisons with previous methods.
+Related Work
+Diffusion Models
+Diffusion models (Ho, Jain, and Abbeel 2020; Song and Ermon 2019; Song et al. 2020; Dhariwal and Nichol 2021; Rombach et al. 2022) are a new family of generative models that show a significant advance in performance of image synthesis and text-to-image generation. DDPM (Ho, Jain, and Abbeel 2020) designed the Markov chain process by gradually adding noise and demonstrated the potential of diffusion models for unconditional image generation. Concurrently, VP-SDE (Song and Ermon 2019; Song et al. 2020) interpreted diffusion models as Stochastic Differential Equations and provided broad insight into diffusion models. One of the problems with DDPM is that it depends on proba-
+
+bilistic sampling and requires about 1000 steps to obtain high-fidelity results making the sampling process very slow and computationally intensive. To solve this problem, DDIM (Song, Meng, and Ermon 2020) removed the probabilistic factor in DDPM and achieved comparable image quality to DDPM with only 50 denoising steps.
+Beyond unconditional image generation, recent papers on diffusion models also started to focus on conditional image generation. ADM (Dhariwal and Nichol 2021) suggested classifier guidance by calculating the gradient of a classifier to perform conditional image generation. This method though requires a noise-aware classifier and per step gradient calculation. To avoid this problem, (Ho and Salimans 2022) proposed classifier-free guidance, which removes the need of an external classifier by computing each denoising step as an extrapolation between one conditional and one unconditional step. Furthermore, ControlNet (Zhang and Agrawala 2023) proposed a separate control network attached to a pretrained diffusion model to perform guidance with additional input in feasible training time. Universal Guidance (Bansal et al. 2023) alleviates the problem of requiring a noise-aware classifier by instead calculating the gradient of the predicted clean data point.
+One issue of diffusion models when first proposed was the high inference cost because of repeated inference in pixelspace. To address this problem, Stable Diffusion (Rombach
+
+“ten apples on the table”
+
+“fifty apples on the table”
+
+(a) w/o guidance (N = 3)
+
+(b) w/ guidance (N = 10)
+
+(c) w/o guidance (N = 18)
+
+(d) w/ guidance (N = 46)
+
+Figure 2: Effectiveness of counting network guidance. Our method is also effective for large number.
+
+et al. 2022) proposed performing the diffusion process in a low dimensional latent space instead of image space, greatly reducing the computational cost. Despite Stable Diffusion’s powerful performance, there are still some remaining problems. For example, Stable Diffusion usually fails to generate multiple objects successfully (e.g., an apple and a lemon on the table). Thus, the paper Attend-and-Excite (Chefer et al. 2023) suggested attention map-based guidance to activate the attention of all objects in the prompt but nevertheless only focuses on a single instance per object, leaving the issue of reliable generation of multiple instances per objects. In this paper, we explicitly address this issue by introducing counting network guidance and attention map guidance to pre-trained diffusion models.
+Concurrent with our work, (Paiss et al. 2023; Zhong et al. 2023) tries to generate the exact number of objects using enhanced language models. (Paiss et al. 2023) trains a counting-aware CLIP model (Radford et al. 2021) and uses it to train the text-to-image diffusion model Imagen (Saharia et al. 2022). (Lee et al. 2023; Fan et al. 2023) uses human feedback to fine-tune text-to-image generation models by supervised learning and reinforcement learning. (Phung, Ge, and Huang 2023; Lian et al. 2023) proposes layout-based text-to-image generation, which requires additional layout input and leverages a large language model (LLM) to generate proper layouts from given prompts. Unlike the above works, our method does not require additional layout input, a LLM or retraining.
+Object Counting
+The goal of object counting is to count arbitrary objects in images. Object counting can be divided into few-shot object counting, reference-less counting and zero-shot object counting. For few-shot object counting (You et al. 2023; Shi et al. 2022), a few example images of the object to count are provided as input while for reference-less counting (Ranjan and Nguyen 2022; Hobley and Prisacariu 2022), example images are not provided and the aim is to count the number of all salient objects in the image. Zero-shot object counting, on the other hand, (Xu et al. 2023; Jiang, Liu, and Chen 2023) aims to count arbitrary objects of a user-provided
+
+class. Object counting networks are usually either heatmap-
+based or regression-based (You et al. 2023; Shi et al. 2022; Hobley and Prisacariu 2022). For our approach, regressionbased methods are more suitable for calculating the gradient of the counting network compared to heatmap-based methods. In particular, we adopt RCC (Hobley and Prisacariu 2022), a reference-less regression-based counting model which builds on top of extracted features of a pre-trained ViT (Dosovitskiy et al. 2020)
+
+Preliminaries
+
+Denoising Diffusion Probabilistic Models (DDPM) (Ho, Jain, and Abbeel 2020) define a forward noising process and a reverse denoising process, each with T steps (T = 1000 in the paper). The forward process q(xt|xt−1) is defined as
+√ q(xt|xt−1) = N (xt; αtxt−1, (1 − αt)I), (1)
+
+where αt and xt are schedule and data point at time step t.
+
+This process can be seen as iteratively adding scaled Gaus-
+
+sian noise. Thanks to the property of the Gaussian distribu-
+
+tion, we can obtain q(xt|x0) directly as
+
+√
+
+q(xt|x0) = N (xt; α¯tx0, (1 − α¯t)I),
+
+(2)
+
+and rewrite as
+
+√
+
+√
+
+xt = α¯tx0 + 1 − α¯tϵ,
+
+(3)
+
+where α¯ =
+
+t i=1
+
+αi
+
+and
+
+ϵ
+
+∼
+
+N (0, I).
+
+DDPM
+
+ϵθ(xt, t)
+
+is
+
+trained to estimate the noise which was added in the for-
+
+ward process ϵ at each time step t. By iteratively estimating
+
+and removing the estimated noise, the original image can be
+
+recovered. During inference, images are generated by using
+
+random noise as starting point.
+
+In practice however, deterministic DDIM (Song, Meng,
+
+and Ermon 2020) sampling is commonly used since it re-
+
+quires significantly less sampling steps compared to DDPM.
+
+DDIM sampling is performed as
+
+√
+
+xt−1
+
+=
+
+√ α¯t−1(
+
+xt
+
+−
+
+1 √
+
+−
+
+α¯tϵθ
+
+)
+
+α¯t
+
++
+
+1 − α¯t−1ϵθ. (4)
+
+“three oranges and four eggs on the table” w/o attention map guidance
+
+w/ attention map guidance
+
+generated image
+
+attention map of “oranges” attention map of “eggs”
+
+mask of “oranges”
+
+mask of “eggs”
+
+Figure 3: Effectiveness of attention map guidance. The first row shows the results of Stable Diffusion without attention map guidance, and the second row shows the results with attention map guidance.
+
+With DDIM sampling, the clean data point xˆ0 can be ob-
+
+tained by
+
+√
+
+xˆ0 = (xt −
+
+1 √− α¯tϵθ(xt, t)) . α¯t
+
+(5)
+
+To add classifier guidance to DDIM (Dhariwal and Nichol
+
+2021), the gradient of a classifier is computed and used to
+
+retrieve the refined predicted noise ϵˆ by
+
+√
+
+ϵˆ = ϵ − s 1 − α¯t∇xt log pϕ(y|xt)
+
+(6)
+
+where s is scale parameter and pϕ is a classifier. One issue
+
+of classifier guidance is that the underlying classifier needs
+
+to be noise-aware as it receives outputs from intermediate
+
+denoising steps, requiring expensive noise-aware retraining.
+
+Universal Guidance (Bansal et al. 2023) addresses this by
+
+feeding the predicted clean data point xˆ0 instead of the noisy
+
+xt to the classifier which can be expressed as
+
+√
+
+ϵˆ = ϵ − s 1 − α¯t∇xt log pϕ(y|xˆ0).
+
+(7)
+
+Method
+In this section, we first present how to control the number of a single object type using counting network guidance and then expand it to multiple object types. For multiple object types, we solve the semantic information mixing problem of Stable Diffusion with attention map guidance and present masked counting network guidance for successful multiple object type generation.
+
+Algorithm 1: Counting guidance for single object type
+
+Input: time step t, denoising network ϵθ(·, ·), decoder
+
+Decoder(·), counting network Count(·), number of object
+
+N
+
+Parameter: scale parameter scount Output: clean latent z0
+
+1: for t = T, T − 1, ..., 1 do
+
+2: ϵ ← ϵθ(zt, t)√
+
+√
+
+3: zˆ0 ← (zt − 1 − α¯tϵ)/ α¯t
+
+4: xˆ0 ← Decoder(zˆ0) 5: Lcount ← |(Co√unt(xˆ0) − N )/N |2 6: ϵ ← ϵ + scount 1 − α¯t∇zt Lcount 7: zt−1 ← Sample(zt, ϵ)
+8: end for
+
+9: return z0
+
+Counting Guidance for a Single Object Type
+
+To avoid retraining the counting network on noisy images, we perform counting network guidance following Universal Guidance (Bansal et al. 2023). For a given number of N objects, we define the counting loss Lcount as
+
+Lcount
+
+=
+
+|
+
+C ount(xˆ0 ) N
+
+−
+
+N
+
+|2,
+
+(8)
+
+where Count(·) is the pre-trained counting network RCC (Hobley and Prisacariu 2022) and xˆ0 is the predicted clean image at each time step. We update the predicted noise ϵ
+
+Algorithm 2: Counting guidance for multiple object types
+
+Input: time step t, denoising network ϵθ, decoder Decoder,
+
+counting network Count, number of ith object Ni Parameter: scale parameter smax, sattention, scount,i Output: clean latent z0
+
+1: for t = T, T − 1, ..., 1 do
+
+2: ϵ, M ← ϵθ(zt, t)
+
+3: Lmin ← j,k mini(Mi,j,k)
+
+4: Lmax ← j,k maxi(Mi,j,k) 5: Lattention ← Lmin√− smaxLmax 6: ϵ ← ϵ + satt√ention 1 −√α¯t∇zt Lattention 7: zˆ0 ← (zt − 1 − α¯tϵ)/ α¯t
+
+8: xˆ0 ← Decoder(zˆ0) 9: for i do
+
+10:
+
+xˆ0,i ← M ask(xˆ0, Mi)
+
+11:
+
+Lcount,i ← |(Co√unt(xˆ0,i) − Ni)/Ni|2
+
+12:
+
+ϵ ← ϵ + scount,i 1 − α¯t∇zt Lcount,i
+
+13: end for
+
+14: zt−1 ← Sample(zt, ϵ) 15: end for
+
+16: return z0
+
+using the gradient of the counting network as
+
+√
+
+ϵ ← ϵ + scount 1 − α¯t∇zt Lcount,
+
+(9)
+
+where scount is an additional scale parameter to control the
+
+strength of counting guidance.
+
+Fig. 2a and Fig. 2b show the effectiveness of our proposed
+
+counting network guidance method. For the prompt “ten ap-
+
+ples on the table,” Stable Diffusion with counting network
+
+guidance generates ten apples, while vanilla Stable Diffu-
+
+sion generates only three apples. We find that Fig. 2a and
+
+Fig. 2b have similar textures and backgrounds, indicating
+
+that counting guidance maintains the original properties of
+
+Stable Diffusion while only influencing the object count.
+
+Counting guidance also proves itself effective when gen-
+
+erating a large number of objects. Due to a lack of im-
+
+ages containing a large number of objects in Stable Diffu-
+
+sion’s training dataset, it often fails to create plausible re-
+
+sults for such cases. Fig. 2c and Fig. 2d show the effec-
+
+tiveness of counting guidance on large numbers. For the
+
+given text prompt “fifty apples on the table,” Stable Diffu-
+
+sion with counting network guidance generates 46 apples,
+
+while vanilla Stable Diffusion generates only 18 apples.
+
+Although counting guidance helps to generate the given
+
+number of objects, it sometimes fails to produce the exact
+
+number of objects. We think that this is an issue of the accu-
+
+racy of the counting network itself, so we adjust the output
+
+number N of the counting network by adding a fixed offset
+
+Noff :
+
+N ← N + Noff ,
+
+(10)
+
+where the value of offset Noff is usually 0, -1, or 1.
+
+Counting Guidance for Multiple Object Types
+Semantic Information Mixing Problem Handling multiple object types requires counting each type separately. We
+
+could use a class-aware counting network, however, the predicted clean image of early denoising steps is still too low quality for the counting network to correctly identify each object instance. Therefore, we decide to use a class-agnostic counting network instead. For each object type to count, we obtain a mask using the underlying self attention maps of the UNet model and feed the masked image of each object type to the counting network separately. It has been shown in previous works (Hertz et al. 2022; Chefer et al. 2023) that the attention map corresponding to each object has high activation at the object region. Thus, we use the attention map of each object as its mask.
+However, we require accurate object masks for counting guidance, but Stable Diffusion often tends to produce attention maps that do not accurately correspond to the correct location of each object. The first row of Fig. 3 demonstrates this semantic information mixing problem. For the prompt “three oranges and four eggs on the table.”, we find that the attention map of “oranges” and the attention map of “eggs” share a large part of pixels resulting in the generation of orange-colored eggs instead of oranges and eggs.
+
+Attention Map Guidance To solve the semantic information mixing problem, we first obtain each object’s attention map following (Chefer et al. 2023). Similarly, we exclude the ⟨sot⟩ token, re-weigh using Softmax, and then Gaussiansmooth to receive the attention map Mi for each object i. Finally, we normalize each object’s attention map as
+
+Mˆ i,j,k
+
+=
+
+Mi,j,k − minj,k(Mi,j,k)
+
+,
+
+maxj,k(Mi,j,k) − minj,k(Mi,j,k)
+
+(11)
+
+where Mi,j,k is the attention value of coordinate (j, k) of object i’s attention map.
+We then ensure that each pixel coordinate is only referred to by the attention of a single object by calculating each coordinate’s minimum attention value and summate them to Lmin where a low Lmin indicates that each coordinate is only activated by a single object:
+
+Lmin = min(Mˆ i,j,k).
+
+(12)
+
+i
+
+j,k
+
+Similar to Lmin, we define Lmax to ensure that at least one object activates each pixel as
+
+Lmax = max(Mˆ i,j,k).
+
+(13)
+
+i
+
+j,k
+
+Finally, we calculate the total attention loss Lattention as
+
+Lattention = Lmin − smaxLmax,
+
+(14)
+
+where smax is a scale parameter. The predicted noise ϵ is then updated as
+√ ϵ ← ϵ + sattention 1 − α¯t∇zt Lattention. (15)
+
+The second row of Fig. 3 shows the effectiveness of our attention map guidance. We find that the attention map of “oranges” only focuses on oranges, and the attention map of “eggs” only focuses on eggs, resulting in a correctly synthesized output. Furthermore, we observe that high-fidelity object masks are generated from the corresponding attention maps.
+
+Stable Diffusion (Rombach et al. 2022)
+
+Attend-and-Excite (Chefer et al. 2023)
+
+Ours
+
+“five rabbits”
+
+“ten oranges”
+
+“four tomatoes” “twelve macarons”
+
+“three chicks”
+
+“seven eggs”
+
+Figure 4: Qualitative comparison for single object type. The first row shows the results of Stable Diffusion (Rombach et al. 2022), the second row shows the results of Attend-and-Excite (Chefer et al. 2023) and the last row shows the results of our method.
+
+Masked Counting Guidance For each object i, we binarize its attention map to receive the binary mask Mib as
+
+Mib,j,k =
+
+1, 0,
+
+if i = argmaxi(Mi,j,k) otherwise
+
+(16)
+
+and then generate a masked clean image xˆ0,i using elementwise multiplication:
+
+xˆ0,i = xˆ0 ⊙ Mib.
+
+(17)
+
+For the i-th object count of object Ni, each masked counting guidance Lcount,i is defined as
+
+Lcount,i
+
+=
+
+| Count(xˆ0,i) Ni
+
+−
+
+Ni
+
+|2.
+
+(18)
+
+Finally, we update the noise ϵ as
+
+ϵ←ϵ+
+
+√ scount,i 1 − α¯t∇zt Lcount,i
+
+i
+
+(19)
+
+where scount,i is an additional scaling parameter per object.
+
+Experiments
+We borrow the state-of-the-art text-to-image generation model Stable Diffusion v1.4 for our experiments. We use DDIM sampling with 50 steps and set the scale parameter for Lmax to smax = 0.1 by default. We create a modified dataset based on the object classes in Attend-and-Excite (Chefer et al. 2023) to evaluate and compare our approach with previous methods. Specifically, we remove the color category and add more animals and objects to focus on counting performance. We compare our method with Stable Diffusion (Rombach et al. 2022) and Attend-and-Excite.
+Results for Single Object Type
+Fig. 4 shows a qualitative comparison for the single object type scenario. While Stable Diffusion and Attend-andExcite fail to generate the same number of objects as specified in the prompt, our method generates the correct number. For the text prompt “four tomatoes on the table,” Stable Diffusion generates only three tomatoes without counting guidance. With counting guidance, the tomato at the bottom is successfully divided into two tomatoes, while the rest of the image is consistent with the original result. The text prompt
+
+“two apples and three donuts on the table”
+
+“three lemons and one bread on the table”
+
+“two onions and two tomatoes on the table”
+
+Stable Diffusion Attend-and-Excite
+
+Ours
+
+Figure 5: Qualitative comparison for multiple object types. The first column shows the results of Stable Diffusion, the second column shows the results of Attend-and Excite, and the last column shows the results of our method.
+
+“ten oranges on the table,” causes Stable Diffusion to only generate four oranges compared to our solution that creates the correct amount of ten. The big difference in count results in large gradients, making our result severely differ from the original.
+Our method also works well for more complex categories, such as animals. Considering text prompt “three chicks on the road”, Stable Diffusion and Attend-and-Excite synthesize only two chicks, unlike our method which generates one additional chick while maintaining the other two chicks’ appearance. For the text prompt “five rabbits in the yard” Stable Diffusion and Attend-and-Excite generate only four rabbits, while our method generates one more rabbit but fails to maintain the other rabbits’ appearance. That is because of the difference between the background and the rabbit colors. It is hard to generate a white rabbit from a brown yard, so Stable Diffusion with counting guidance changes the overall structure and recreates five rabbits.
+Results for Multiple Object Types
+Fig. 5 shows a qualitative comparison for multiple object types. For the given text prompt “three lemons and one bread on the table,” Stable Diffusion successfully creates
+
+one bread but fails to generate three lemons, while Attendand-Excite fails in both cases. With masked counting guidance, our method correctly synthesizes three lemons and one bread. The result shows that the lemon at the bottom is divided into two lemons thanks to masked counting guidance while maintaining the bread’s shape.
+For the text prompt “two onions and two tomatoes on the table,” we find that Stable Diffusion suffers from the semantic information mixing problem and generates red onions instead of tomatoes. Due to our attention map guidance, our method creates real tomatoes. As Attend-and-Excite is also based on attention map optimization, it successfully generates real tomatoes but fails to generate the exact number of onions.
+Limitations
+As our results show, our method aids in generating the exact number of each object, but we also found several limitations. First, it is often necessary to tune the scale parameters of the counting network guidance for a specific text prompt. Although fixed scale parameters can help to control the number of objects to a certain degree, generating the exact number of each object may require tuning the underlying scale parameters.
+Second, we found that generating the exact number of more complex objects is much more complicated than generating simple object shapes. The structure of the result image is mostly determined at the early denoising steps, limiting the dividing or merging of objects by counting guidance.
+Conclusions
+In this paper, we propose counting guidance which is, to our knowledge, the first attempt to guide Stable Diffusion with a counting network to generate the correct number of objects during text-to-image generation. For a single object type, we calculate the gradients of a counting network and refine the estimated noise at every step. For multiple object types, we discuss the semantic information mixing problem and propose attention map guidance to alleviate it. Finally, we obtain masks of each object from the corresponding attention map and calculate the counting network’s gradient of each masked image separately. We demonstrate that our method effectively controls the number of objects with a few limitations. For future work, we will aim to remove the necessarity of scale parameter tuning and create one global framework working for every prompt without additional tuning.
+References
+Bansal, A.; Chu, H.-M.; Schwarzschild, A.; Sengupta, S.; Goldblum, M.; Geiping, J.; and Goldstein, T. 2023. Universal Guidance for Diffusion Models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 843–852.
+Chefer, H.; Alaluf, Y.; Vinker, Y.; Wolf, L.; and CohenOr, D. 2023. Attend-and-excite: Attention-based semantic guidance for text-to-image diffusion models. arXiv preprint arXiv:2301.13826.
+
+Dhariwal, P.; and Nichol, A. 2021. Diffusion models beat gans on image synthesis. Advances in Neural Information Processing Systems, 34: 8780–8794.
+Dosovitskiy, A.; Beyer, L.; Kolesnikov, A.; Weissenborn, D.; Zhai, X.; Unterthiner, T.; Dehghani, M.; Minderer, M.; Heigold, G.; Gelly, S.; et al. 2020. An image is worth 16x16 words: Transformers for image recognition at scale. arXiv preprint arXiv:2010.11929.
+Fan, Y.; Watkins, O.; Du, Y.; Liu, H.; Ryu, M.; Boutilier, C.; Abbeel, P.; Ghavamzadeh, M.; Lee, K.; and Lee, K. 2023. DPOK: Reinforcement Learning for Fine-tuning Text-toImage Diffusion Models. arXiv preprint arXiv:2305.16381.
+Goodfellow, I.; Pouget-Abadie, J.; Mirza, M.; Xu, B.; Warde-Farley, D.; Ozair, S.; Courville, A.; and Bengio, Y. 2014. Generative adversarial nets. Advances in neural information processing systems, 27.
+Hertz, A.; Mokady, R.; Tenenbaum, J.; Aberman, K.; Pritch, Y.; and Cohen-Or, D. 2022. Prompt-to-prompt image editing with cross attention control. arXiv preprint arXiv:2208.01626.
+Ho, J.; Jain, A.; and Abbeel, P. 2020. Denoising diffusion probabilistic models. Advances in Neural Information Processing Systems, 33: 6840–6851.
+Ho, J.; and Salimans, T. 2022. Classifier-free diffusion guidance. arXiv preprint arXiv:2207.12598.
+Hobley, M.; and Prisacariu, V. 2022. Learning to count anything: Reference-less class-agnostic counting with weak supervision. arXiv preprint arXiv:2205.10203.
+Jiang, R.; Liu, L.; and Chen, C. 2023. CLIP-Count: Towards Text-Guided Zero-Shot Object Counting. arXiv preprint arXiv:2305.07304.
+Karras, T.; Aittala, M.; Laine, S.; Ha¨rko¨nen, E.; Hellsten, J.; Lehtinen, J.; and Aila, T. 2021. Alias-free generative adversarial networks. Advances in Neural Information Processing Systems, 34.
+Karras, T.; Laine, S.; and Aila, T. 2019. A style-based generator architecture for generative adversarial networks. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 4401–4410.
+Karras, T.; Laine, S.; Aittala, M.; Hellsten, J.; Lehtinen, J.; and Aila, T. 2020. Analyzing and improving the image quality of stylegan. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 8110–8119.
+Lee, K.; Liu, H.; Ryu, M.; Watkins, O.; Du, Y.; Boutilier, C.; Abbeel, P.; Ghavamzadeh, M.; and Gu, S. S. 2023. Aligning text-to-image models using human feedback. arXiv preprint arXiv:2302.12192.
+Li, Y.; Liu, H.; Wu, Q.; Mu, F.; Yang, J.; Gao, J.; Li, C.; and Lee, Y. J. 2023. GLIGEN: Open-Set Grounded Text-toImage Generation. arXiv preprint arXiv:2301.07093.
+Lian, L.; Li, B.; Yala, A.; and Darrell, T. 2023. LLMgrounded Diffusion: Enhancing Prompt Understanding of Text-to-Image Diffusion Models with Large Language Models. arXiv preprint arXiv:2305.13655.
+
+Nichol, A.; Dhariwal, P.; Ramesh, A.; Shyam, P.; Mishkin, P.; McGrew, B.; Sutskever, I.; and Chen, M. 2021. Glide: Towards photorealistic image generation and editing with textguided diffusion models. arXiv preprint arXiv:2112.10741.
+Paiss, R.; Ephrat, A.; Tov, O.; Zada, S.; Mosseri, I.; Irani, M.; and Dekel, T. 2023. Teaching clip to count to ten. arXiv preprint arXiv:2302.12066.
+Patashnik, O.; Wu, Z.; Shechtman, E.; Cohen-Or, D.; and Lischinski, D. 2021. Styleclip: Text-driven manipulation of stylegan imagery. In Proceedings of the IEEE/CVF International Conference on Computer Vision, 2085–2094.
+Phung, Q.; Ge, S.; and Huang, J.-B. 2023. Grounded Text-to-Image Synthesis with Attention Refocusing. arXiv preprint arXiv:2306.05427.
+Radford, A.; Kim, J. W.; Hallacy, C.; Ramesh, A.; Goh, G.; Agarwal, S.; Sastry, G.; Askell, A.; Mishkin, P.; Clark, J.; et al. 2021. Learning transferable visual models from natural language supervision. In International conference on machine learning, 8748–8763. PMLR.
+Ramesh, A.; Dhariwal, P.; Nichol, A.; Chu, C.; and Chen, M. 2022. Hierarchical text-conditional image generation with clip latents. arXiv preprint arXiv:2204.06125.
+Ranjan, V.; and Nguyen, M. H. 2022. Exemplar free class agnostic counting. In Proceedings of the Asian Conference on Computer Vision, 3121–3137.
+Rombach, R.; Blattmann, A.; Lorenz, D.; Esser, P.; and Ommer, B. 2022. High-resolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 10684– 10695.
+Saharia, C.; Chan, W.; Saxena, S.; Li, L.; Whang, J.; Denton, E. L.; Ghasemipour, K.; Gontijo Lopes, R.; Karagol Ayan, B.; Salimans, T.; et al. 2022. Photorealistic text-to-image diffusion models with deep language understanding. Advances in Neural Information Processing Systems, 35: 36479–36494.
+Shi, M.; Lu, H.; Feng, C.; Liu, C.; and Cao, Z. 2022. Represent, compare, and learn: A similarity-aware framework for class-agnostic counting. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 9529–9538.
+Song, J.; Meng, C.; and Ermon, S. 2020. Denoising diffusion implicit models. arXiv preprint arXiv:2010.02502.
+Song, Y.; and Ermon, S. 2019. Generative modeling by estimating gradients of the data distribution. Advances in neural information processing systems, 32.
+Song, Y.; Sohl-Dickstein, J.; Kingma, D. P.; Kumar, A.; Ermon, S.; and Poole, B. 2020. Score-based generative modeling through stochastic differential equations. arXiv preprint arXiv:2011.13456.
+Xia, W.; Yang, Y.; Xue, J.-H.; and Wu, B. 2021. Tedigan: Text-guided diverse face image generation and manipulation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2256–2265.
+Xu, J.; Le, H.; Nguyen, V.; Ranjan, V.; and Samaras, D. 2023. Zero-Shot Object Counting. In Proceedings of
+
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 15548–15557.
+Xu, T.; Zhang, P.; Huang, Q.; Zhang, H.; Gan, Z.; Huang, X.; and He, X. 2018. Attngan: Fine-grained text to image generation with attentional generative adversarial networks. In Proceedings of the IEEE conference on computer vision and pattern recognition, 1316–1324.
+You, Z.; Yang, K.; Luo, W.; Lu, X.; Cui, L.; and Le, X. 2023. Few-shot object counting with similarity-aware feature enhancement. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision, 6315–6324.
+Zhang, H.; Xu, T.; Li, H.; Zhang, S.; Wang, X.; Huang, X.; and Metaxas, D. N. 2017. Stackgan: Text to photorealistic image synthesis with stacked generative adversarial networks. In Proceedings of the IEEE international conference on computer vision, 5907–5915.
+Zhang, H.; Xu, T.; Li, H.; Zhang, S.; Wang, X.; Huang, X.; and Metaxas, D. N. 2018. Stackgan++: Realistic image synthesis with stacked generative adversarial networks. IEEE transactions on pattern analysis and machine intelligence, 41(8): 1947–1962.
+Zhang, L.; and Agrawala, M. 2023. Adding conditional control to text-to-image diffusion models. arXiv preprint arXiv:2302.05543.
+Zhong, S.; Huang, Z.; Wen, W.; Qin, J.; and Lin, L. 2023. Sur-adapter: Enhancing text-to-image pre-trained diffusion models with large language models. arXiv preprint arXiv:2305.05189.
+

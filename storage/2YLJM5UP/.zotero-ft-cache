@@ -1,0 +1,80 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2306.07967
+
+Help | Advanced Search
+Search
+Computer Science > Machine Learning
+(cs)
+[Submitted on 13 Jun 2023]
+Title: One-for-All: Generalized LoRA for Parameter-Efficient Fine-tuning
+Authors: Arnav Chavan , Zhuang Liu , Deepak Gupta , Eric Xing , Zhiqiang Shen
+Download a PDF of the paper titled One-for-All: Generalized LoRA for Parameter-Efficient Fine-tuning, by Arnav Chavan and Zhuang Liu and Deepak Gupta and Eric Xing and Zhiqiang Shen
+Download PDF
+
+    Abstract: We present Generalized LoRA (GLoRA), an advanced approach for universal parameter-efficient fine-tuning tasks. Enhancing Low-Rank Adaptation (LoRA), GLoRA employs a generalized prompt module to optimize pre-trained model weights and adjust intermediate activations, providing more flexibility and capability across diverse tasks and datasets. Moreover, GLoRA facilitates efficient parameter adaptation by employing a scalable, modular, layer-wise structure search that learns individual adapter of each layer. Originating from a unified mathematical formulation, GLoRA exhibits strong transfer learning, few-shot learning and domain generalization abilities, as it adjusts to new tasks through additional dimensions on weights and activations. Comprehensive experiments demonstrate that GLoRA outperforms all previous methods in natural, specialized, and structured benchmarks, achieving superior accuracy with fewer parameters and computations on various datasets. Furthermore, our structural re-parameterization design ensures that GLoRA incurs no extra inference cost, rendering it a practical solution for resource-limited applications. Code is available at: this https URL . 
+
+Comments: 	Technical report
+Subjects: 	Machine Learning (cs.LG) ; Artificial Intelligence (cs.AI); Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2306.07967 [cs.LG]
+  	(or arXiv:2306.07967v1 [cs.LG] for this version)
+  	https://doi.org/10.48550/arXiv.2306.07967
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Zhiqiang Shen [ view email ]
+[v1] Tue, 13 Jun 2023 17:59:32 UTC (1,089 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled One-for-All: Generalized LoRA for Parameter-Efficient Fine-tuning, by Arnav Chavan and Zhuang Liu and Deepak Gupta and Eric Xing and Zhiqiang Shen
+    PDF
+    Other formats 
+
+Current browse context:
+cs.LG
+< prev   |   next >
+new | recent | 2306
+Change to browse by:
+cs
+cs.AI
+cs.CV
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

@@ -1,0 +1,440 @@
+Guided Image Synthesis via Initial Image Editing in Diffusion Model
+
+Jiafeng Mao
+The University of Tokyo Tokyo, Japan
+mao@hal.t.u-tokyo.ac.jp
+
+Xueting Wang
+CyberAgent, Inc. Tokyo, Japan
+wang_xueting@cyberagent.co.jp
+
+Kiyoharu Aizawa
+The University of Tokyo Tokyo, Japan
+aizawa@hal.t.u-tokyo.ac.jp
+
+arXiv:2305.03382v2 [cs.CV] 6 Aug 2023
+
+Figure 1: In this study, we investigate the impact of the initial image on image generation and propose a novel direction for controlling the generation process by manipulating the initial random noise. We present two direct applications of our findings: generated image re-painting and layout-to-image synthesis. Generated image re-painting allows users to modify a part of the generated image while preserving most of it. Layout-to-image synthesis requires generating objects in user-specified regions.
+
+ABSTRACT
+Diffusion models have the ability to generate high quality images by denoising pure Gaussian noise images. While previous research has primarily focused on improving the control of image generation through adjusting the denoising process, we propose a novel direction of manipulating the initial noise to control the generated image. Through experiments on stable diffusion, we show that blocks of pixels in the initial latent images have a preference for generating specific content, and that modifying these blocks can significantly influence the generated image. In particular, we show that modifying a part of the initial image affects the corresponding region of the generated image while leaving other regions unaffected, which is useful for repainting tasks. Furthermore, we find that the generation preferences of pixel blocks are primarily determined by their values, rather than their position. By moving pixel blocks with a tendency to generate user-desired content to user-specified regions, our approach achieves state-of-the-art performance in layout-toimage generation. Our results highlight the flexibility and power of initial image manipulation in controlling the generated image.
+CCS CONCEPTS
+• Computing methodologies → Computer vision.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than the author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org. MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada. © 2023 Copyright held by the owner/author(s). Publication rights licensed to ACM. ACM ISBN 979-8-4007-0108-5/23/10. . . $15.00 https://doi.org/10.1145/3581783.3612191
+
+KEYWORDS
+text-to-image, diffusion model, fine-grained control, layout-to-image
+ACM Reference Format: Jiafeng Mao, Xueting Wang, and Kiyoharu Aizawa. 2023. Guided Image Synthesis via Initial Image Editing in Diffusion Model. In Proceedings of the 31st ACM International Conference on Multimedia (MM ’23), October 29– November 3, 2023, Ottawa, ON, Canada. ACM, New York, NY, USA, 9 pages. https://doi.org/10.1145/3581783.3612191
+1 INTRODUCTION
+Image generation is an important area of research in computer vision. Diffusion models [9] have shown great potential for generating high-quality images by progressively denoising pure Gaussian noise images. Previous research [4, 13, 20, 23–25] in this area has primarily focused on using prompts to guide the generation of images. The prompt is usually a sentence describing the desired content of the generated image. The model then attempts to generate an image that matches the prompt’s description. However, prompt-based text-to-image generation is highly uncertain and frequently fails. Although some methods [2, 5, 7, 12, 16, 21] have attempted to achieve more controllable generation processes by improving the denoising process or exploring better ways to use prompt, in practical applications, users usually need to randomly generate dozens or even hundreds of different images using the same prompt before obtaining a satisfactory one.
+In this paper1, we investigate the critical reasons why the generation sometimes fails and further apply our conclusions to propose a new direction for controlling the generated contents. We notice that current widely used sampling methods, i.e., DDIM (denoising diffusion implicit models [27]) and PLMS (pseudo linear multi-step
+1This work was conducted while the first author was doing internship at CyberAgent, Inc.
+
+MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada.
+
+Mao et al.
+
+Figure 2: Our analysis experiments on the generation tendency of random initial noise Image. We present samples of generation results using two different initial images, which are both randomly sampled from Gaussian distribution. Images with the same color borders are generated from the same initial image. When the initial images are the same, the same categories under different prompts are highly similar in position and visual appearance. When the randomly sampled initial images differ, the generated results are highly different in layout and details, even when the same prompts are used.
+
+method [15]), are deterministic. Given a diffusion model 𝜃 , prompt 𝑝 and a initial noise image 𝑥𝑇 , the generated image 𝑥0 is constant and can be represented as 𝑥0 = 𝑓𝜃 (𝑥𝑇 , 𝑝). With the same prompt 𝑝 and model parameters 𝜃 , the final generated image 𝑥0 should be entirely determined by the randomly sampled initial image 𝑥𝑇 . With such a critical position, the initial noise image has received little attention. This conclusion leads us to further analyze the initial image’s impact on the generated results.
+Specifically, our experiments on stable diffusion demonstrated that the initial noise image has a preference for generating specific content, which we refer to as generation tendency in this paper. Specifically, once the initial image is determined, the generated images tend to exhibit significant similarities, such as layout, background, and style, even when different prompts are utilized. Additionally, we found that the generation tendency of each area of the initial image is relatively independent. Given a constant prompt, modifying the pixels in a single area of the initial image can result in a change in the corresponding area of generated image, while retaining the content of other areas. This finding can be applied to repainting tasks, where users are satisfied with most of the content in the generated image and wish to change a small portion of inappropriate content (top row in Fig. 1). We also discovered that the generation tendencies of regions on initial image are primarily related to their pixel values, rather than their spatial position. A region that tends to generate specific content is likely to generate the same content when moved to a different spatial location in the initial image. Therefore, simply moving all regions with the same tendency to generate specific content to a designated area can lead the diffusion model to generate the content in that area. This discovery can naturally be applied to the layout-to-image synthesis, which requires generating objects mentioned in the prompt within user-specified areas (bottom row in Fig. 1). Our method of modifying the initial image achieves a comparable performance with state-of-the-art methods when used alone, and can be combined with them to further improve control over the object’s position.
+By leveraging the initial image as a control mechanism, we can achieve fine-grained control over the generated images rather than relying solely on prompts or the denoising process. Our findings show that initial image manipulation is a flexible and powerful
+
+way to control the image generation of diffusion models, and open new avenues for research in image generation. We summarize the contributions of this paper as follows:
+• Our experimental results indicate that the initial noise images exhibit distinct preferences in generating certain content, which are primarily determined by their pixel values. In other words, the initial image has a significant impact on the generated results.
+• We identify a key reason why text-to-image generation sometimes fails.
+• We propose a new direction for controlling the generation, which is utilizing the initial image as a control mechanism. Our approach enables the repainting of generated images and achieves state-of-the-art performance on training-free layout-to-image generation tasks.
+2 RELATED WORKS
+2.1 Diffusion Models
+Recent works [9, 19, 27] on diffusion model have been shown to have the ability to produce samples that are comparable to real images. DDPM (Denoising Diffusion Probabilistic Models [9]) starts from pure Gaussian noise and keeps repeating the process of predicting the next distribution and randomly sampling new samples, eventually generating high-quality samples similar to actual pictures. However, DDPM requires hundreds to thousands of iterations to produce the final samples. Some previous works have successfully accelerated DDPM by tuning the variance schemes (improved DDPM [19]) or denoising equations (DDIM [27]). DDIM relying on a non-Markovian process, accelerate the denoising process by taking multiple steps every iteration and replacing the random generation process with a deterministic one. Liu et al. [15] extended DDIM into PNDMs and proposed a pseudo linear multi-step method (PLMS), achieving the fastest generation under similar generated quality. Previous research has proposed various methods for controlling the generated content. Classifier guidance [3] denoises the image while updating it in the direction of high scores of the corresponding class based on the gradient of the classifier. Classifier-free [10] guidance achieves the same effect without a classifier. Most current methods [4, 6, 13, 24] take prompt guidance and calculate an updating direction by CLIP [22] to guide the denoising. Stable diffusion [25]
+
+Guided Image Synthesis via Initial Image Editing in Diffusion Model
+
+MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada.
+
+Figure 3: Our experiments on initial noise image editing. We first perform generation using random noise initial image sampled from Gaussian noise. Although both the ’cat’ and the ’chair’ are generated in the first generated image, the location of the cat is not satisfying to the prompt. Since the region where the cat is generated (bounding box A) that tends to generate ’cat’ is not expected, we re-randomize the pixel values of the corresponding area in the initial image. We also re-randomize the region near the chair (bounding box B) because it did not tend to generate ’cat’. The improved image on the right side is generated by the modified initial image and the same prompt after a few attempts.
+
+denoises in the latent space and then decodes the latent to an image, which is currently the most widely used method. It augments the U-Net [26] backbone with the cross-attention mechanism [28] to enable the flexible form of a condition such as text.
+2.2 Fine-grained Controlling
+Generation solely based on text guidance can sometimes be difficult to achieve satisfactory results, as fine-grained control (e.g., size and location of objects, image style) may be difficult to express through text, and the generated results may not always match the description in the text. On the other hand, images generated by diffusion models have high uncertainty. Even with the same prompt, results can vary significantly each time. Therefore, some studies [1, 12, 16, 21] have attempted to achieve a more controllable generation process to improve the usability of diffusion models. Composable Diffusion [16] aims to achieve flexible control over image generation by taking in multiple text prompts. Specifically, it uses the sum of the guidance vectors corresponding to these prompts as the denoising direction. T2I-Adapter [18] uses adapters to provide extra guidance and achieve rich control and editing effects in the color and structure of the generation results. Some methods [11, 29, 32] attempt to achieve better controlling by improving models parameters. PITI [31] proposes to provide structural guidance by closing the distance between the feature of other types of conditions and the text condition. Sketch-Guided [29] proposes to utilize the similarity gradient between the target sketch and intermediate result to constrain the structure of the final results. It is observed that the cross-attention maps highly correspond to the layout and structure of the generated images [5, 7], thus, several studies attempt to achieve fine-grained control through the manipulation of the attention maps. Structured Diffusion Guidance [5] proposes to obtain better CLIP embedding by analyzing the text’s semantic structure in advance and replacing the attention map of certain words. Overall, these works focus on improving the controllability of the diffusion model by improving the generation process and the usage of prompt, ignoring the role of the initial image, which is our focus in this paper.
+2.3 Layout-to-image synthesis
+Layout-to-image synthesis attempt to achieve more controllable generation by introducing object-wise guidance. Other than prompt,
+
+layout-to-image synthesis takes the specified location and size of objects described in the prompt. The generative model is expected to generate images where each object is positioned in the location specified by users. Some research [2, 17] propose adding masks to the attention maps to increase the chances of generating specified objects in designated areas in order to achieve layout-to-image synthesis. These methods are fundamentally limited by the fact that they forcibly add features to the user-specified regions, completely ignoring the generation tendency of the initial image. In contrast, we use the initial image as a control mechanism and guide the diffusion model to proactively generate the user-specified content in the intended region.
+3 INITIAL IMAGE EDITING
+In this section, we introduce our findings and proposals. We present experiments that discover the role of the initial image in the diffusion models for image generation in Sec. 3.1, which shows that different regions of the initial image have inherent tendencies towards generating certain contents. We analyze this phenomenon and provide a critical reason why text-to-image generation sometimes fails in Sec. 3.2. We further attempt to manipulate the initial image to edit the generated images, making our finding applicable for image repainting tasks (Sec. 3.3) and layout-to-image synthesis tasks (Sec. 3.4).
+3.1 Generation Tendency of Initial Image
+We first conduct experiments to check the generation tendency of initial images. Specifically, we create a list of categories and then select two different categories, CLS1 and CLS2, from it to construct prompts for generation. The prompt takes the form of [a CLS1 and a CLS2] (e.g. [a dog and a car]). As shown in Fig. 2, we use fixed random initial images and a model with fixed parameters to generate each constructed prompt and observe the generation performance of the same initialization image guided by different prompts. When the same object is mentioned in different prompts, there is a high probability that this object will be generated in the same location and have a very similar visual appearance. For example, [a bus and a cat], [a bus and a motorcycle], [a bus and a dog] all contain the word 'bus', buses generated using the same initial image but different prompts appear similar. However, with different initial noise images (the bottom line), the
+
+MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada.
+
+Mao et al.
+
+Figure 4: Samples of re-painting experiments. Images on the left side are generated from the random initial noise, while images on the right side are generated from partially re-sampled initial noise. The first prompt involves two objects, but three were generated. After re-sampling the pixel values in the region corresponding to the third object in the initial image, the third object was removed. The second generation failed to generate the billboard’s content (which should be a sheep). After re-sampling the pixel values in the region corresponding to the billboard, we obtained images with the same layout, style, and correctly generated billboard. The horse in the third generated image has three forelegs and unnatural hind legs. After re-sampling these two parts, we obtained generated images with different and better horses while keeping the overall image unchanged. It takes 4-5 attempts on average to obtain each modified sample.
+
+construction of the generated images can vary greatly, even with the same prompt. Based on this experiment, we found that the initialized images themselves carry certain generation tendencies. Once the initialized image is determined, its generative tendency becomes fixed and affects the final generated image in conjunction with the prompt.
+3.2 Analysis and Explanation
+In this section, we provide an analysis and explanation of the generation tendency of the initial image. Deterministic Denoising in Stable Diffusion Stable diffusion [25] can be interpreted as a sequence of denoising autoencoders 𝜖𝜃 (𝑧𝑡 , 𝑡), 𝑡 = 1, 2, ..,𝑇 , which are trained to predict added noise on input 𝑧𝑡 , where 𝑧𝑡 is noised 𝑧. To generate the latent of an actual image, a stable diffusion model start from a pure Gaussian noise 𝑧𝑇 and denoises the latent image iteratively. Stable diffusion augments the U-Net [26] backbone with the cross-attention mechanism [28] to enable the flexible form of a condition such as text. For a text-toimage generation, a CLIP is employed to project condition 𝑝 to an intermediate representation 𝜏𝜃 (𝑝), which is subsequently mapped to the intermediate layers of the U-Net through a cross-attention layer as follows,
+
+𝑄𝐾𝑇
+
+Attention(𝑄, 𝐾, 𝑉 ) = softmax( √ ) · 𝑉 ,
+
+(1)
+
+𝑑
+
+where 𝑄
+
+= 𝑊 (𝑖 )
+𝑄
+
+· 𝑧𝑡 ,
+
+𝐾
+
+= 𝑊 (𝑖 )
+𝐾
+
+· 𝜏𝜃 (𝑝),
+
+𝑉
+
+= 𝑊 (𝑖 )
+𝑉
+
+· 𝜏𝜃 (𝑝). Thus,
+
+given a trained model with parameters (𝑊 , 𝜃 ), the calculation of
+
+cross-attention map softmax( 𝑄√𝐾𝑇 ) entirely depends on the initial
+𝑑
+latent 𝑧𝑡 and user-specified prompt 𝑝. Since the denoising sampling
+
+DDIM is also deterministic, once the initial random noise 𝑧𝑡 and the prompt 𝑝 is given, the predicted noise 𝜖𝜃 (𝑧𝑡 , 𝑡) of each step 𝑡
+and the final denoised latent image 𝑧0 are both determined. Cross-Attention Map It has been stated that each entry of the cross-attention map 𝑀 (𝑖) corresponds to a certain word 𝑝 (𝑖) in the
+prompt 𝑝 [5, 7]. Additionally, the layout and shape of objects in
+generated images are highly correlated with their attention maps.
+In simple terms, the cross-attention layer computes the similarity
+between the query 𝑄 (i.e., the embedding of the flattened input image 𝑧𝑡 ) and the key 𝐾 (i.e., the embedding of each word 𝑝 (𝑖) in the prompt 𝑝). Therefore, the values in the attention map 𝑀 (𝑖) for a particular word 𝑝 (𝑖) indicate the similarity between the features
+of the corresponding region in the input image and the feature of word 𝑝 (𝑖) . 𝑉 contains rich semantic features for each word 𝑝 (𝑖) .
+According to the attention map, the cross-attention layer repeatedly adds the feature of 𝑝 (𝑖) to the area that is already similar enough to the word 𝑝 (𝑖) . As a result, the generation of content related to a specific word 𝑝 (𝑖) ultimately occurs at the location with a strong signal in its attention map 𝑀 (𝑖) .
+Image Synthesis from Random Initial Image In the diffusion
+model, the initial images are typically sampled from a Gaussian
+distribution. The image generation process involves gradually mov-
+ing the random starting point (initial image) towards the actual
+image distribution in the latent space. The diffusion model removes
+noise and utilizes a cross-attention layer to calculate the similarity
+between each pixel in the initial image and each object mentioned
+in the prompt. Then, the features of each object are assigned to
+the regions that already have similarities with that object. When a
+
+Guided Image Synthesis via Initial Image Editing in Diffusion Model
+
+MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada.
+
+Figure 5: Concept of the pixel blocks swapping experiment. We use the attention map of the initial noise image to indicate the initial generation tendency. Subsequently, we move the pixel blocks that tend to generate specific content into specified regions, and the modified noise image is used to perform denoising as usual.
+
+particular region in the initial noise image already contains features of a particular object mentioned in the prompt, the cross-attention layer adds more category features to improve the region towards a direction closer to that category, resulting in the generation of the object in that area. This mechanism constitutes the generation tendency of the initial image. Analysis of generation failure According to our analysis, a critical factor contributing to the failure of image generation is the inconsistency between the initial noise image’s generation tendency and the user-provided prompts. For instance, if a user intends to generate two objects close to each other, but the two regions that tend to generate these objects are far apart in the randomly generated initial image, the model will fail to generate the desired content based on such an initial image. Furthermore, some methods [2, 17] aim to achieve layout-to-image generation by adding masks to the attention maps to increase the probability of generating specified objects in designated areas. However, if the user-specified regions on the initial image has a low tendency to generate the content, forcibly adding masks to such regions usually leads to failure.
+
+3.3 Generated Image Re-painting
+
+In this section, we investigate the impact of the partial changing of
+
+initial images on image generation in the diffusion model, which
+
+can be applied to re-painting tasks.
+
+To what extend can the initial noise image determine the
+
+content of the generated image? As discussed in the previous
+
+chapter, the inconsistency between the generation tendency of
+
+the initialized image and the prompt is an essential factor leading
+
+to generation failure. Therefore, an intuitive idea to avoid image
+
+generation failure is to remove the part of the tendency that conflicts
+
+with the prompt. First, we generate an image using prompt 𝑝 and
+
+a randomly sampled initialized image 𝑧. We then identify regions
+
+in the generated image that did not match the description of 𝑝 or
+
+did not make sense. We re-randomize the regions in the initialized
+
+image 𝑧 corresponding to the failure regions while keeping the
+
+values of the other regions of 𝑧. We use the partially re-randomized initial noise image 𝑧′ to perform the generation again, under the
+
+same prompt 𝑝, and observe the generated image. As shown in
+
+Fig. 3, this experiment is straightforward and intuitive yet shows a
+
+significant effect. Using the partially re-randomized initial image
+
+′
+𝑧
+
+achieves
+
+spontaneous
+
+regeneration
+
+of
+
+only
+
+the
+
+specified
+
+regions
+
+while keeping the other regions of the image almost unchanged.
+
+This result shows that the generation tendencies of each region in
+
+the initialized image are relatively independent, and changing a
+
+small part of the initialized image does not affect the generation tendencies of the remaining part. This experiment implies that by editing the initialized image, we can potentially influence the image generation results in a directional and controlled manner. Application on Generated Image Re-painting Task A typical scenario in the diffusion model application scenario is that users have to perform dozens or even hundreds of generations to obtain a satisfactory image for a certain prompt. Each generation uses a freshly initial image sampled from a Gaussian distribution, resulting in each generation being independently randomized. However, users are sometimes satisfied with most of the content of a generated image while only dissatisfied with a small part of it. In this case, the user can only regenerate new images from the beginning. Our findings can be naturally applied to this scenario. When the user is satisfied with most of the content of a generated image (e.g., successfully generated objects, satisfactory layout, hue, and style, etc.), the user only needs to select the dissatisfied part and re-sample the corresponding pixel values in the initial image, and perform generation using the re-sampled image. The user can repeat this process until a satisfactory result is obtained without worry about unexpected change on the other satisfied regions. This simple approach allows the user to obtain a satisfactory image faster. We present some re-painting samples in Fig. 4.
+3.4 Layout-to-Image Synthesis
+In this section, we apply our findings to the layout-to-image synthesis task and further explore the property of the generation tendency of the pixel blocks in the initial random image. Our previous experiments (Sec. 3.1) imply that the regions on the random initial images have the tendency to generate specific content. Further experiments (Sec. 3.3) have shown that changing the pixel values of the initial noisy image can correspondingly change the generated content at the exact location, implying that the generation tendencies of the regions in the initial noisy image are primarily determined by the values of the pixel points in them, rather than their locations. This finding can be applied to the layout-to-image synthesis task, where objects mentioned in the prompt are expected to be generated in user-specified regions. Problem Setting In the layout-to-image generation task, not only the prompt 𝑝 is given, but the object-wise guidance {𝐵, 𝐶} is also provided, where 𝐵 is a list of specified regions, and 𝐶 is a list of categories. {𝑏, 𝑐} ∈ {𝐵, 𝐶} means the object 𝑐 should be generated in region 𝑏. Each 𝑐 ∈ 𝐶 should be mentioned in prompt 𝑝. Since we find that regions in the initial noise image have tendencies to generate
+
+MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada.
+Figure 6: Attention maps after swapping and attention map calculated by modified initial noise 𝑧′. Aggregated attention shows the swapped result of the original attention map. 𝑧′ is obtained by swapping pixel blocks with high attention values into specified regions. The attention map of 𝑧′ shows that the regions where high-attention pixel blocks are aggregated carry a high tendency to generate the corresponding content. certain categories, a straightforward and intuitive approach is to move all pixel blocks that tend to generate category 𝑐 to the specified region 𝑏. To achieve this, we need to know the generative tendencies of the pixel blocks in the initial noise image. Generation Tendency of Pixel Blocks As discussed in Sec. 3.1, the cross-attention map in U-Net calculates the generation tendency of each pixel block in current image. Therefore, we take the attention map from the first generation step of denoising to represent the generation tendency of pixel blocks in the initial noise image. Specifically, the size of the initial noise image used in Stable diffusion is 64 × 64. To preserve the structure and generation tendencies of the pixel blocks as much as possible, we take the attention map from the most down-sampled cross-attention layer, whose shape is 16 × 16, to represent the generation tendency of each pixel block in the initial image, i.e., each value in the attention map is corresponding to a 4 × 4 pixel block in the initial noise image. A pixel point with a significant value on the attention map of the word 𝑐 implies that a 4 × 4 pixel block in the initial image corresponding to this attention pixel has the tendency to generate the content 𝑐. Pixel Blocks Aggregation For simplicity, we take the example of controlling the generated position 𝑏 of only one object 𝑐 in the following explanation, where 𝑏 is the corresponding area coordinated on the image re-scaled to 16 × 16. As discussed above, we can obtain the generation tendency of each pixel block in the initial noisy image based on the attention map. Next, we move the pixel blocks that tend to generate 𝑐, i.e., pixel blocks with high scores on the attention map of 𝑐, into the specified region 𝑏. Notably, our manipulation is performed on the initial image. We modify 𝑧 to
+
+Mao et al.
+
+𝑧′ according to the attention map and expect that using 𝑧′ to perform the generation alone can achieve layout-to-image generation. Specifically, we calculate the area size 𝑠 of 𝑏, i.e., the number of attention pixels in the region 𝑏. We sort all the values on the attention map of 𝑐 from highest to lowest. Then we select the top 𝑠 of the sorted sequence of attention values. We use 𝐴𝑚𝑖𝑛 to denote the attention value of the 𝑠-th value we selected, which is the smallest one. We aim to move all selected attention values to the specified region 𝑏. Some of these values may already be located in the specified region. We keep the positions of these values unchanged and filter the coordinates in the specified region whose attention value is less than 𝐴𝑚𝑖𝑛 as follows,
+
+𝑂𝑢𝑡 = {𝑝 | 𝑎𝑡𝑡𝑛(𝑝) < 𝐴𝑚𝑖𝑛, 𝑝 ∈ 𝑏}
+
+(2)
+
+and filter out the coordinates outside the specified region 𝑏 whose attention values are greater than 𝐴𝑚𝑎𝑥 as follows,
+
+𝐼𝑛 = {𝑝 | 𝑎𝑡𝑡𝑛(𝑝) > 𝐴𝑚𝑖𝑛, 𝑝 ∉ 𝑏}
+
+(3)
+
+The number of elements in 𝐼𝑛 and 𝑂𝑢𝑡 is the same. We randomly combine the elements of 𝐼𝑛 and 𝑂𝑢𝑡 as swap pairs. Each element of 𝐼𝑛 and 𝑂𝑢𝑡 is used and used only once.
+
+𝑆𝑤𝑎𝑝 = {{𝑖, 𝑜 } | 𝑖 ∈ 𝐼𝑛, 𝑜 ∈ 𝑂𝑢𝑡 }
+
+(4)
+
+Each position on the attention map corresponds to a 4×4 pixel block on the initial noise image, and for each swap pair {𝑖, 𝑜 } ∈ 𝑆𝑤𝑎𝑝, we swap the pixel blocks corresponding to 𝑖 and 𝑜 on the initial noise image. We swap the pixel blocks of 4 × 4 as invariant units, leaving their internal structure and values unchanged. The final generation is performed on the modified initial image 𝑧′ by stable diffusion, as normal. The overall process is shown in Fig. 5. When regions of multiple objects {𝐵, 𝐶} are specified, to ensure that each pixel block is assigned to a unique object, we first classify these pixel blocks based on their values on the attention map of each category 𝑐 ∈ 𝐶. For each {𝑏, 𝑐} ∈ {𝐵, 𝐶}, we sort and move the pixel blocks classified as 𝑐 to the corresponding region 𝑏. Generation tendency of Pixel Blocks After Moving As shown in Fig. 6, we move the pixel blocks in the initial image 𝑧 that tend to generate content 𝑐 into the specified region 𝑏 and obtain modified initial image 𝑧′. We subsequently obtain the attention map of 𝑧′ through the U-Net of the same stable diffusion model. We observe that the specified region 𝑏 in the modified image 𝑧′ shows a clear tendency to generate category 𝑐, as shown by the high-intensity signal in the corresponding region 𝑏 on the attention map of category 𝑐. This phenomenon means that the generative tendencies of these pixel blocks follow the movement of the values, further indicating that the generative tendency of a pixel block is mainly determined by the pixel values rather than its spatial location. Comparing with Mask-based Methods Some methods [2, 17] try to increase the probability of the specified category appearing on the specified region by artificially adding a mask to the attention map of the specified category. This approach and our approach both result in higher values in the attention map of the specified region eventually. However, mask-based methods are fundamentally limited by the fact that they entirely ignore the generation tendency of the initial image itself. If the initial pixels in the specified region are inherently hard to generate the specified class, the mask-based approach of forcefully adding features of the specified
+
+Guided Image Synthesis via Initial Image Editing in Diffusion Model
+
+MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada.
+
+methods
+
+IoU ↑
+
+IoU𝑠 ↑
+
+IoU𝑚 ↑
+
+IoU𝑙 ↑
+
+𝑅suc% ↑
+
+𝑅𝑠suc% ↑
+
+𝑅𝑚suc% ↑
+
+𝑅𝑙suc% ↑
+
+FID↓
+
+SD [25]
+
+0.19
+
+0.05
+
+0.21
+
+0.38
+
+12.14
+
+0.50
+
+8.11
+
+39.41
+
+20.8
+
+Paint [2]
+
+0.24
+
+0.08
+
+0.27
+
+0.46
+
+17.56
+
+1.16
+
+14.05
+
+52.34
+
+22.7
+
+Soft [17]
+
+0.27
+
+0.10
+
+0.31
+
+0.48
+
+22.31
+
+2.95
+
+22.38
+
+56.24
+
+21.3
+
+Ours
+
+0.26
+
+0.09
+
+0.32
+
+0.46
+
+21.58
+
+2.26
+
+22.75
+
+54.21
+
+21.7
+
+Paint [2] + Ours
+
+0.29
+
+0.11
+
+0.35
+
+0.51
+
+23.89
+
+2.12
+
+24.74
+
+61.48
+
+23.7
+
+Soft [17] + Ours
+
+0.31
+
+0.12
+
+0.37
+
+0.52
+
+26.41
+
+3.24
+
+29.55
+
+62.59
+
+21.2
+
+Table 1: Control effectiveness of layout guidance. Our method achieves a comparable performance with state-of-the-art methods when used alone, and combining our method with them achieves the best performance on all subsets.
+
+class to the specified region is likely to cause generation failure or affect the quality of the image. On the other hand, if other regions outside the specified region have a tendency to generate the specified category inherently, even adding a mask to the specified region can not prevent the generation of objects outside the region. Unlike these methods, shifting the initialized image pixel blocks fundamentally modifies the initialized image’s generative tendency. The model will spontaneously generate the specified objects in the specified regions in subsequent generations, even if no additional interference is implied.
+4 EVALUATION
+To confirm the effectiveness of our proposal in the layout-to-image synthesis task and to demonstrate the advantages of our approach, we quantitatively evaluate our method and compare it with stateof-the-art methods. We also conducted experiments to boost the performance of mask-based methods by combining them with our method. The experimental setup follows Soft-Mask [17], where an object detector is utilized to evaluate the efficiency of object-wise controlling.
+4.1 Dataset
+We conduct a quantitative evaluation on the MS COCO [14] dataset, which contains image caption and object annotation. We selected samples whose bounding box categories are all mentioned in their image captions. Since most of the image captions involve only one or two significant objects in the image, we randomly selected 6000 images, where 3000 contain one object, and the other 3000 contain two, as in the previous work. All images and their corresponding annotations are resized to 5122. During denoising, the captions of images are used as prompts, and the object annotations are used as layout guidance.
+4.2 Metric
+Efficacy of Layout Controlling We generate images using image captions as prompts and object-wise annotation as layout guidance. Then, we use an object detector, YOLOR [30], to perform object detection on generated images and obtain the categories and detected bounding boxes of generated objects. Then the consistency of the detection results with the layout guidance can represent the effectiveness of layout controlling. For each object, the IoU between its layout guidance (i.e., bounding box annotation in the dataset) and detected bounding box is calculated. If the IoU is larger than 0.5, it is regarded as a successful control, and the success rate is represented by 𝑅suc. To further evaluate the effectiveness of objects of different sizes, all objects are categorized into several subsets according to their size and distance from the image center. Specifically, the subset 𝑠 contains objects with an area less than 1502, the
+
+subset 𝑙 contains all objects with an area greater than 3002, while the other objects are channeled into subset 𝑚. Image Quality FID [8] measures the similarity between two groups of images and is commonly used to indicate the quality of generated images. We calculate the FID by generated images and ground truth images (i.e., images in the dataset). A smaller FID indicates a better image quality.
+4.3 Implementation
+We utilize the stable diffusion (SD) [25] v1.4 with the default configuration as the baseline for our study. In this setting, the model undergoes 50 denoising sampling steps using PLMS. The baseline stable diffusion do not receive any layout guidance, but may by chance generate the specified objects in the specified regions. During each image generation process in other experiments, the model receives both prompt and layout guidance and produced corresponding images. Our method uses the model’s U-Net to compute the cross-attention map based on the randomly sampled initial image and prompt 𝑧, 𝑝. Subsequently, we move pixel blocks in 𝑧 with high attention scores to the designated area by swapping to obtain the modified initial noise image 𝑧′. We then perform normal denoising using {𝑧′, 𝑝}. We compare our approach to Paint [2] and Soft [17]. They both add masks to user-specified regions to enhance attention values in the corresponding regions. Soft [17] additionally suppresses the out-of-region attention. We use the same {𝑧, 𝑝} for denoising and add the layout mask to the cross-attention map of each U-Net layer at every denoising step. Additionally, we report the performance when our method is combined with mask-based methods. In this scenario, we generate images using {𝑧′, 𝑝} and employ masks during denoising.
+4.4 Results and Analysis
+Evaluation results are shown in Tab. 1. Our method significantly outperform the baseline [25] and Paint [2] on all subsets, and achieves comparable performance with Soft [17], without applying any interference to the denoising process of the model. Additionally, our method and mask-based methods function at different stages of generation. Considering the denoising process as moving a random starting point in the latent space to a target point, our method can be viewed as choosing a better starting point for the denoising process. At the same time, mask-based methods can be considered as providing an additional guide toward a fixed direction during the movement. Thus the two methods are not in conflict with each other but can be used together naturally. Intuitively, combining with our method significantly improves the performance of both mask-based methods, while the combination of ours and Soft [17] achieves the best performance on all subsets. Some quality samples
+
+MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada.
+
+Mao et al.
+
+Figure 7: Quality samples in our experiments on MS COCO. Images on each row are generated from the same initial noise image. Images without applying our method have significant commonalities (structure, background, style) in most cases, even if different masks are applied. When our method is applied, some positions of pixel blocks are swapped, and the initial images are severely changed. Thus, the generated images are accordingly changed.
+
+are shown in Fig. 7. The effectiveness of our method demonstrates that the generation tendency of the initial random image mainly depends on pixel values rather than spatial location, and the generation tendency follows the moving of pixel values on the initial image. As a limitation of our method, when the guidance bounding box is small, our method moves only a few pixels in the initial image and sometimes cannot significantly affect the generation. Therefore, the effectiveness of our method is relatively weak for small objects compared to larger ones.
+5 CONCLUSION AND FUTURE WORKS
+In this paper, we present a novel direction for fine-grained control in image generation by diffusion model that is to modify the random sampled initial noise image. Although the initial noise image has traditionally been considered a random noise signal lacking any meaningful information, our research has uncovered that such an image possesses an inherent inclination to generate particular content at specific locations when used as a starting point for denoising. We investigate the underlying factors contributing to this tendency and endeavor to adjust the initial image’s generation
+
+tendency to impact the final output. Our results demonstrate that altering a particular section of the initial noise image does affect the corresponding content in the generated image, which we leverage in the repainting task. Moreover, we uncover that this generation tendency primarily hinges on pixel values rather than spatial positioning, shifting with the motion of pixel values in the initial image. We apply this discovery to the layout-to-image generation task and achieve state-of-the-art performances. Based on the findings in our paper, several exciting potential research directions have emerged. Specifically, Our approach highlights the significance of the initial image in the image generation process. Therefore, research on optimizing the initial image or accelerating denoising based on the optimized initial image holds excellent promise. Acknowledgement This research was partially supported by JST Mirai-Program JPMJMI21H1.
+
+Guided Image Synthesis via Initial Image Editing in Diffusion Model
+REFERENCES
+[1] Omri Avrahami, Thomas Hayes, Oran Gafni, Sonal Gupta, Yaniv Taigman, Devi Parikh, Dani Lischinski, Ohad Fried, and Xi Yin. 2022. SpaText: Spatio-Textual Representation for Controllable Image Generation. arXiv preprint arXiv:2211.14305 (2022).
+[2] Yogesh Balaji, Seungjun Nah, Xun Huang, Arash Vahdat, Jiaming Song, Karsten Kreis, Miika Aittala, Timo Aila, Samuli Laine, Bryan Catanzaro, et al. 2022. ediffi: Text-to-image diffusion models with an ensemble of expert denoisers. arXiv preprint arXiv:2211.01324 (2022).
+[3] Prafulla Dhariwal and Alexander Nichol. 2021. Diffusion models beat gans on image synthesis. NeurIPS 34 (2021), 8780–8794.
+[4] Ming Ding, Zhuoyi Yang, Wenyi Hong, Wendi Zheng, Chang Zhou, Da Yin, Junyang Lin, Xu Zou, Zhou Shao, Hongxia Yang, et al. 2021. Cogview: Mastering text-to-image generation via transformers. NeurIPS 34 (2021), 19822–19835.
+[5] Weixi Feng, Xuehai He, Tsu-Jui Fu, Varun Jampani, Arjun Akula, Pradyumna Narayana, Sugato Basu, Xin Eric Wang, and William Yang Wang. 2022. TrainingFree Structured Diffusion Guidance for Compositional Text-to-Image Synthesis. arXiv preprint arXiv:2212.05032 (2022).
+[6] Oran Gafni, Adam Polyak, Oron Ashual, Shelly Sheynin, Devi Parikh, and Yaniv Taigman. 2022. Make-a-scene: Scene-based text-to-image generation with human priors. In ECCV. Springer, 89–106.
+[7] Amir Hertz, Ron Mokady, Jay Tenenbaum, Kfir Aberman, Yael Pritch, and Daniel Cohen-Or. 2022. Prompt-to-prompt image editing with cross attention control. arXiv preprint arXiv:2208.01626 (2022).
+[8] Martin Heusel, Hubert Ramsauer, Thomas Unterthiner, Bernhard Nessler, and Sepp Hochreiter. 2017. Gans trained by a two time-scale update rule converge to a local nash equilibrium. NeurIPS 30 (2017).
+[9] Jonathan Ho, Ajay Jain, and Pieter Abbeel. 2020. Denoising diffusion probabilistic models. NeurIPS 33 (2020), 6840–6851.
+[10] Jonathan Ho and Tim Salimans. [n. d.]. Classifier-Free Diffusion Guidance. In NeurIPS 2021 Workshop on Deep Generative Models and Downstream Applications.
+[11] Lianghua Huang, Di Chen, Yu Liu, Yujun Shen, Deli Zhao, and Jingren Zhou. 2023. Composer: Creative and controllable image synthesis with composable conditions. arXiv preprint arXiv:2302.09778 (2023).
+[12] Bahjat Kawar, Shiran Zada, Oran Lang, Omer Tov, Huiwen Chang, Tali Dekel, Inbar Mosseri, and Michal Irani. 2022. Imagic: Text-based real image editing with diffusion models. arXiv preprint arXiv:2210.09276 (2022).
+[13] Gwanghyun Kim, Taesung Kwon, and Jong Chul Ye. 2022. Diffusionclip: Textguided diffusion models for robust image manipulation. In CVPR. 2426–2435.
+[14] Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr Dollár, and C Lawrence Zitnick. 2014. Microsoft coco: Common objects in context. In ECCV. Springer, 740–755.
+[15] Luping Liu, Yi Ren, Zhijie Lin, and Zhou Zhao. 2022. Pseudo Numerical Methods for Diffusion Models on Manifolds. In ICLR.
+[16] Nan Liu, Shuang Li, Yilun Du, Antonio Torralba, and Joshua B Tenenbaum. 2022. Compositional visual generation with composable diffusion models. In ECCV. Springer, 423–439.
+[17] Jiafeng Mao and Xueting Wang. 2023. Training-Free Location-Aware Text-toImage Synthesis. arXiv preprint arXiv:2304.13427 (2023).
+[18] Chong Mou, Xintao Wang, Liangbin Xie, Jian Zhang, Zhongang Qi, Ying Shan, and Xiaohu Qie. 2023. T2I-Adapter: Learning Adapters to Dig out More Controllable Ability for Text-to-Image Diffusion Models. arXiv e-prints (2023), arXiv–2302.
+[19] Alexander Quinn Nichol and Prafulla Dhariwal. 2021. Improved denoising diffusion probabilistic models. In ICML. PMLR, 8162–8171.
+[20] Alexander Quinn Nichol, Prafulla Dhariwal, Aditya Ramesh, Pranav Shyam, Pamela Mishkin, Bob Mcgrew, Ilya Sutskever, and Mark Chen. 2022. GLIDE: Towards Photorealistic Image Generation and Editing with Text-Guided Diffusion Models. In ICML. PMLR, 16784–16804.
+[21] Dong Huk Park, Samaneh Azadi, Xihui Liu, Trevor Darrell, and Anna Rohrbach. 2021. Benchmark for compositional text-to-image synthesis. In NeurIPS Datasets and Benchmarks Track (Round 1).
+[22] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. 2021. Learning transferable visual models from natural language supervision. In ICML. PMLR, 8748–8763.
+[23] Aditya Ramesh, Prafulla Dhariwal, Alex Nichol, Casey Chu, and Mark Chen. 2022. Hierarchical text-conditional image generation with clip latents. arXiv preprint arXiv:2204.06125 (2022).
+[24] Aditya Ramesh, Mikhail Pavlov, Gabriel Goh, Scott Gray, Chelsea Voss, Alec Radford, Mark Chen, and Ilya Sutskever. 2021. Zero-shot text-to-image generation. In ICML. PMLR, 8821–8831.
+[25] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. 2022. High-resolution image synthesis with latent diffusion models. In CVPR. 10684–10695.
+[26] Olaf Ronneberger, Philipp Fischer, and Thomas Brox. 2015. U-net: Convolutional networks for biomedical image segmentation. In MICCAI. Springer, 234–241.
+
+MM ’23, October 29–November 3, 2023, Ottawa, ON, Canada.
+[27] Jiaming Song, Chenlin Meng, and Stefano Ermon. 2021. Denoising Diffusion Implicit Models. In ICLR.
+[28] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. NeurIPS 30 (2017).
+[29] Andrey Voynov, Kfir Aberman, and Daniel Cohen-Or. 2022. Sketch-Guided Text-to-Image Diffusion Models. arXiv preprint arXiv:2211.13752 (2022).
+[30] Chien-Yao Wang, I-Hau Yeh, and Hong-Yuan Mark Liao. 2021. You only learn one representation: Unified network for multiple tasks. arXiv preprint arXiv:2105.04206 (2021).
+[31] Tengfei Wang, Ting Zhang, Bo Zhang, Hao Ouyang, Dong Chen, Qifeng Chen, and Fang Wen. 2022. Pretraining is all you need for image-to-image translation. arXiv preprint arXiv:2205.12952 (2022).
+[32] Lvmin Zhang and Maneesh Agrawala. 2023. Adding conditional control to text-to-image diffusion models. arXiv preprint arXiv:2302.05543 (2023).
+

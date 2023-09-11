@@ -1,0 +1,559 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+1
+
+Text-to-image Diffusion Models in Generative AI: A Survey
+
+Chenshuang Zhang, Chaoning Zhang, Mengchun Zhang, In So Kweon
+
+arXiv:2303.07909v2 [cs.CV] 2 Apr 2023
+
+Abstract—This survey reviews text-to-image diffusion models in the context that diffusion models have emerged to be popular for a wide range of generative tasks. As a self-contained work, this survey starts with a brief introduction of how a basic diffusion model works for image synthesis, followed by how condition or guidance improves learning. Based on that, we present a review of state-of-the-art methods on text-conditioned image synthesis, i.e. text-to-image. We further summarize applications beyond text-to-image generation: text-guided creative generation and text-guided image editing. Beyond the progress made so far, we discuss existing challenges and promising future directions.
+
+Index Terms—Survey, Generative AI, AIGC, Diffusion model, Text-to-image, Image generation, Image editing
+!
+
+1 INTRODUCTION
+
+A PICTURE is worth a thousand words. As this old saying goes, images tell a better story than pure text. When humans read a story in text, they can draw relevant images in their heads by imagination, which helps them understand and enjoy more. Therefore, designing an automatic system that generates visually realistic images from textural descriptions, i.e., the text-to-image task, is a non-trivial task and therefore can be seen as a major milestone toward human-like or general artiﬁcial intelligence [1], [2], [3], [4]. With the development of deep learning [5], text-to-image task has become one of the most impressive applications in computer vision [6], [7], [8], [9], [10], [11], [12], [13], [14], [15], [16], [17], [18].
+We summarize the timeline of representative works for text-to-image generation in Figure 1. As summarized in Figure 1, AlignDRAW [6] is a pioneering work that generates images from natural languages, but suffers from unrealistic results. After that, Text-conditional GAN [7] is the ﬁrst endto-end differential architecture from the character level to pixel level. Different from GAN-based methods [7], [8], [9], [10] that are mainly in the small-scale data regime, autoregressive methods [11], [12], [13], [14] exploit largescale data for text-to-image generation, with representative methods including DALL-E [11] from OpenAI and Parti [14] from Google. However, autoregressive nature makes these methods [11], [12], [13], [14] suffer from high computation costs and sequential error accumulation.
+More recently, there has been an emerging trend of diffusion model (DM) to become the new state-of-the-art model in text-to-image generation [15], [16], [17], [18]. Diffusionbased text-to-image synthesis has also attracted massive attention in social media. Numerous works on the textto-image diffusion model have already come out in the
+• Chenshuang Zhang, Mengchun Zhang, In So Kweon are with KAIST, South Korea (Email:zcs15@kaist.ac.kr, zhangmengchun527@gmail.com, iskweon77@kaist.ac.kr).
+• Chaoning Zhang (correspondence author) is with Kyung Hee University, South Korea (Email: chaoningzhang1990@gmail.com)
+
+past year, and yet more works are expected to appear in the near future. The volume of the relevant works makes it increasingly challenging for readers to keep abreast of the recent development of text-to-image diffusion model without a comprehensive survey. However, as far as we know, there is no survey work focusing on recent progress of diffusion-based text-to-image generation yet. A branch of related surveys [19], [20], [21], [22] reviews the progress of diffusion model in all ﬁelds, making them limited to providing limited coverage on the task of test-to-image synthesis. The other stream of surveys [21], [23], [24] focuses on textto-image task but is limited to the GAN-based approaches, making them somewhat outdated considering the recent trend of the diffusion model replacing GAN. This work ﬁlls the gap between the above two streams by providing a comprehensive introduction on the recent progress of textto-image task based on diffusion model, as well as providing an outlook on its future directions.
+Related survey works and paper structure. With multiple works [19], [22] reviewing the progress of diffusion models in all ﬁelds but lacking a detailed introduction to a certain speciﬁc ﬁeld, some works dive deep into speciﬁc ﬁelds, including audio diffusion models [25], graph diffusion models [26]. Complementary to [25], [26], this work conducts a survey on audio diffusion models. Through the lens of AI-generated content (AIGC), this survey is also related to works that survey generative AI (see [27]) and ChatGPT (see [28] for a survey). Overall, this survey is the ﬁrst to review the recent progress of text-to-image task based on diffusion models. We organize the rest of this paper as follows. Section 2 introduces the background of diffusion model, including guidance methods that are important for text-to-image synthesis. Section 3 discusses the pioneering works on text-to-image task based on diffusion model, including GLIDE [15], Imagen [16], Stable diffusion [17] and DALL-E2 [18]. Section 4 further discusses the follow-up studies that improve the pioneering works in Section 3 from various aspects. By summarizing recent benchmarks and analysis, we further evaluate these textto-image methods from technical and ethical perspectives
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+2
+
+Fig. 1. Representive works on text-to-image task over time. The GAN-based methods, autoregressive methods, and diffusion-based methods are masked in yellow, blue and red, respectively.
+
+in Section 5. Apart from text-to-image generation, we also introduce related tasks in Section 6, including text-guided creative generation (e.g., text-to-video) and text-guided image editing. Finally, we revisit various applications beyond text-to-image generation, and discuss the challenges as well as future opportunities.
+2 BACKGROUND ON DIFFUSION MODEL
+Diffusion models (DMs), also widely known as diffusion probabilistic models [29], are a family of generated models that are Markov chains trained with variational inference [30]. The learning goal of DM is to reserve a process of perturbing the data with noise, i.e. diffusion, for sample generation [29], [30]. As a milestone work, denoising diffusion probabilistic model (DDPM) [30] was published in 2020 and sparked an exponentially increasing interest in the community of generative models afterwards. Here, we provide a self-contained introduction to DDPM by covering the most related progress before DDPM and how unconditional DDPM works with image synthesis as a concrete example. Moreover, we summarize how guidance helps in conditional DM, which is an important foundation for understanding text-conditional DM for text-to-image.
+2.1 Development before DDPM
+The advent of DDPM [30] can be mainly attributed to two early attempts: score-based generative models (SGM) [31] being investigated in 2019 and diffusion probabilistic models (DPM) [29] emerging as early as in 2015. Therefore, it is important to revisit the working mechanism of DPM [29] and SDE [31] before we introduce DDPM.
+Diffusion Probabilistic Models (DPM). DPM [29] is the ﬁrst work to model probability distribution by estimating the reversal of Markov diffusion chain which maps data to a simple distribution. Speciﬁcally, DPM [29] deﬁnes a forward (inference) process which converts a complex data distribution to a much simpler one, and then learns the mapping by reversing this diffusion process. Experimental results on multiple datasets show the effectiveness of DPM when estimating complex data distribution. DPM [29] can be viewed as the foundation of DDPM [30], while DDPM [30] optimizes DPM [29] with improved implementations.
+Score-based Generative model(SGM). Techniques for improving score-based generative models have also been investigated in [31], [32]. SGM [31] proposes to perturb the data with random Gaussian noise of various magnitudes. With the gradient of log probability density as score function
+
+[31], SGM generates the samples towards decreasing noise levels and trains the model by estimating the score functions for noisy data distribution. Despite different motivations, SGM shares a similar optimization objective with DDPM during training, which is also discussed in [30] that the DDPM under a certain parameterization is equivalent to SGM during training. A improved variant of SGM is investigated in [32] for generalizing to high-resolution images.
+
+2.2 How does DDPM work for image synthesis?
+
+Denoising diffusion probabilistic models (DDPMs) are deﬁned as a parameterized Markov chain, which generates images from noise within ﬁnite transitions during inference. During training, the transition kernels are learned in a reversed direction of perturbing natural images with noise, where the noise is added to the data in each step and estimated as the optimization target.
+Forward pass. In the forward pass, DDPM is a Markov chain where Gaussian noise is added to data in each step until the images are destroyed. Given a data distribution x0 ∼ q(x0), DDPM generates xT successively with q(xt | xt−1) [30], [33]:
+
+T
+
+q(x1:T |x0) := q(xt|xt−1),
+
+(1)
+
+t=1
+
+q(xt|xt−1) := N (xt; 1 − βtxt−1, βtI)
+
+(2)
+
+where T and βt are the diffusion steps and hyper-
+
+parameters, respectively. We only discuss the case of Gaus-
+
+sian noise as transition kernels for simplicity, indicated as
+
+N in Eq. 2. With αt := 1 − βt and α¯t :=
+
+t s=0
+
+αs,
+
+we
+
+can
+
+obtain noised image at arbitrary step t as follows [33]:
+
+√
+
+q(xt|x0) := N (xt; α¯tx0, (1 − α¯t)I)
+
+(3)
+
+Reverse pass. With the forward pass deﬁned above, we can train the transition kernels with a reverse process. Starting from pθ(T ), we hope the generated pθ(x0) can follow the true data distribution q(x0). Therefore, the optimization objective of model is as follows(quoted from [33]):
+
+Et∼U(1,T ),x0∼q(x0), ∼N (0,I)λ(t) − θ(xt, t) 2
+
+(4)
+
+Considering the optimization objective similarities between DDPM and SGM, thy are uniﬁed in [34] from the perspective of stochastic differential equations perspective, allowing more ﬂexible sampling methods.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+3
+
+“a hedgehog using a calculator ”
+
+“a corgi wearing a red bowtie and a purple party hat”
+
+“robots meditating in a vipassana retreat”
+
+“a fall landscape with a small cottage next to a lake”
+
+Fig. 2. Images generated by GLIDE [15].
+
+2.3 Guidance in diffusion-based image synthesis
+Labels improve image synthesis. Early works on generative adversarial models (GAN) have shown that class labels improve the image synthesis quality [35], [36], [37], [38], [39]. As a pioneering work, Conditional GAN [35] feeds the class label as an additional input layer to the model. Moreover, [40] applies class-conditional normalization statistics in image generation. In addition, AC-GAN [38] explicitly adds an auxiliary classiﬁer loss. In other words, labels can help improve the GAN image synthesis quality by providing a conditional input or guiding the image synthesis via an auxiliary classiﬁer. Following these success practices, [41] introduces class-conditional normalization and an auxiliary classiﬁer into diffusion models. In order to distinguish whether the label information is added as a conditional input or an auxiliary loss with gradients, we follow [41] to deﬁne the conditional diffusion model and guided diffusion model as follows.
+Conditional diffusion model: A conditional diffusion model learns from additional information (e.g., class and text) by taking them as model input.
+Guided diffusion model: During the training of a guided diffusion model, the class-induced gradients (e.g. through an auxiliary classﬁer) are involved in the sampling process.
+Classiﬁer-free guidance. Different from classiﬁerguided diffusion model [41] that exploits an additional classﬁer, it is found in [42] that the guidance can be obtained by the generative model itself without a classiﬁer, termed as classiﬁer-free guidance. Speciﬁcally, classiﬁer-free guidance jointly trains a single model with the unconditional score estimator θ(x) and the conditional θ(x, c), where c denotes the class label. A null token ∅ is placed as the class label in the unconditional part, i.e., θ(x) = θ(x, ∅). Experimental results in [42] show that classiﬁer-free guidance achieves a trade-off between quality and diversity similar to that achieved by classiﬁer guidance. Without resorting to a classiﬁer, classiﬁer-free diffusion facilitates more modalities, e.g., text in text-to-image, as guidance.
+3 PIONEERING TEXT-TO-IMAGE DIFFUSION MOD-
+ELS
+In this section, we introduce the pioneering text-to-image frameworks based on diffusion model, which can be roughly categorized considering where the diffusion prior
+
+is conducted, i.e., the pixel space or latent space. The ﬁrst class of methods generate images directly from the highdimensional pixel level, including GLIDE [15] and Imagen [16]. Another stream of works propose to ﬁrst compress the image to a low-dimensional space, and then train the diffusion model on this latent space. Representative methods falling into the class of latent space include Stable Diffusion [17], VQ-diffusion [43] and DALL-E 2 [18].
+3.1 Frameworks in pixel space
+GLIDE: the ﬁrst T2I work on DM. In essence, text-toimage is text-conditioned image synthesis. Therefore, it is intuitive to replace the label in class-conditioned DM with text for making the sampling generation conditioned on text. As discussed in Sec. 2.3, guided diffusion improves the photorealism of samples [41] in conditional DM and its classiﬁer-free variant [42] facilitates handling free-form prompts. Motivated by this, GLIDE [15] adopts classiﬁerfree guidance in T2I by replacing original class label with text. GLIDE [15] also investigated CLIP guidance but is less preferred by human evaluators than classiﬁer-free guidance for the sample photorealism and caption similarity. As an important component in their framework, the text encoder is set to a transformer [44] with 24 residual blocks with the width of 2048 (roughly 1.2B parameters). Experimental results show that GLIDE [15] outperforms DALL-E [11] in both FID and human evaluation. Example images generated by GLIDE are shown in Figure 2.
+Imagen: encoding text with pretrained language model. Following GLIDE [15], Imagen [16] adopts classiﬁerfree guidance for image generation. A core difference between GLIDE and Imagen lies in their choice of text encoder, as shown in Figure 3. Speciﬁcally, GLIDE trains the text encoder together with the diffusion prior with paired image-text data, while Imagen [16] adopts a pretrained and frozen large language model as the text encoder. Freezing the weights of the pretrained encoder facilitates ofﬂine text embedding, which reduces negligible computation burden to the online training of the text-to-image diffusion prior. Moreover, the text encoder can be pretrained on either image-text data (e.g., CLIP [45]) or text-only corpus (e.g., BERT [46], GPT [47], [48], [49] and T5 [50]). The text-only corpus is signiﬁcantly larger than paired image-text data, making those large language models exposed to text with a rich and wide distribution. For example, the text-only cor-
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+4
+
+Fig. 4. Overview of Stable Diffusion [17].
+
+Fig. 3. Model diagram from Imagen [16].
+pus used in BERT [46] is approximately 20GB and that used in T5 [50] is approximately 800GB. With different T5 [50] variants as the text encoder, [16] reveals that increasing the size of language model improves the image ﬁdelity and image-text alignment more than enlarging the diffusion model size in Imagen.
+3.2 Frameworks in latent space
+Stable diffusion: a milestone work on latent space. A representative framework that trains the diffusion models on latent space is Stable Diffusion, which is a scaled-up version of Latent Diffusion Model (LDM) [17]. Following Dall-E [11] that adopts a VQ-VAE to learn a visual codebook, Stable diffusion applies VQ-GAN [51] for the latent representation in the ﬁrst stage. Notebly, VQ-GAN improves VQ-VAE by adding an adversarial objective to increase the naturalness of synthesized images. With the pretrained VAE, stable diffusion reverses a forward diffusion process that perturbs latent space with noise. Stable diffusion also introduces cross-attention as general-purpose conditioning for various condition signals like text. Experimental results in [17] highlight that performing diffusion modeling on the latent space signiﬁcantly outperforms that on the pixel space in terms of complexity reduction and detail preservation. A similar approach has also been investigated in VQ-diffusion [43] with a mask-then-replace diffusion strategy. Resembling the ﬁnding in pixel-space method, classiﬁer-free guidance also signiﬁcantly improve the text-to-image diffusion models in latent space [17], [52].
+DALL-E2: with multimodal latent space. Another stream of text-to-image diffusion models in latent space relies on multimodal contrasitve models [45], [53], [54], where image embedding and text encoding are matched in the same representation space. For example, CLIP [45] is a pioneering work learning the multimodal representations and has been widely used in numerous text-to-image mod-
+
+els [18], [55]. A representative work applying CLIP is DALLE 2, also known as unCLIP [18], which adopts the CLIP text encoder but inverts the CLIP image encoder with a diffusion model that generates images from CLIP latent space. Such a combination of encoder and decoder resembles the structure of VAE [51] adopted in LDM, even though the inverting decoder is non-deterministic [18]. Therefore, the remaining task is to train a prior to bridge the gap between CLIP text and image latent space, and we term it as text-image latent prior for brevity. As shown in Figure 5,DALL-E2 [18] ﬁnds that this prior can be learned by either autoregressive method or diffusion model, but diffusion prior achieves superior performance. Moreover, experimental results show that removing this text-image latent prior leads to a performance drop by a large margin [18], which highlights the importance of learning the text-image latent prior. Inspired by the text-image latent prior in DALL-E 2, clip2latent [55] proposes to train a diffusion model that bridges the gap between CLIP embedding and a pretrained generative model (e.g.,StyleGAN [56], [57], [58]). Speciﬁcally, the diffusion model is trained to generate the latent space of StyleGAN from the CLIP image embeddings. During inference, the latent of StyleGAN is generated from text embeddings directly as if they were image embeddings, which enables language-free training as in [59], [60] for text-to-image diffusion.
+4 IMPROVING TEXT-TO-IMAGE DIFFUSION MODELS
+4.1 Improving model architectures
+On the choice of guidance. Beyond the classiﬁer-free guidance, some works [15], [61], [62] have also explored crossmodal guidance with CLIP [45]. Speciﬁcally, GLIDE [15] ﬁnds that CLIP-guidance underperforms the classiﬁer-free variant of guidance. By contrast, another work UPainting [63] points out that lacking of a large-scale transformer language model makes these models with CLIP guidance difﬁcult to encode text prompts and generate complex scenes with details. By combing large language model and cross-modal matching models, UPainting [63] signiﬁcantly improves the sample ﬁdelity and image-text alignment of generated images. The general image synthesis capability enables UPainting [63] to generate images in both simple and complex scenes.
+On the choice of denoiser. By default, DM during inference repeats the denoising process on the same denoiser model, which makes sense for an unconditional image synthesis since the goal is only to get a high-ﬁdelity image.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+5
+
+Fig. 5. Overview of DALL-E2 [18].
+
+In the task of text-to-image synthesis, the generated image is also required to align with the text, which implies that the denoiser model has to make a trade-off between these two goals. Speciﬁcally, two recent works [64], [65] point out a phenomenon: the early sampling stage strongly relies on the text prompt for the goal of aligning with the caption, but the later stage focuses on improving image quality while almost ignoring the text guidance. Therefore, they abort the practice of sharing model parameters during the denoising process and propose to adopt multiple denoiser models which are specialized for different generation stages. Speciﬁcally, ERNIE-ViLG 2.0 [64] also mitigates the problem of object-attribute by the guidance of a text parser and object detector, improving the ﬁne-grained semantic control.
+4.2 Sketch for spatial control
+Despite their unprecedented high image ﬁdelity and caption similarity, most text-to-image DMs like Imagen [16] and DALL-E2 [18] do not provide ﬁne-grained control of spatial layout. To this end, SpaText [66] introduces spatio-textual (ST) representation which can be included to ﬁnetune a SOTA DM by adapting its decoder. Speciﬁcally, the new encoder conditions both local ST and existing global text. Therefore, the core of SpaText [66] lies in ST where the diffusion prior in trained separately to convert the image embeddings in CLIP to its text embeddings. During training, the ST is generated directly by using the CLIP image encoder taking the segmented image object as input. A concurrent work [67] proposes to realize ﬁne-grained local control through a simple sketch image. Core to their approach is a Latent Guidance Predictor (LGP)that is a pixelwise MLP mapping the latent feature of a noisy image to that of its corresponding sketch input. After being trained (see [67] for more training details), the LGP can be deployed to the pretrained text-to-image DM without the need for ﬁne-tuning
+4.3 Textual inversion for concept control
+Pioneering works on text-to-image generation [15], [16], [17], [18] rely on natural language to describe the content and styles of generated images. However, there are cases
+
+when the text cannot exactly describe the desired semantics by users, e.g., generating a new subject. In order to synthesize novel scenes with certain concepts or subjects, [68], [69] introduces several reference images with the desired concepts, then inverts the reference images to the textual descriptions. Speciﬁcally, [68] inverts the shared concept in a couple of reference images into the text (embedding) space, i.e. ”pseudo-words”. The generated ”pseudo-words” can be used for personalized generation. DreamBooth [69] adopts a similar technique and mainly differs by ﬁne-tuning (instead of freezing) the pretrained DM model for preserving key visual features from the subject identity.
+4.4 Retrieval for out-of-distribution
+The impressive performance of SOTA text-to-image models is based on the assumption that the model is well exposed to the text that describes the common entities with the training style. However, this assumption does not hold when the entity is rare, or when the desired style is greatly different from the training style. To mitigate the signiﬁcant out-of-distribution performance drop, multiple works [70], [71], [72], [73] have utilized the technique of retrieval with external database as a memory. Such a technique ﬁrst gained attention in NLP [74], [75], [76], [77], [78] and, more recently, in GAN-based image synthesis [79], by turning fully parametric models into semi-parametric ones. Motivated by this, [70] has augmented diffusion models with retrieval. A retrieval-augmented diffusion model (RDM) [70] consists of a conditional DM and an image database which is interpreted as an explicit part of the model. With the distance measured in CLIP, k-nearest neighbors are queried for each query, i.e. training sample, in the external database The diffusion prior is guided by the more informative embeddings of KNN neighbors with ﬁxed CLIP image encoder instead of the text embeddings. KNN-diffusion [71] adopts a fundamentally similar approach and mainly differs by making the diffusion prior addtionally conditioned on the text embeddings to improve the generated sample quality. This practice has also been adopted in follow-up Re-Imagen [73]. In contrast to RDM [70] and KNN-diffusion [71] with a two-stage framework, Re-Imagen [73] adopts a single-stage
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+framework and selects the K-NN neighbors not with the distance in latent space. Moreover, Re-Imagen also allows the retrieved neighbors to be both images and text. As claimed in [73], Re-Imagen outperforms KNN-diffusion by a large margin on the benchmark COCO dataset.
+
+5 EVALUATION FROM TECHNICAL AND ETHICAL
+PERSPECTIVES
+5.1 Technical evaluation of text-to-image methods
+Image quality and text-image alignment are two main criteria to evaluate the text-to-image models, which indicates the photorealism or ﬁdelity of generated images and whether the generated images align well with the text semantics, respectively [80]. A common metric to evaluate image quality quantitatively is Fre´chet Inception Distance (FID) [81], which measures the Fre´chet distance [82] (also known as Wasserstein-2 distance [83]) between synthetic and realworld images. We summarize the evaluation results of representative methods on MS-COCO dataset in Table 1 for reference. The smaller the FID is, the higher image ﬁdelity. To measure the text-image alignment, CLIP score [84] are widely applied, which trades off against FID. There are also other metrics for text-to-image evaluation, including Inception score (IS) [85] for image quality and R-precision for text-to-image generation [9].
+
+TABLE 1 FID of representative methods on MS-COCO dataset
+
+model CogView [12] LAFITE [60] DALLE [11] GLIDE [15] Imagen [16] Stable Diffusion [17] VQ-Diffussion [43] DALL-E 2 [18] Upainting [63] ERNIE-ViLG 2.0 [64] eDiff-I [65]
+
+FID 27.10 26.94 17.89 12.24 7.27 12.63 13.86 10.39 8.34 6.75 6.95
+
+Recent evaluation benchmarks. Apart from the automatic metrics discussed above, multiple works involve human evaluation and propose their new evaluation benchmarks [14], [16], [63], [73], [80], [86], [87]. We summarize representative benchmarks in Table 2. For a better evaluation of ﬁdelity and text-image alignment, DrawBench [16], PartiPropts [14] and UniBench [63] ask the human raters to compare generated images from different models. Specifically, UniBench [63] proposes to evaluate the model on both simple and complex scenes, and includes both Chinese and English prompts. PartiPropts [14] introduces a diverse set of over 1600 (English) prompts, and also proposes a challenge dimension that highlighting why this prompt is difﬁcult. To evaluate the model from more various aspects, PaintSKills [80] evaluates the visual reasoning skills and social biases apart from image quality and text-image alignment. However, PaintSKills [80] only focuses on unseen objectcolor and object-shape scenario [63]. EntityDrawBench [73] further evaluates the model with various infrequent entities in different scenes. Compared to PartiPropts [14] with
+
+6
+prompts at different difﬁculty levels, Multi-Task Benchmark [86] proposes thirty-two tasks that evaluates different capabilities, and divides each task into three difﬁculty levels.
+5.2 Ethical issues and risks
+Ethical risks from the datasets. Text-to-image generation is a highly data-driven task, and thus models trained on largescale unﬁltered data may suffer from even reinforce the biases from the dataset, leading to ethical risks. [88] ﬁnds a large amount of inappropriate content in the generated images by Stable diffusion [17] (e.g., offensive, insulting, or threatening information), and ﬁrst establishes a new test bed to evaluate them. Moreover, it proposes Safe Latent Diffusion, which successfully removes and suppresses the inappropriate content with additional guidance. Another ethical issue, the fairness of social group, is studied in [89], [90]. Speciﬁcally, [89] ﬁnds that simple homoglyph replacements in the text descriptions can induce culture bias in models, i.e., generating images from different culture. [90] introduce an Ethical NaTural Language Interventions in Text-to-Image GENeration (ENTIGEN) benchmark dataset, which can evaluate the change of generated images with ethical interventions by three axes: gender, skin color, and culture. With intervented text prompts, [90] improves diffusion models (e.g., Stable diffusion [17]) from the social diversity perspective.
+Misuse for malicious purposes. Text-to-image diffusion models have shown their power in generating high-quality images. However, this also raises great concern that the generated images may be used for malicious purposes, e.g., falsifying electronic evidence [91]. DE-FAKE [91] is the ﬁrst to conduct a systematical study on visual forgeries of the text-to-image diffusion models, which aims to distinguish generated images from the real ones, and also further track the source model of each fake image. To achieve these two goals, DE-FAKE [91] analyzes from visual modality perspective, and ﬁnds that images generated by different diffusion models share common features and also present unique model-wise ﬁngerprints. Two concurrent works [92], [93] approaches the detection of faked images both by evaluating the existing detection methods on images generated by diffusion model, and also analyze the frequency discrepancy of images by GAN and diffusion models. [92], [93] ﬁnd that the performance of existing detection methods drops signiﬁcantly on generated images by diffusion models compared to GAN. Moreover, [92] attributes the failure of existing methods to the mismatch of high-frequencies between images generated by diffusion models and GAN. Another work [94] discusses the concern of the artistic image generation from the perspective of artists. Although agreeing that the artistic image generation may be a promising modality for the development of art, [94] points out that the artistic image generation may cause plagiarism and proﬁt shifting (proﬁts in the art market shift from artists to model owners) problems if not properly used.
+Security and privacy risks. While text-to-image diffusion models have attracted great attention, the security and privacy risks have been neglected so far. Two pioneering works [95], [96] discuss the backdoor attack and privacy issues, respectively. Inspired by the ﬁnding in [89]
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+7
+
+TABLE 2 Benchmarks for text-to-image generation
+
+Benchmark DrawBench [16] UniBench [63] PartiPrompts [14] PaintSKills [80] EntityDrawBench [73] Multi-Task Benchmark [86]
+
+Measurement Fidelity, alignment Fidelity, alignment Fidelity, alignment Visual reasoning skills, social biases Entity-centric faithfulness Various capabilities
+
+Metric User preference rates User preference rates Qualitative Statistics Human rating Human rating
+
+Auto-eval N N N Y N N
+
+Human-eval Y Y Y Y Y Y
+
+Language English English, Chinese English English English English
+
+that a simple word replacement can invert culture bias to models, Rickrolling the Artist [95] proposes to inject the backdoors into the pre-trained text encoders, which will force the generated image to follow a speciﬁc description or include certain attributes if the trigger exists in the text prompt. [96] is the ﬁrst to analyze the membership leakage problem in text-to-image generation models, where whether a certain image is used to train the target text-to-image model is inferred. Speciﬁcally, [96] proposes three intuitions on the membership information and four attack methods accordingly. Experiments show that all the proposed attack methods achieve impressive results, highlighting the threat of membership leakage.
+6 APPLICATIONS BEYOND TEXT-TO-IMAGE GEN-
+ERATION
+The recent advancement of diffusion models has inspired multiple interesting applications beyond text-to-image generation, including artistic painting [72], [72], [97], [98], [99], [100], [101], [102] and text-guided image editing [103], [104], [105]
+6.1 Text-guided creative generation
+6.1.1 Visual art generation
+Artistic painting is an interesting and imaginative area that beneﬁts from the success of generative models. Despite the progress of GAN-based painting [106], they suffer from the unstable training and model collapse problem brought by GAN. Recently, multiple works present impressive painting images based on diffusion models, investigating improved prompts and different scenes. Multimodal guided artwork diffusion (MGAD) [97] reﬁnes the generative process of diffusion model with multimodal guidance (text and image) and achieves excellent results regarding both the diversity and quality of generated digital artworks. In order to maintain the global content of the input image, DiffStyler [98] propose a controllable dual diffusion model with learnable noise in the diffusion process of content image. During inference, explicit content and abstract aesthetics can both be learned with two diffusion models. Experimental results show that DiffStyler [98] achieve excellent results on both quantitative metrics and manual evaluation. To improve the creativity of Stable Diffusion model, [99] proposes two directions of textual condition extension and model retraining with the Wikiart dataset, enables the users to ask the famous artists to draw novel images. [100] personalizes text-to-image generation by customizing the aesthetic styles with a set of images, while [101] extends generated images to Scalable Vector Graphics (SVGs) for digital icons or arts.
+
+In order to improve computation efﬁciency, [72] propose to generate artictis images based on retrieval-augmented diffusion models. By retrieving neighbors from specialized datasets (e.g., Wikiart), [72] obtains ﬁne-grained control on the image style. In order to specify more ﬁne-grained style features (e.g., color distribution and brush strokes), [102] proposes supervised style guidance and self style guidance method, which can generate images of more diverse styles.
+6.1.2 Video generation and story visualization
+Text-to-video. Since video is just a sequence of images, a natural application of text-to-image is to make a video conditioned on the text input. Conceptually, text-to-video DM lies in the intersection between text-to-image DM and video DM. Regarding text-to-video DM, there are two pioneering works: Make-A-Video [107] adapting a pretrained text-toimage DM to text-to-video and Video Imagen [108] extending an existing video DM method to text-to-video. Make-AVideo [107] generates high-quality videos by including temporal information in the pretrained text-to-image models, and trains spatial super-resolution models as well as frame interpolation models to enhance the visual quality. With pretrained text-to-image models and unsupervised learning on video data, Make-A-Video [107] successfully accelerates the training of a text-to-video model without the need of paired text-video data. By contrast, Imagen Video [108] is a text-to-video system composed of cascaded video diffusion models [109]. As for the model design, Imagen Video [108] points out that some recent ﬁndings (e.g., frozen encoder text conditioning) in text-to-image can transfer to video generation, and ﬁndings for video diffusion models(e.g., v-prediction parameterization) also provides insights for general diffusion models.
+Text-to-story generation (story synthesis). The success of text-to-video naturally inspires a future direction of novel-to-movie. Make-A-Story [110] and AR-LDM [111]. shows the potential of DM for story visualization, i.e. generating a video that matches the text-based story. Different from general text-to-video tasks, story visualization requires the model to reason at each frame about whether to maintain the consistency of actors and backgrounds between frames or scenes, based on the story progress [110]. To solve this problem, Make-A-Story [110] proposes an autoregressive diffusion-based framework, with a visual memory module implicitly capturing the actor and background context across the frames. For consistency across scenes, Make-AStory [110] proposes a sentence-conditioned soft attention over the memories for visio-lingual co-reference resolution. Another concurrent work AR-LDM [111] also focuses on the text-to-story generation task based on stable diffusion [17].
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+AR-LDM [111] is guided not only by the present caption, but also by previously generated images image-caption history for each frame. This allows AR-LDM to generate relevant and coherent images across frames. Moreover, ARLDM [111] shows the consistency for unseen characters, and also the ability for real-world story synthesis on a new introduced dataset VIST [112].
+6.1.3 3D generation
+3D object generation. The generation of 3D objects is evidently much more sophisticated than their 2D counterpart, i.e., 2D image synthesis task. DeepFusion [113] is the ﬁrst work that successfully applies diffusion models to 3D object synthesis. Inspired by Dream Fields [114] which applies 2D image-text models (i.e., CLIP) for 3D synthesis, DeepFusion [113] trains a randomly initialized NeRF [115] with the distillation of a pretrained 2D diffusion model (i.e., Imagen). However, according to Magic3D [116], the low-resolution image supervision and extremely slow optimization of NeRF result in low-quality generation and long processing time of DeepFusion [113]. For higherresolution results, Magic3D [116] proposes a coarse-toﬁne optimization approach with coarse representation as initialization as the ﬁrst step, and optimizing mesh representations with high-resolution diffusion priors. Magic3D [116] also accelerates the generation process with a sparse 3D hash grid structure. 3DDesigner [117] focuses on another topic of 3D object generation, consistency, which indicates the cross-view correspondence. With low-resolution results from NeRF-based condition module as the prior, a twostream asynchronous diffusion module further enhances the consistency, and achieves 360-degree consistent results.
+6.2 Text-guided image editing
+Prior to DM gaining popularity, zero-shot image editing had been dominated by GAN inversion methods [45], [118], [119], [120], [121], [122], [123] combined with CLIP. However, GAN is often constrained to have limited inversion capability, causing unintended changes to the image content.
+6.2.1 General image editing
+DiffusionCLIP [103] is a pioneering work to introduce DM to alleviate this problem. Speciﬁcally, it ﬁrst adopts a pretrained DM to convert the input image to the latent space and then ﬁnetunes the DM at the reverse path with a loss consisting of two terms: local directional CLIP loss [124] and an identity loss. The former is employed to guide the target image to align with the text and the latter mitigates unwanted changes. To enable full inversion, it adopts a deterministic DDIM [125] instead of DDPM reverse process [30]. Beneﬁting from DM’s excellent inversion property, DiffusionCLIP [103] has shown superior performance for both in-domain and out-of-domain manipulation. A drawback of DiffusionClip is that it requires the mode to be ﬁnetuned to transfer to a new domain. To avoid ﬁnetuning, LDEdit [104] proposes a combine of DDIM and LDM. Speciﬁcally, LDEdit [104] employs a deterministic forward diffusion in the latent space, and then makes the reverse process conditioned on the target text. Despite its
+
+8
+simplicity, it performs well in a wide range of image editing tasks, constituting a generalized framework.
+To solve the problem that a simple modiﬁcation of text prompt may leads to a different output, Prompt-toPrompt [126] proposes to use a cross-attention map during the diffusion progress, which represents the relation between each image pixel and word in the text prompt. In image-to-image translation task, [127] also works on the semantic features in the diffusion latent space, and ﬁnds that manipulating spatial features and their self-attention inside the model can control the image translation process. An unsupervised image translation method is also proposed in DiffusionIT [105], which disentangles style and content representation. As a deﬁnitional reformulation, CycleDiffusion [128] uniﬁes generative models by reformulating the latent space of diffusion models, and shows that diffusion models can be guided similarly with GANs.
+Direct Inversion [129] applies a similar two-step procedure, i.e., encoding the image to its corresponding noise and then generating the edited image with inverted noises. However, it requires no optimization or model ﬁnetuning in Direct Inversion [129]. In the generative process, a diffusion model starts from a noise vector, and can generate images by iteratively denoising. For the image editing task, an exact mapping process from image to noise and back are necessary. Instead of DDPM [30], DDIM [125] has been widely applied for its nearly perfect inversion [103]. However, due to the local linearization assumptions, DDIM [125] may lead to incorrect image reconstruction with the error propagation [130]. To mitigate this problem, Exact Diffusion Inversion via Coupled Transformations (EDICT) [130] proposes to maintain two coupled noise vectors in the diffusion process and achieves higher reconstruction quality than DDIM [125]. However, the computation time of EDICT [130] is almost twice of DDIM [125]. Another work Null-text Inversion [131] improves image editing with Diffusion Pivotal Inversion and null-text optimization, Inspired by the ﬁnding that the accumulated error in DDIM [125] can be neglected in the unconditional diffusion models, but is ampliﬁed when applying classiﬁer-guidance with a large guidance scale w in image editing, [131] proposes to take the initial DDIM inversion with guidance scale w = 1 as the pivotal trajectory, and then optimize with standard guidance w > 1. [131] also proposes to replace the embedding of null-text with the optimized embedding (Null-text optimization), achieving high-ﬁdelity editing results of real images.
+6.2.2 Image editing with masks
+Manipulating the image mainly on a local (masked) region [132] constitutes a major challenge to the task of image editing. The difﬁculty lies in guaranteeing a seamless coherence between the masked region and the background. Similar to [103], Blended diffusion [132] is based on pretrained CLIP and adopts two loss terms: one for encouraging the alignment between the masked image and text caption and the other for keeping the unmasked region not deviate from its original content. Notably, to guarantee the seamless coherence between the edited region and the remaining part, it spatially blends noisy image with the local text-guided diffusion latent in a progressive manner. This approached is further combined with LDM [17] to yield a blended
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+latent diffusion to accelerate the local text-driven image editing [133]. A multi-stage variant of blended diffusion is also investigated for a super high-resolution setting [134]. The above works [132], [133], [134] require a manually designed mask so that the model can tell which part to edit. By contrast, DiffEdit [135] proposes to automatically generate the mask to indicate which part to be edited. Speciﬁcally, the mask is inferred by the difference in noise estimates between query text and reference text conditions. With inferred masks, DiffEdit [135] replaces the region of interest with pixels corresponding to the query text.
+6.2.3 Model training with a single image
+The success of diffusion models in the text-to-image synthesis area relies on a large amount of training samples. An interesting topic is how to train a generative model with a single image, e.g., SinGAN [136]. SinGAN [136] can generate similar images and perform well on multiple tasks (e.g., image editing) after training on a single image. There are also research on diffusion models with a single image [137], [138], [139]. Single Denoising Diffusion Models (SinDDM) [137] proposes a hierarchical diffusion model inspired by the multi-scale SinGAN [136]. The convolutional denoiser is trained on various scales of images which are corrupted by multiple levels of noise. Compared to SDEdit [140], SinDDM [137] can generating images with different dimensions. By contrast, Single-image Diffusion Model (SinDiffusion) [138] is trained on a single image at a single scale, avoiding the accumulation of errors. Moreover, SinDiffusion [138] proposes patch-level receptive ﬁeld, which encourages the model to learn patch statistics instead of memorizing the whole image in prior diffusion models [41]. Different from [137], [138] training the model from scratch, UniTune [139] ﬁnetunes a pretrained large text-to-image diffusion model (e.g.,Imagen) on a single image.
+6.2.4 3D object editing
+Apart from 3D generation, 3DDesigner [117] is also the ﬁrst to perform 360-degree manipulation by editing from a single view. With the given text, 3DDesigner [117] generates corresponding text embedding by ﬁrst obtaining blended noises with 2D local editing, and then mapping the blended noise to a view-independent text embedding space. The 360-degree results can be generated once the corresponding text embedding is obtained. DATID-3D [141] works on another topic, text-guided domain adaption of 3D objects, which suffers from three limitations: catastrophic diversity loss, inferior text-image correspondence and poor image quality [141]. To solve these problems, DATID-3D [141] ﬁrst obtains diverse pose-aware target images with diffusion models, and then rectiﬁes the obtained target image by improved CLIP and ﬁltering process. Evaluated with the state-of-the-art 3D generator, EG3D [142], DATID-3D [141] achieves high-resolution target results with multi-view consistency.
+6.2.5 Other interesting tasks
+For the complex edits further, Imagic [143] is the ﬁrst to perform text-based semantic edits to a single image. Speciﬁcally, Imagic [143] ﬁrst obtains an optimized embedding for the target text, which generates similar images
+
+9
+to the input. Then, Imagic [143] ﬁne-tunes the pretrained diffusion models with the optimized embedding with the reconstruction loss, and linearly interpolates between the target text embedding and the optimized one. This generated representation is then sent to the ﬁne-tuned model and generates the edited images. Apart from editing the attribute or styles of an image, there are also other interesting tasks regarding image editing. Paint by example [144] proposes a semantic image composition problem reference image is semantically transformed and harmonized before blending into another image [144]. Further, MagicMix [145] proposes a new task called semantic mixing, which blends two different semantics (e.g.,corgi and coffee machine) to create a new concept (corgi-like coffee machine). Inspired by the property of diffusion models that layout(e.g., shape and color) and semantic contents appears at earlier and later stage of denoising, respectively, MagicMix [145] proposes to mix two concepts with the content at different timesteps. InstructPix2Pix [146] works on the task of editing the image with human-written human instructions. Based on a large model (GPT-3) and a text-to-image model (Stable diffusion), [146] ﬁrst generates a dataset for this new task, and trains a conditional diffusion model InstructPix2Pix which generalize to real images well. However, it is admitted in [146] there still remains some limitations, e.g., the model is limited by the visual quality of generated datasets. Another work [147] proposes to regard the image-to-image translation problem as a downstream task and successfully synthesizes images of unprecedented realism and faithfulness based on a pretrained diffusion model, termed as pretraining-based image-to-image translation (PITI) [147].
+7 CHALLENGES AND OUTLOOK
+7.1 Challenges
+Challenges on dataset bias. Since these large models are trained on the collected text-image pair data, which inevitably introduces data bias, such as race and gender. Moreover, the current models predominantly or exclusively adopt English as the default language for input text. This might further put those people who do not understand English in an unfavored situation. A more diverse and balanced dataset and new methods are preferred to eliminate the inﬂuence of dataset bias on the model.
+Challenges on data and computation. As widely recognized, the success of deep learning heavily depends on the labeled data. In the context of text-to-image DM, this is especially true. For example, the major frameworks such as DALL-E 2 [18], GLIDE [15], Imagen [16], all are trained with hundreds of millions of image-text pairs [11], [45]. Moreover, the computation overhead is so large that it renders the opportunities to train such a model from scratch to large companies, such as OpenAI [18], Google [16], Baidu [63]. Notably, the model size is also very large, preventing their deployment in efﬁciency-oriented environments, such as edge devices.
+Challenges on evaluation. Despite the attempts on evaluation criteria, diverse and efﬁcient evaluation is still challenging. First, existing automatic evaluation metrics have their limitations, e.g., FID is not always consistent with perceptual quality [16], [148], and CLIP score is found
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+ineffective at counting [16], [45]. More reliable and diverse automatic evaluation criteria are needed. Second, human evaluation depends on aesthetic differences among raters and limits the number of prompts due to the efﬁciency problem. Third, most benchmarks introduce various text prompts to evaluate the model from different aspects. However, biases may exist in the human-designed prompts, and the quality of prompts may be limited especially for the evaluation of complex scenes.
+7.2 Outlook
+Diverse and effective evaluation. So far, the evaluation of text-to-image methods relies on quantative metrics and human evaluation. Moreover, different papers may has their own benchmarks. A uniﬁed evaluation framework is needed, which should have clear and diverse evaluation criteria (e.g., more metrics) and can be reproduced by different researchers for fair comparison.
+Uniﬁed multi-modality framework. The core of text-toimage generation is generate images from text, thus it can be seen as one part of the multi-modality learning. Most works focus on the single task of text-to-image generation, but unifying multiple task into a single model can be a promising trend. For example, UniD3 [149] and Versatile Diffusion [150] unify text-to-image generation and image captioning with a single diffusion model. The uniﬁed multi-modality model can boost each task by learning representations from each modality better.
+Collaboration with other ﬁelds. In the past few years, deep learning has made great progress in multiple areas, including masked autoencoder in self-supervised learning and recent ChatGPT in the natual language processing ﬁeld. How to collaborate text-to-image diffusion model and these recent ﬁndings in active research ﬁelds, is an exciting topic to be explored.
+REFERENCES
+[1] B. Goertzel and C. Pennachin, Artiﬁcial general intelligence. Springer, 2007, vol. 2. 1
+[2] V. C. Mu¨ ller and N. Bostrom, “Future progress in artiﬁcial intelligence: A survey of expert opinion,” in Fundamental issues of artiﬁcial intelligence. Springer, 2016, pp. 555–572. 1
+[3] J. Clune, “Ai-gas: Ai-generating algorithms, an alternate paradigm for producing general artiﬁcial intelligence,” arXiv preprint arXiv:1905.10985, 2019. 1
+[4] R. Fjelland, “Why general artiﬁcial intelligence will not be realized,” Humanities and Social Sciences Communications, vol. 7, no. 1, pp. 1–9, 2020. 1
+[5] Y. LeCun, Y. Bengio, and G. Hinton, “Deep learning,” nature, 2015. 1
+[6] E. Mansimov, E. Parisotto, J. L. Ba, and R. Salakhutdinov, “Generating images from captions with attention,” ICLR, 2016. 1
+[7] S. Reed, Z. Akata, X. Yan, L. Logeswaran, B. Schiele, and H. Lee, “Generative adversarial text to image synthesis,” in International conference on machine learning. PMLR, 2016, pp. 1060–1069. 1
+[8] H. Zhang, T. Xu, H. Li, S. Zhang, X. Wang, X. Huang, and D. N. Metaxas, “Stackgan: Text to photo-realistic image synthesis with stacked generative adversarial networks,” in Proceedings of the IEEE international conference on computer vision, 2017, pp. 5907– 5915. 1
+[9] T. Xu, P. Zhang, Q. Huang, H. Zhang, Z. Gan, X. Huang, and X. He, “Attngan: Fine-grained text to image generation with attentional generative adversarial networks,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2018, pp. 1316–1324. 1, 6
+
+10
+[10] B. Li, X. Qi, T. Lukasiewicz, and P. Torr, “Controllable textto-image generation,” Advances in Neural Information Processing Systems, vol. 32, 2019. 1
+[11] A. Ramesh, M. Pavlov, G. Goh, S. Gray, C. Voss, A. Radford, M. Chen, and I. Sutskever, “Zero-shot text-to-image generation,” in ICML, 2021. 1, 3, 4, 6, 9
+[12] M. Ding, Z. Yang, W. Hong, W. Zheng, C. Zhou, D. Yin, J. Lin, X. Zou, Z. Shao, H. Yang et al., “Cogview: Mastering text-toimage generation via transformers,” Advances in Neural Information Processing Systems, vol. 34, pp. 19 822–19 835, 2021. 1, 6
+[13] C. Wu, J. Liang, L. Ji, F. Yang, Y. Fang, D. Jiang, and N. Duan, “Nu¨ wa: Visual synthesis pre-training for neural visual world creation,” in European Conference on Computer Vision. Springer, 2022, pp. 720–736. 1
+[14] J. Yu, Y. Xu, J. Y. Koh, T. Luong, G. Baid, Z. Wang, V. Vasudevan, A. Ku, Y. Yang, B. K. Ayan et al., “Scaling autoregressive models for content-rich text-to-image generation,” arXiv preprint arXiv:2206.10789, 2022. 1, 6, 7
+[15] A. Nichol, P. Dhariwal, A. Ramesh, P. Shyam, P. Mishkin, B. McGrew, I. Sutskever, and M. Chen, “Glide: Towards photorealistic image generation and editing with text-guided diffusion models,” ICML, 2022. 1, 3, 4, 5, 6, 9
+[16] C. Saharia, W. Chan, S. Saxena, L. Li, J. Whang, E. Denton, S. K. S. Ghasemipour, B. K. Ayan, S. S. Mahdavi, R. G. Lopes et al., “Photorealistic text-to-image diffusion models with deep language understanding,” arXiv preprint arXiv:2205.11487, 2022. 1, 3, 4, 5, 6, 7, 9, 10
+[17] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer, “High-resolution image synthesis with latent diffusion models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 10 684–10 695. 1, 3, 4, 5, 6, 7, 8
+[18] A. Ramesh, P. Dhariwal, A. Nichol, C. Chu, and M. Chen, “Hierarchical text-conditional image generation with clip latents,” arXiv preprint arXiv:2204.06125, 2022. 1, 3, 4, 5, 6, 9
+[19] R. Yang, P. Srivastava, and S. Mandt, “Diffusion probabilistic modeling for video generation,” arXiv preprint arXiv:2203.09481, 2022. 1
+[20] F.-A. Croitoru, V. Hondru, R. T. Ionescu, and M. Shah, “Diffusion models in vision: A survey,” arXiv preprint arXiv:2209.04747, 2022. 1
+[21] A. Ulhaq, N. Akhtar, and G. Pogrebna, “Efﬁcient diffusion models for vision: A survey,” arXiv preprint arXiv:2210.09292, 2022. 1
+[22] H. Cao, C. Tan, Z. Gao, G. Chen, P.-A. Heng, and S. Z. Li, “A survey on generative diffusion model,” arXiv preprint arXiv:2209.02646, 2022. 1
+[23] S. Frolov, T. Hinz, F. Raue, J. Hees, and A. Dengel, “Adversarial text-to-image synthesis: A review,” Neural Networks, vol. 144, pp. 187–209, 2021. 1
+[24] R. Zhou, C. Jiang, and Q. Xu, “A survey on generative adversarial network-based text-to-image synthesis,” Neurocomputing, vol. 451, pp. 316–336, 2021. 1
+[25] C. Zhang, C. Zhang, S. Zheng, M. Zhang, M. Qamar, S.-H. Bae, and I. S. Kweon, “A survey on audio diffusion models: Text to speech synthesis and enhancement in generative ai,” arXiv preprint arXiv:2303.13336, 2023. 1
+[26] M. Zhang, M. Qamar, T. Kang, Y. Jung, C. Zhang, S.-H. Bae, and C. Zhang, “A survey on graph diffusion models: Generative ai in science for molecule, protein and material,” ResearchGate 10.13140/RG.2.2.26493.64480, 2023. 1
+[27] C. Zhang, C. Zhang, S. Zheng, Y. Qiao, C. Li, M. Zhang, S. K. Dam, C. M. Thwal, Y. L. Tun, L. L. Huy, D. kim, S.-H. Bae, L.-H. Lee, Y. Yang, H. T. Shen, I. S. Kweon, and C. S. Hong, “A complete survey on generative ai (aigc): Is chatgpt from gpt-4 to gpt-5 all you need?” arXiv preprint arXiv:2303.11717, 2023. 1
+[28] C. Zhang, C. Zhang, C. Li, S. Zheng, Y. Qiao, S. K. Dam, M. Zhang, J. U. Kim, S. T. Kim, G.-M. Park, J. Choi, S.-H. Bae, L.H. Lee, P. Hui, I. S. Kweon, and C. S. Hong, “One small step for generative ai, one giant leap for agi: A complete survey on chatgpt in aigc era,” researchgate DOI:10.13140/RG.2.2.24789.70883, 2023. 1
+[29] J. Sohl-Dickstein, E. Weiss, N. Maheswaranathan, and S. Ganguli, “Deep unsupervised learning using nonequilibrium thermodynamics,” 2015, pp. 2256–2265. 2
+[30] J. Ho, A. Jain, and P. Abbeel, “Denoising diffusion probabilistic models,” Advances in Neural Information Processing Systems, vol. 33, pp. 6840–6851, 2020. 2, 8
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+[31] Y. Song and S. Ermon, “Generative modeling by estimating gradients of the data distribution,” vol. 32, 2019. 2
+[32] ——, “Improved techniques for training score-based generative models,” Advances in neural information processing systems, vol. 33, pp. 12 438–12 448, 2020. 2
+[33] L. Yang, Z. Zhang, Y. Song, S. Hong, R. Xu, Y. Zhao, Y. Shao, W. Zhang, B. Cui, and M.-H. Yang, “Diffusion models: A comprehensive survey of methods and applications,” arXiv preprint arXiv:2209.00796, 2022. 2
+[34] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole, “Score-based generative modeling through stochastic differential equations,” in International Conference on Learning Representations, 2020. 2
+[35] M. Mirza and S. Osindero, “Conditional generative adversarial nets,” arXiv preprint arXiv:1411.1784, 2014. 3
+[36] A. Odena, C. Olah, and J. Shlens, “Conditional image synthesis with auxiliary classiﬁer gans,” in International conference on machine learning. PMLR, 2017, pp. 2642–2651. 3
+[37] A. Nguyen, J. Clune, Y. Bengio, A. Dosovitskiy, and J. Yosinski, “Plug & play generative networks: Conditional iterative generation of images in latent space,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2017, pp. 4467–4477. 3
+[38] T. Miyato and M. Koyama, “cgans with projection discriminator,” arXiv preprint arXiv:1802.05637, 2018. 3
+[39] A. Brock, J. Donahue, and K. Simonyan, “Large scale gan training for high ﬁdelity natural image synthesis,” in ICLR, 2018. 3
+[40] V. Dumoulin, J. Shlens, and M. Kudlur, “A learned representation for artistic style,” arXiv preprint arXiv:1610.07629, 2016. 3
+[41] P. Dhariwal and A. Nichol, “Diffusion models beat gans on image synthesis,” vol. 34, 2021, pp. 8780–8794. 3, 9
+[42] J. Ho and T. Salimans, “Classiﬁer-free diffusion guidance,” arXiv preprint arXiv:2207.12598, 2022. 3
+[43] S. Gu, D. Chen, J. Bao, F. Wen, B. Zhang, D. Chen, L. Yuan, and B. Guo, “Vector quantized diffusion model for text-to-image synthesis,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 10 696–10 706. 3, 4, 6
+[44] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, and I. Polosukhin, “Attention is all you need,” in NeurIPS, 2017. 3
+[45] A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal, G. Sastry, A. Askell, P. Mishkin, J. Clark et al., “Learning transferable visual models from natural language supervision,” in ICML, 2021. 3, 4, 8, 9, 10
+[46] J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, “Bert: Pretraining of deep bidirectional transformers for language understanding,” NAACL, 2019. 3, 4
+[47] A. Radford, K. Narasimhan, T. Salimans, I. Sutskever et al., “Improving language understanding by generative pre-training,” 2018. 3
+[48] A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, I. Sutskever et al., “Language models are unsupervised multitask learners,” OpenAI blog, 2019. 3
+[49] T. Brown, B. Mann, N. Ryder, M. Subbiah, J. D. Kaplan, P. Dhariwal, A. Neelakantan, P. Shyam, G. Sastry, A. Askell et al., “Language models are few-shot learners,” Advances in neural information processing systems, 2020. 3
+[50] C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena, Y. Zhou, W. Li, P. J. Liu et al., “Exploring the limits of transfer learning with a uniﬁed text-to-text transformer.” J. Mach. Learn. Res., vol. 21, no. 140, pp. 1–67, 2020. 3, 4
+[51] P. Esser, R. Rombach, and B. Ommer, “Taming transformers for high-resolution image synthesis,” in CVPR, 2021. 4
+[52] Z. Tang, S. Gu, J. Bao, D. Chen, and F. Wen, “Improved vector quantized diffusion models,” arXiv preprint arXiv:2205.16007, 2022. 4
+[53] C. Jia, Y. Yang, Y. Xia, Y.-T. Chen, Z. Parekh, H. Pham, Q. Le, Y.-H. Sung, Z. Li, and T. Duerig, “Scaling up visual and visionlanguage representation learning with noisy text supervision,” in ICML, 2021. 4
+[54] L. Yuan, D. Chen, Y.-L. Chen, N. Codella, X. Dai, J. Gao, H. Hu, X. Huang, B. Li, C. Li et al., “Florence: A new foundation model for computer vision,” arXiv preprint arXiv:2111.11432, 2021. 4
+[55] J. N. Pinkney and C. Li, “clip2latent: Text driven sampling of a pre-trained stylegan using denoising diffusion and clip,” arXiv preprint arXiv:2210.02347, 2022. 4
+[56] T. Karras, S. Laine, and T. Aila, “A style-based generator architecture for generative adversarial networks,” in Proceedings of
+
+11
+
+the IEEE/CVF conference on computer vision and pattern recognition,
+
+2019, pp. 4401–4410. 4
+
+[57] T. Karras, S. Laine, M. Aittala, J. Hellsten, J. Lehtinen, and T. Aila,
+
+“Analyzing and improving the image quality of stylegan,” in
+
+Proceedings of the IEEE/CVF conference on computer vision and
+
+pattern recognition, 2020, pp. 8110–8119. 4
+
+[58] T. Karras, M. Aittala, S. Laine, E. Ha¨rko¨ nen, J. Hellsten, J. Lehti-
+
+nen, and T. Aila, “Alias-free generative adversarial networks,”
+
+Advances in Neural Information Processing Systems, vol. 34, pp. 852–
+
+863, 2021. 4
+
+[59] Z. Wang, W. Liu, Q. He, X. Wu, and Z. Yi, “Clip-gen: Language-
+
+free training of a text-to-image generator with clip,” arXiv preprint
+
+arXiv:2203.00386, 2022. 4
+
+[60] Y. Zhou, R. Zhang, C. Chen, C. Li, C. Tensmeyer, T. Yu, J. Gu,
+
+J. Xu, and T. Sun, “Towards language-free training for text-to-
+
+image generation,” in Proceedings of the IEEE/CVF Conference on
+
+Computer Vision and Pattern Recognition, 2022, pp. 17 907–17 917.
+
+4, 6
+
+[61] X. Liu, D. H. Park, S. Azadi, G. Zhang, A. Chopikyan, Y. Hu,
+
+H. Shi, A. Rohrbach, and T. Darrell, “More control for free!
+
+image synthesis with semantic diffusion guidance,” arXiv preprint
+
+arXiv:2112.05744, 2021. 4
+
+[62] K.
+
+Crowson,
+
+“Clip
+
+guided
+
+diffusion
+
+512x512,
+
+secondary
+
+model
+
+method,”
+
+https://twitter.com/RiversHaveWings/status/1462859669454536711,
+
+2022. 4
+
+[63] W. Li, X. Xu, X. Xiao, J. Liu, H. Yang, G. Li, Z. Wang, Z. Feng,
+
+Q. She, Y. Lyu et al., “Upainting: Uniﬁed text-to-image dif-
+
+fusion generation with cross-modal guidance,” arXiv preprint
+
+arXiv:2210.16031, 2022. 4, 6, 7, 9
+
+[64] Z. Feng, Z. Zhang, X. Yu, Y. Fang, L. Li, X. Chen, Y. Lu, J. Liu,
+
+W. Yin, S. Feng et al., “Ernie-vilg 2.0: Improving text-to-image dif-
+
+fusion model with knowledge-enhanced mixture-of-denoising-
+
+experts,” arXiv preprint arXiv:2210.15257, 2022. 5, 6
+
+[65] Y. Balaji, S. Nah, X. Huang, A. Vahdat, J. Song, K. Kreis, M. Ait-
+
+tala, T. Aila, S. Laine, B. Catanzaro et al., “edifﬁ: Text-to-image
+
+diffusion models with an ensemble of expert denoisers,” arXiv
+
+preprint arXiv:2211.01324, 2022. 5, 6
+
+[66] O. Avrahami, T. Hayes, O. Gafni, S. Gupta, Y. Taigman, D. Parikh,
+
+D. Lischinski, O. Fried, and X. Yin, “Spatext: Spatio-textual
+
+representation for controllable image generation,” arXiv preprint
+
+arXiv:2211.14305, 2022. 5
+
+[67] A. Voynov, K. Aberman, and D. Cohen-Or, “Sketch-guided text-
+
+to-image diffusion models,” arXiv preprint arXiv:2211.13752, 2022.
+
+5
+
+[68] R. Gal, Y. Alaluf, Y. Atzmon, O. Patashnik, A. H. Bermano,
+
+G. Chechik, and D. Cohen-Or, “An image is worth one word:
+
+Personalizing text-to-image generation using textual inversion,”
+
+arXiv preprint arXiv:2208.01618, 2022. 5
+
+[69] N. Ruiz, Y. Li, V. Jampani, Y. Pritch, M. Rubinstein, and K. Aber-
+
+man, “Dreambooth: Fine tuning text-to-image diffusion models
+
+for subject-driven generation,” arXiv preprint arXiv:2208.12242,
+
+2022. 5
+
+[70] A. Blattmann, R. Rombach, K. Oktay, and B. Ommer, “Retrieval-
+
+augmented diffusion models,” arXiv preprint arXiv:2204.11824,
+
+2022. 5
+
+[71] S. Sheynin, O. Ashual, A. Polyak, U. Singer, O. Gafni, E. Nach-
+
+mani, and Y. Taigman, “Knn-diffusion: Image generation via
+
+large-scale retrieval,” arXiv preprint arXiv:2204.02849, 2022. 5
+
+[72] R. Rombach, A. Blattmann, and B. Ommer, “Text-guided synthe-
+
+sis of artistic images with retrieval-augmented diffusion models,”
+
+arXiv preprint arXiv:2207.13038, 2022. 5, 7
+
+[73] W. Chen, H. Hu, C. Saharia, and W. W. Cohen, “Re-imagen:
+
+Retrieval-augmented text-to-image generator,” arXiv preprint
+
+arXiv:2209.14491, 2022. 5, 6, 7
+
+[74] U. Khandelwal, O. Levy, D. Jurafsky, L. Zettlemoyer, and
+
+M. Lewis, “Generalization through memorization: Nearest neigh-
+
+bor language models,” arXiv preprint arXiv:1911.00172, 2019. 5
+
+[75] U. Khandelwal, A. Fan, D. Jurafsky, L. Zettlemoyer, and
+
+M. Lewis, “Nearest neighbor machine translation,” arXiv preprint
+
+arXiv:2010.00710, 2020. 5
+
+[76] K. Guu, K. Lee, Z. Tung, P. Pasupat, and M. Chang, “Retrieval
+
+augmented language model pre-training,” in International Confer-
+
+ence on Machine Learning. PMLR, 2020, pp. 3929–3938. 5
+
+[77] Y. Meng, S. Zong, X. Li, X. Sun, T. Zhang, F. Wu, and J. Li, “Gnn-
+
+lm: Language modeling based on global contexts via gnn,” arXiv
+
+preprint arXiv:2110.08743, 2021. 5
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+[78] S. Borgeaud, A. Mensch, J. Hoffmann, T. Cai, E. Rutherford, K. Millican, G. v. d. Driessche, J.-B. Lespiau, B. Damoc, A. Clark et al., “Improving language models by retrieving from trillions of tokens,” arXiv preprint arXiv:2112.04426, 2021. 5
+[79] B. Li, P. H. Torr, and T. Lukasiewicz, “Memory-driven text-toimage generation,” arXiv preprint arXiv:2208.07022, 2022. 5
+[80] J. Cho, A. Zala, and M. Bansal, “Dall-eval: Probing the reasoning skills and social biases of text-to-image generative transformers,” arXiv preprint arXiv:2202.04053, 2022. 6, 7
+[81] M. Heusel, H. Ramsauer, T. Unterthiner, B. Nessler, and S. Hochreiter, “Gans trained by a two time-scale update rule converge to a local nash equilibrium,” Advances in neural information processing systems, vol. 30, 2017. 6
+[82] M. Fre´chet, “Sur la distance de deux lois de probabilite´,” Comptes Rendus Hebdomadaires des Seances de L Academie des Sciences, vol. 244, no. 6, pp. 689–692, 1957. 6
+[83] L. N. Vaserstein, “Markov processes over denumerable products of spaces, describing large systems of automata,” Problemy Peredachi Informatsii, vol. 5, no. 3, pp. 64–72, 1969. 6
+[84] J. Hessel, A. Holtzman, M. Forbes, R. L. Bras, and Y. Choi, “Clipscore: A reference-free evaluation metric for image captioning,” arXiv preprint arXiv:2104.08718, 2021. 6
+[85] T. Salimans, I. Goodfellow, W. Zaremba, V. Cheung, A. Radford, and X. Chen, “Improved techniques for training gans,” Advances in neural information processing systems, 2016. 6
+[86] V. Petsiuk, A. E. Siemenn, S. Surbehera, Z. Chin, K. Tyser, G. Hunter, A. Raghavan, Y. Hicke, B. A. Plummer, O. Kerret et al., “Human evaluation of text-to-image models on a multitask benchmark,” arXiv preprint arXiv:2211.12112, 2022. 6, 7
+[87] P. Liao, X. Li, X. Liu, and K. Keutzer, “The artbench dataset: Benchmarking generative models with artworks,” arXiv preprint arXiv:2206.11404, 2022. 6
+[88] P. Schramowski, M. Brack, B. Deiseroth, and K. Kersting, “Safe latent diffusion: Mitigating inappropriate degeneration in diffusion models,” arXiv preprint arXiv:2211.05105, 2022. 6
+[89] L. Struppek, D. Hintersdorf, and K. Kersting, “The biased artist: Exploiting cultural biases via homoglyphs in text-guided image generation models,” arXiv preprint arXiv:2209.08891, 2022. 6
+[90] H. Bansal, D. Yin, M. Monajatipoor, and K.-W. Chang, “How well can text-to-image generative models understand ethical natural language interventions?” arXiv preprint arXiv:2210.15230, 2022. 6
+[91] Z. Sha, Z. Li, N. Yu, and Y. Zhang, “De-fake: Detection and attribution of fake images generated by text-to-image diffusion models,” arXiv preprint arXiv:2210.06998, 2022. 6
+[92] J. Ricker, S. Damm, T. Holz, and A. Fischer, “Towards the detection of diffusion model deepfakes,” arXiv preprint arXiv:2210.14571, 2022. 6
+[93] R. Corvi, D. Cozzolino, G. Zingarini, G. Poggi, K. Nagano, and L. Verdoliva, “On the detection of synthetic images generated by diffusion models,” arXiv preprint arXiv:2211.00680, 2022. 6
+[94] A. Ghosh and G. Fossas, “Can there be art without an artist?” arXiv preprint arXiv:2209.07667, 2022. 6
+[95] L. Struppek, D. Hintersdorf, and K. Kersting, “Rickrolling the artist: Injecting invisible backdoors into text-guided image generation models,” arXiv preprint arXiv:2211.02408, 2022. 6, 7
+[96] Y. Wu, N. Yu, Z. Li, M. Backes, and Y. Zhang, “Membership inference attacks against text-to-image generation models,” arXiv preprint arXiv:2210.00968, 2022. 6, 7
+[97] N. Huang, F. Tang, W. Dong, and C. Xu, “Draw your art dream: Diverse digital art synthesis with multimodal guided diffusion,” in Proceedings of the 30th ACM International Conference on Multimedia, 2022, pp. 1085–1094. 7
+[98] N. Huang, Y. Zhang, F. Tang, C. Ma, H. Huang, Y. Zhang, W. Dong, and C. Xu, “Diffstyler: Controllable dual diffusion for text-driven image stylization,” arXiv preprint arXiv:2211.10682, 2022. 7
+[99] X. Wu, “Creative painting with latent diffusion models,” arXiv preprint arXiv:2209.14697, 2022. 7
+[100] V. Gallego, “Personalizing text-to-image generation via aesthetic gradients,” arXiv preprint arXiv:2209.12330, 2022. 7
+[101] A. Jain, A. Xie, and P. Abbeel, “Vectorfusion: Text-to-svg by abstracting pixel-based diffusion models,” arXiv preprint arXiv:2211.11319, 2022. 7
+[102] Z. Pan, X. Zhou, and H. Tian, “Arbitrary style guidance for enhanced diffusion-based text-to-image generation,” arXiv preprint arXiv:2211.07751, 2022. 7
+
+12
+[103] G. Kim and J. C. Ye, “Diffusionclip: Text-guided image manipulation using diffusion models,” 2021. 7, 8
+[104] P. Chandramouli and K. V. Gandikota, “Ldedit: Towards generalized text guided image manipulation via latent diffusion models,” arXiv preprint arXiv:2210.02249, 2022. 7, 8
+[105] M. Kwon, J. Jeong, and Y. Uh, “Diffusion models already have a semantic latent space,” arXiv preprint arXiv:2210.10960, 2022. 7, 8
+[106] A. Jabbar, X. Li, and B. Omar, “A survey on generative adversarial networks: Variants, applications, and training,” ACM Computing Surveys (CSUR), vol. 54, no. 8, pp. 1–49, 2021. 7
+[107] U. Singer, A. Polyak, T. Hayes, X. Yin, J. An, S. Zhang, Q. Hu, H. Yang, O. Ashual, O. Gafni et al., “Make-a-video: Text-to-video generation without text-video data,” arXiv preprint arXiv:2209.14792, 2022. 7
+[108] J. Ho, W. Chan, C. Saharia, J. Whang, R. Gao, A. Gritsenko, D. P. Kingma, B. Poole, M. Norouzi, D. J. Fleet et al., “Imagen video: High deﬁnition video generation with diffusion models,” arXiv preprint arXiv:2210.02303, 2022. 7
+[109] J. Ho, T. Salimans, A. Gritsenko, W. Chan, M. Norouzi, and D. J. Fleet, “Video diffusion models,” arXiv preprint arXiv:2204.03458, 2022. 7
+[110] T. Rahman, H.-Y. Lee, J. Ren, S. Tulyakov, S. Mahajan, and L. Sigal, “Make-a-story: Visual memory conditioned consistent story generation,” arXiv preprint arXiv:2211.13319, 2022. 7
+[111] X. Pan, P. Qin, Y. Li, H. Xue, and W. Chen, “Synthesizing coherent story with auto-regressive latent diffusion models,” arXiv preprint arXiv:2211.10950, 2022. 7, 8
+[112] T.-H. Huang, F. Ferraro, N. Mostafazadeh, I. Misra, A. Agrawal, J. Devlin, R. Girshick, X. He, P. Kohli, D. Batra et al., “Visual storytelling,” in Proceedings of the 2016 conference of the North American chapter of the association for computational linguistics: Human language technologies, 2016, pp. 1233–1239. 8
+[113] B. Poole, A. Jain, J. T. Barron, and B. Mildenhall, “Dreamfusion: Text-to-3d using 2d diffusion,” arXiv preprint arXiv:2209.14988, 2022. 8
+[114] A. Jain, B. Mildenhall, J. T. Barron, P. Abbeel, and B. Poole, “Zero-shot text-guided object generation with dream ﬁelds,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 867–876. 8
+[115] B. Mildenhall, P. P. Srinivasan, M. Tancik, J. T. Barron, R. Ramamoorthi, and R. Ng, “Nerf: Representing scenes as neural radiance ﬁelds for view synthesis,” Communications of the ACM, vol. 65, no. 1, pp. 99–106, 2021. 8
+[116] C.-H. Lin, J. Gao, L. Tang, T. Takikawa, X. Zeng, X. Huang, K. Kreis, S. Fidler, M.-Y. Liu, and T.-Y. Lin, “Magic3d: High-resolution text-to-3d content creation,” arXiv preprint arXiv:2211.10440, 2022. 8
+[117] G. Li, H. Zheng, C. Wang, C. Li, C. Zheng, and D. Tao, “3ddesigner: Towards photorealistic 3d object generation and editing with text-guided diffusion models,” arXiv preprint arXiv:2211.14108, 2022. 8, 9
+[118] R. Abdal, Y. Qin, and P. Wonka, “Image2stylegan++: How to edit the embedded images?” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2020, pp. 8296–8305. 8
+[119] Y. Alaluf, O. Patashnik, and D. Cohen-Or, “Restyle: A residualbased stylegan encoder via iterative reﬁnement,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2021, pp. 6711–6720. 8
+[120] D. Bau, H. Strobelt, W. Peebles, J. Wulff, B. Zhou, J.-Y. Zhu, and A. Torralba, “Semantic photo manipulation with a generative image prior,” arXiv preprint arXiv:2005.07727, 2020. 8
+[121] A. Brock, T. Lim, J. M. Ritchie, and N. Weston, “Neural photo editing with introspective adversarial networks,” arXiv preprint arXiv:1609.07093, 2016. 8
+[122] E. Richardson, Y. Alaluf, O. Patashnik, Y. Nitzan, Y. Azar, S. Shapiro, and D. Cohen-Or, “Encoding in style: a stylegan encoder for image-to-image translation,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2021, pp. 2287–2296. 8
+[123] O. Tov, Y. Alaluf, Y. Nitzan, O. Patashnik, and D. Cohen-Or, “Designing an encoder for stylegan image manipulation,” ACM Transactions on Graphics (TOG), vol. 40, no. 4, pp. 1–14, 2021. 8
+[124] R. Gal, O. Patashnik, H. Maron, A. H. Bermano, G. Chechik, and D. Cohen-Or, “Stylegan-nada: Clip-guided domain adaptation of image generators,” ACM Transactions on Graphics (TOG), vol. 41, no. 4, pp. 1–13, 2022. 8
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+[125] J. Song, C. Meng, and S. Ermon, “Denoising diffusion implicit models,” arXiv preprint arXiv:2010.02502, 2020. 8
+[126] A. Hertz, R. Mokady, J. Tenenbaum, K. Aberman, Y. Pritch, and D. Cohen-Or, “Prompt-to-prompt image editing with cross attention control,” arXiv preprint arXiv:2208.01626, 2022. 8
+[127] N. Tumanyan, M. Geyer, S. Bagon, and T. Dekel, “Plug-and-play diffusion features for text-driven image-to-image translation,” arXiv preprint arXiv:2211.12572, 2022. 8
+[128] C. H. Wu and F. De la Torre, “Unifying diffusion models’ latent space, with applications to cyclediffusion and guidance,” arXiv preprint arXiv:2210.05559, 2022. 8
+[129] A. Elarabawy, H. Kamath, and S. Denton, “Direct inversion: Optimization-free text-driven real image editing with diffusion models,” arXiv preprint arXiv:2211.07825, 2022. 8
+[130] B. Wallace, A. Gokul, and N. Naik, “Edict: Exact diffusion inversion via coupled transformations,” arXiv preprint arXiv:2211.12446, 2022. 8
+[131] R. Mokady, A. Hertz, K. Aberman, Y. Pritch, and D. CohenOr, “Null-text inversion for editing real images using guided diffusion models,” arXiv preprint arXiv:2211.09794, 2022. 8
+[132] O. Avrahami, D. Lischinski, and O. Fried, “Blended diffusion for text-driven editing of natural images,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 18 208–18 218. 8, 9
+[133] O. Avrahami, O. Fried, and D. Lischinski, “Blended latent diffusion,” arXiv preprint arXiv:2206.02779, 2022. 9
+[134] J. Ackermann and M. Li, “High-resolution image editing via multi-stage blended diffusion,” arXiv preprint arXiv:2210.12965, 2022. 9
+[135] G. Couairon, J. Verbeek, H. Schwenk, and M. Cord, “Diffedit: Diffusion-based semantic image editing with mask guidance,” arXiv preprint arXiv:2210.11427, 2022. 9
+[136] T. R. Shaham, T. Dekel, and T. Michaeli, “Singan: Learning a generative model from a single natural image,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2019, pp. 4570–4580. 9
+[137] V. Kulikov, S. Yadin, M. Kleiner, and T. Michaeli, “Sinddm: A single image denoising diffusion model,” arXiv preprint arXiv:2211.16582, 2022. 9
+[138] W. Wang, J. Bao, W. Zhou, D. Chen, D. Chen, L. Yuan, and H. Li, “Sindiffusion: Learning a diffusion model from a single natural image,” arXiv preprint arXiv:2211.12445, 2022. 9
+[139] D. Valevski, M. Kalman, Y. Matias, and Y. Leviathan, “Unitune: Text-driven image editing by ﬁne tuning an image generation model on a single image,” arXiv preprint arXiv:2210.09477, 2022. 9
+[140] C. Meng, Y. Song, J. Song, J. Wu, J.-Y. Zhu, and S. Ermon, “Sdedit: Image synthesis and editing with stochastic differential equations,” arXiv preprint arXiv:2108.01073, 2021. 9
+[141] G. Kim and S. Y. Chun, “Datid-3d: Diversity-preserved domain adaptation using text-to-image diffusion for 3d generative model,” arXiv preprint arXiv:2211.16374, 2022. 9
+[142] E. R. Chan, C. Z. Lin, M. A. Chan, K. Nagano, B. Pan, S. De Mello, O. Gallo, L. J. Guibas, J. Tremblay, S. Khamis et al., “Efﬁcient geometry-aware 3d generative adversarial networks,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 16 123–16 133. 9
+[143] B. Kawar, S. Zada, O. Lang, O. Tov, H. Chang, T. Dekel, I. Mosseri, and M. Irani, “Imagic: Text-based real image editing with diffusion models,” arXiv preprint arXiv:2210.09276, 2022. 9
+[144] B. Yang, S. Gu, B. Zhang, T. Zhang, X. Chen, X. Sun, D. Chen, and F. Wen, “Paint by example: Exemplar-based image editing with diffusion models,” arXiv preprint arXiv:2211.13227, 2022. 9
+[145] J. H. Liew, H. Yan, D. Zhou, and J. Feng, “Magicmix: Semantic mixing with diffusion models,” arXiv preprint arXiv:2210.16056, 2022. 9
+[146] T. Brooks, A. Holynski, and A. A. Efros, “Instructpix2pix: Learning to follow image editing instructions,” arXiv preprint arXiv:2211.09800, 2022. 9
+[147] T. Wang, T. Zhang, B. Zhang, H. Ouyang, D. Chen, Q. Chen, and F. Wen, “Pretraining is all you need for image-to-image translation,” arXiv preprint arXiv:2205.12952, 2022. 9
+[148] G. Parmar, R. Zhang, and J.-Y. Zhu, “On aliased resizing and surprising subtleties in gan evaluation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 11 410–11 420. 9
+
+13
+[149] M. Hu, C. Zheng, H. Zheng, T.-J. Cham, C. Wang, Z. Yang, D. Tao, and P. N. Suganthan, “Uniﬁed discrete diffusion for simultaneous vision-language generation,” arXiv preprint arXiv:2211.14842, 2022. 10
+[150] X. Xu, Z. Wang, E. Zhang, K. Wang, and H. Shi, “Versatile diffusion: Text, images and variations all in one diffusion model,” arXiv preprint arXiv:2211.08332, 2022. 10
+

@@ -1,0 +1,600 @@
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+DSSL: Deep Surroundings-person Separation Learning for
+
+Text-based Person Retrieval
+
+Aichun Zhu∗
+Nanjing Tech University
+Nanjing, China
+aichun.zhu@njtech.edu.cn
+
+Zijie Wang
+Nanjing Tech University
+Nanjing, China
+zijiewang9928@gmail.com
+
+Yifeng Li
+Nanjing Tech University
+Nanjing, China
+lyffz4637@163.com
+
+Xili Wan
+Nanjing Tech University
+Nanjing, China
+xiliwan@njtech.edu.cn
+
+Jing Jin
+Nanjing Tech University
+Nanjing, China
+janeking1015@163.com
+
+Tian Wang
+Beihang University
+Beijing, China
+wangtian@buaa.edu.cn
+
+Fangqiang Hu
+Nanjing Tech University Nanjing, China
+hufq@njtech.edu.cn
+ABSTRACT
+Many previous methods on text-based person retrieval tasks are devoted to learning a latent common space mapping, with the purpose of extracting modality-invariant features from both visual and textual modality. Nevertheless, due to the complexity of highdimensional data, the unconstrained mapping paradigms are not able to properly catch discriminative clues about the corresponding person while drop the misaligned information. Intuitively, the information contained in visual data can be divided into person information (PI) and surroundings information (SI), which are mutually exclusive from each other. To this end, we propose a novel Deep Surroundings-person Separation Learning (DSSL) model in this paper to effectively extract and match person information, and hence achieve a superior retrieval accuracy. A surroundings-person separation and fusion mechanism plays the key role to realize an accurate and effective surroundings-person separation under a mutually exclusion constraint. In order to adequately utilize multimodal and multi-granular information for a higher retrieval accuracy, five diverse alignment paradigms are adopted. Extensive experiments are carried out to evaluate the proposed DSSL on CUHKPEDES, which is currently the only accessible dataset for text-base person retrieval task. DSSL achieves the state-of-the-art performance on CUHK-PEDES. To properly evaluate our proposed DSSL in the real scenarios, a Real Scenarios Text-based Person Reidentification (RSTPReid) dataset is constructed to benefit future research on text-based person retrieval, which will be publicly available.
+∗Corresponding author.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than ACM must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org. MM ’21, October 20–24, 2021, Virtual Event, China. © 2021 Association for Computing Machinery. ACM ISBN 978-1-4503-8651-7/21/10…$15.00 https://doi.org/10.1145/3474085.3475369
+
+Gang Hua
+China University of Mining and Technology
+XuZhou, China ghua@cumt.edu.cn
+CCS CONCEPTS
+• Information systems → Image search; • Computing methodologies → Object identification.
+KEYWORDS
+person retrieval, text-based person re-identification, cross-modal retrieval, surroundings-person separation
+ACM Reference Format: Aichun Zhu, Zijie Wang, Yifeng Li, Xili Wan, Jing Jin, Tian Wang, Fangqiang Hu, and Gang Hua. 2021. DSSL: Deep Surroundings-person Separation Learning for Text-based Person Retrieval. In Proceedings of the 29th ACM Int’l Conference on Multimedia (MM ’21), Oct. 20–24, 2021, Virtual Event, China. ACM, New York, NY, USA, 9 pages. https://doi.org/10.1145/3474085.3475369
+1 INTRODUCTION
+Person retrieval is a basic task in the field of video surveillance, which aims to identify the corresponding pedestrian in a largescale person image database with a given query. Current researches of person retrieval chiefly focus on image-based person retrieval [7, 27, 29] (aka. person re-identification), which may sometimes suffer from lacking query images of the target pedestrian in practical application. Considering that in most of the real-world scenes, textual description queries are much more accessible, text-based person retrieval [8, 11, 12, 14, 17, 18, 25] has drawn remarkable attention for its effectiveness and applicability.
+As text-based person retrieval involves processing multi-modal data, it can be deemed as a specific subtask of cross-modal retrieval [9, 10, 15, 16, 21, 28]. Nevertheless, instead of containing various categories of objects in an image, each image cared by text-based person retrieval contains just one certain pedestrian. The textual description queries, meanwhile, offer much more details about the corresponding person rather than roughly mention the objects in an image. Owing to the particularity of text-based person retrieval, many previous methods proposed on general cross-modal retrieval benchmarks (e.g. Flickr30K [19] and MSCOCO [13]) generalize on
+
+209
+
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+Figure 1: Due to the complexity of high-dimensional data, roughly extracting the person information without proper constraints may miss key clues while fail to drop redundant inferences, which further leads to a mismatched case. Within our proposed Deep Surroundings-person Separation Learning (DSSL) model, the person information is properly separated with the surroundings information, which hence gives a superior retrieval performance.
+it poorly. In addition, CUHK-PEDES [12] is currently the only accessible dataset for text-base person retrieval. It is large in scale and contains images collected from various re-identification datasets under different scenes, view points and camera specifications. Nevertheless, images of each specific person are mostly caught by a same camera under similar conditions of time and space, which is not consistent with the real application scenarios. Therefore, we construct a Real Scenarios Text-based Person Reidentification (RSTPReid) dataset based on MSMT17 [26] to further train and evaluate the performance of our work, which also benefit future research. For each person, RSTPReid pools 5 images caught by 15 different cameras with complex both indoor and outdoor scene transformations and backgrounds in various periods of time, which makes RSTPReid much more challenging and more adaptable to real scenarios. Extensive experiments on RSTPReid and CUHK-PEDES can better validate the promising accuracy and efficiency of our work.
+The major challenge of text-based person retrieval is to effectively extract and match features from both raw images and textual descriptions. Many previous methods [8, 14, 17, 18, 25] are devoted to learning a latent common space mapping, with the purpose of extracting modality-invariant features from both the visual and textual modalities. These proposed approaches are mainly based on the assumption that through a latent common space mapping, the intersection of information carried by the two modalities, namely, information of the targeting person can be retained into extracted modality-invariant common features. Nevertheless, due to the complexity of high-dimensional data, the unconstrained mapping paradigms are not able to properly catch discriminative clues about the corresponding person while drop the misaligned information (shown in Fig. 1).
+Intuitively, information contained in visual data can be divided into person information (PI) and surroundings information (SI), which are mutually exclusive from each other. Meanwhile, the given textual description queries commonly describe the gender, appearance, clothing, carry-on items, possible movement, etc. of a certain pedestrian. In most of the real scenarios, the describer who
+
+offers a query nearly knows nothing about what kind of surroundings the target person is exactly in when captured by surveillance cameras, where the light conditions, viewpoints, etc. can be varied. Therefore, the given textual description basically contains only person information and there is no surroundings information included. On account of the structure of natural language sentences, noise signals (NS) like semantically irrelevant words and incorrect grammar are also inevitably included. Based on the above discussion, an efficient algorithm to accurately separate person and surroundings information in visual data and properly denoise features extracted from textual data is essential to enhance the retrieval performance.
+To this end, we propose a novel Deep Surroundings-person Separation Learning (DSSL) model in this paper to effectively extract and match person information, and hence achieve a superior retrieval accuracy. DSSL takes raw images and textual descriptions as input and first extracts global and fine-grained local information from both modalities. As shown in Fig. 2, DSSL aims to properly separate surroundings and person information. To achieve this goal, a novel Surroundings-Person Separation Module (SPSM) is proposed to split the visual information as person and surroundings features (denoted as 𝑉𝑃 and 𝑉𝑆 ) in a mutually exclusive manner. Then we adopt a Signal Denoising Module (SDM) to denoise and refine the extracted person feature (denoted as 𝑇𝑃 ) from the textual modality. As discussed above, ideally the person features 𝑉𝑃 and 𝑇𝑃 are purely about the target person without modalityspecific interference. Hence the alignment between them (𝐴𝑙𝑖𝑔𝑛𝐼 ) can be regarded as matching the pedestrian cut out of the gallery image with the pedestrian in mind of the describer. In addition, through a proposed Surroundings-Person Fusion Module (SPFM), 𝑇𝑃 is fused with 𝑉𝑆 and reconstructed into the visual modality as 𝑉𝑅. Then an alignment between 𝑉𝑅 and the visual feature before partitioned by SPSM (𝐴𝑙𝑖𝑔𝑛𝐼𝐼 ) is conducted, which can be viewed as placing the described person into the same surroundings as the gallery person and then matching it with the complete gallery image including the surroundings in the visual modality space. Besides, a Person Describing Module (PDM) is employed to reconstruct 𝑉𝑃 into textual modality as 𝑇𝑅, which is then aligned with the non-refined textual feature (𝐴𝑙𝑖𝑔𝑛𝐼𝐼𝐼 ). This proposed alignment can be regarded as describing the person in the gallery image with a text and then matching the text with the given query sentence in the textual modality space. Due to the mutually exclusion constraint in SPSM, 𝑉𝑃 and 𝑉𝑆 are orthogonal to each other, so the visual information is distributed between them without overlap. As shown in Fig. 2, during the training process, 𝐴𝑙𝑖𝑔𝑛𝐼 and 𝐴𝑙𝑖𝑔𝑛𝐼𝐼𝐼 will form a constraint which forces 𝑉𝑃 to contain more complete information about the person. Based on the mutually exclusion precondition, person information in 𝑉𝑆 will accordingly be taken away into 𝑉𝑃 . Meanwhile, 𝐴𝑙𝑖𝑔𝑛𝐼𝐼 is conducted by putting the described person into the surroundings of the gallery person, which requires the surroundings information to be properly included in 𝑉𝑆 while peeled off in 𝑉𝑃 . As a result, these three alignments work in complementary to guide the correct information exchange between 𝑉𝑃 and 𝑉𝑆 under a mutually exclusion constraint, and finally lead to an accurate and effective surroundings-person separation. To adequately exploit fine-grained clues, a cross-modal attention (CA) mechanism [18, 25] is utilized to further align a local feature
+
+210
+
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+Figure 2: Illustration of the complementary relationship among 𝐴𝑙𝑖𝑔𝑛𝐼 , 𝐴𝑙𝑖𝑔𝑛𝐼𝐼 and 𝐴𝑙𝑖𝑔𝑛𝐼𝐼𝐼 when training DSSL. During the training process, 𝐴𝑙𝑖𝑔𝑛𝐼 and 𝐴𝑙𝑖𝑔𝑛𝐼𝐼𝐼 will form a constraint which forces more complete information about the person to be contained in the person feature 𝑉𝑃 . Based on the mutually exclusion precondition, person information in the surroundings feature 𝑉𝑆 will accordingly be taken away into 𝑉𝑃 . Meanwhile, 𝐴𝑙𝑖𝑔𝑛𝐼𝐼 is conducted by putting the described person into the surroundings of the gallery person, which requires the surroundings information to be properly included in 𝑉𝑆 while peeled off in 𝑉𝑃 . As a result, these three alignments work in complementary to guide the correct information exchange under a mutually exclusion constraint, which finally leads to the change of extracted information from bad to good and an accurate and effective surroundings-person separation.
+
+matrix extracted from one modality with the global feature in the other (𝐴𝑙𝑖𝑔𝑛𝐼𝑉 and 𝐴𝑙𝑖𝑔𝑛𝑉 shown in Fig. 3).
+Our contributions can be summarized as five folds: (1) A novel Deep Surroundings-person Separation Learning (DSSL) model is proposed to properly extract and match person information. A proposed surroundings-person separation and fusion mechanism plays the key role to realize an accurate and effective surroundings-person separation under a mutually exclusion constraint. (2) Five diverse alignment paradigms are adopted to adequately utilize multi-modal and multi-granular information and hence improve the retrieval accuracy. (3) A Signal Denoising Module (SDM) is employed to denoise and refine the extracted person feature from the textual modality. (4) Extensive experiments are carried out to evaluate the proposed DSSL on CUHK-PEDES [12]. DSSL outperforms previous methods and achieves the state-of-the-art performance on CUHK-PEDES. (5) A Real Scenarios Text-based Person Reidentification (RSTPReid) dataset is constructed to benefit future research on text-based person retrieval, which will be publicly available.
+2 RELATED WORKS
+2.1 Person Re-identification
+Person re-identification has drawn increasing attention in both academical and industrial fields, and deep learning methods generally plays a major role in current state-of-the-art works. Yi et al. [29] firstly proposed deep learning methods to match people with the same identification. Hou et al. [7] proposed an Interactionand-Aggregation (IA) Block, which consists of Spatial Interactionand-Aggregation (SIA) and Channel Interaction-and-Aggregation (CIA) Modules to strengthen the representation capability of the deep neural network. Xia et al. [27] proposed the Second-order
+
+Non-local Attention (SONA) Module to learn local/non-local information in a more end-to-end way.
+2.2 Text-based Person Retrieval
+Text-based person retrieval aims to search for the corresponding pedestrian image according to a given text query. This task is first put forward by Li et al. [12] and they take an LSTM to handle the input image and text. An efficient patch-word matching model [3] is proposed to capture the local similarity between image and text. Jing et al. [8] utilize pose information as soft attention to localize the discriminative regions. Niu et al. [18] propose a Multigranularity Image-text Alignments (MIA) model exploit the combination of multiple granularities. Nikolaos et al. [17] propose a TextImage Modality Adversarial Matching approach (TIMAM) to learn modality-invariant feature representation by means of adversarial and cross-modal matching objectives. Besides that, in order to better extract word embeddings, they employ the pre-trained publiclyavailable language model BERT. An IMG-Net model is proposed by Wang et al. [25] to incorporate inner-modal self-attention and cross-modal hard-region attention with the fine-grained model for extracting the multi-granular semantic information. Liu et al. [14] generate fine-grained structured representations from images and texts of pedestrians with an A-GANet model to exploit semantic scene graphs. A new approach CMAAM is introduced by Aggarwal et al. [1] which learns an attribute-driven space along with a class-information driven space by introducing extra attribute annotation and prediction. Zheng et al. [30] propose a Gumbel attention module to alleviate the matching redundancy problem and a hierarchical adaptive matching model is employed to learn subtle feature representations from three different granularities. Recently, the NAFS proposed by Gao et al. [5] is designed to extract full-scale
+
+211
+
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+Figure 3: The overall framework of the proposed Deep Surroundings-person Separation Learning (DSSL) model. A surroundings-person separation and fusion mechanism plays the key role to realize an accurate and effective surroundingsperson separation under a mutually exclusion constraint. (a) Illustration of the proposed feature extraction procedure in DSSL. (b) Illustration of the five diverse alignment paradigms adopted to adequately utilize multi-modal and multi-granular information and hence improve the retrieval accuracy. 𝑉𝐺 /𝑇𝐺 , 𝑉𝑃 /𝑇𝑃 , 𝑉𝑅/𝑇𝑅 and 𝑉𝐿/𝑇𝐿 denote the extracted visual/textual global, person, reconstructed and local features, respectively.
+
+image and textual representations with a novel staircase CNN network and a local constrained BERT model. Besides, a multi-modal re-ranking algorithm by comparing the visual neighbors of the query to the gallery (RVN) is utilized to further improve the retrieval performance.
+3 METHODOLOGY
+In this section, we describe the proposed Deep Surroundings-person Separation Learning (DSSL) model in detail (shown in Fig. 3), which consists of a Surroundings-Person Separation Module (SPSM), a Surroundings-Person Fusion Module (SPFM), a Signal Denoising Module (SDM), a Person Describing Module (PDM) and a Salient Attention Module (SAM).
+3.1 Feature Extraction And Refinement
+3.1.1 Feature Extraction. We utilize a ResNet-50 [6] backbone pretrained on ImageNet to extract global/local visual features from a given image 𝐼 . To obtain the global feature 𝑉𝐺 ∈ R𝑝 , the feature map before the last pooling layer of ResNet-50 is down-scaled to a vector ∈ R1×1×2048 with an average pooling layer and then passed through a group normalization (GN) layer followed by a fully-connected (FC) layer. In the local branch, the same feature map is first horizontally 𝑘-partitioned by pooling it to 𝑘 × 1 × 2048, and then the local strips are separately passed through a GN and two FCs with a ReLU layer between them to form 𝑘 𝑝-dim vectors, which are finally concatenated to obtained the local visual feature matrix 𝑀𝑉 ∈ R𝑘×𝑝 .
+For textual feature extraction, we take a whole sentence and the 𝑛 phrases extracted from it as textual materials, which are handled by a bi-directional GRU (bi-GRU). The last hidden states of the forward and backward GRUs are concatenated to give global/local
+
+𝑝-dim feature vectors. The 𝑝-dim vector got from the whole sen-
+tence is passed through a GN followed by an FC to form the global textual feature 𝑇𝐺 ∈ R𝑝 . With each certain input phrase, the corresponding output 𝑝-dim vector is processed consecutively by a
+GN and two FCs with a ReLU layer between them and then con-
+catenated with each other to form the local textual feature matrix 𝑀𝑇 ∈ R𝑛×𝑝 .
+
+3.1.2 Textual Person Information Refinement. To further remove the noise signals in the textual data, so as to refine the extracted person information, the global feature vector 𝑇𝐺 and local feature vectors in 𝑀𝑇 are separately handled by a Signal Denoising Module (SDM). With a fixed zeroing ratio 𝑟 , a fixed number of elements in an input vector is set to zero [22]. And then the processed vector is reconstructed following an autoencoder manner to obtain the textual person feature vector 𝑇𝑃 and the local textual person feature matrix 𝑇𝐿:
+
+𝑦 = 𝐷𝑒𝑐 (𝐸𝑛𝑐 (𝑍 (𝑥, 𝑟 ))),
+
+(1)
+
+where 𝑍 (𝑥, 𝑟 ) denotes the zero setting operation with ratio 𝑟 , 𝑥 ∈ {𝑇𝐺 } ∪ 𝑀𝑇 and 𝑦 ∈ {𝑇𝑃 } ∪𝑇𝐿. With the zeroing and reconstruction mechanism, the input vectors are required to fully retain effective information while discarding redundant noise signals. The reconstruction loss of SDM is defined as:
+
+𝑘
+
+𝐿𝑆𝐷𝑀 = 𝐿𝑟𝑎𝑛𝑘 (𝑇𝐺 , 𝑇𝑃 ) + 𝐿𝑟𝑎𝑛𝑘 ((𝑀𝑇 )𝑖, (𝑇𝐿)𝑖 ),
+
+(2)
+
+𝑖 =1
+
+where (𝑀𝑇 )𝑖 and (𝑇𝐿)𝑖 denote the 𝑖-th vector in matrices 𝑀𝑇 and 𝑇𝐿. Rather than being superficially look-alike, the denoised vector ought to be properly matched with the original vector because of the special nature of a retrieval task. Therefore, instead of utilizing the traditional Euclidean Distance to guide the reconstruction, a
+
+212
+
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+triplet ranking loss is adopted:
+
+𝐿𝑟𝑎𝑛𝑘 (𝑥1, 𝑥2) = 𝑚𝑎𝑥 {𝛼 − 𝑆 (𝑥1, 𝑥2) + 𝑆 (𝑥1, 𝑥2), 0}
+𝑥2
++ 𝑚𝑎𝑥 {𝛼 − 𝑆 (𝑥1, 𝑥2) + 𝑆 (𝑥1, 𝑥2), 0}, (3)
+𝑥1
+to more accurately constrain the matched pairs to be closer than the mismatched pairs with a margin 𝛼, where (𝑥1, 𝑥2) or (𝑥1, 𝑥2) denotes a mismatched pair and 𝑆 (·, ·) is the cosine similarity between two vectors. Instead of using the furthest positive and closest negative sampled pairs, we adopt the sum of all pairs within each mini-batch when computing the loss following [4].
+
+3.2 Deep Surroundings-Person Separation Learning
+As shown in Fig. 3 (b), five alignment paradigms are adopted to adequately utilize multi-modal and multi-granular information for a robust Deep Surroundings-Person Separation Learning process, thereby improving the retrieval accuracy.
+
+3.2.1 Align I. To process the visual data, the person feature 𝑉𝑃 and surroundings feature 𝑉𝑆 are separated through a SurroundingsPerson Separation Module (SPSM), which is implemented as two paralleled multi-layer perceptrons (MLP) (with the feature dimension conversion as 𝑝 → 2𝑝 → 𝑝) followed by a 𝑡𝑎𝑛ℎ layer:
+
+𝑉𝑃 , 𝑉𝑆 = 𝑆𝑃𝑆𝑀 (𝑉𝐺 ).
+
+(4)
+
+The person features extracted from both modalities are first aligned. The alignment loss for 𝐴𝑙𝑖𝑔𝑛𝐼 is
+
+𝐿𝐴𝑙𝑖𝑔𝑛𝐼 = 𝐿𝑟𝑎𝑛𝑘 (𝑉𝑃 , 𝑇𝑃 ).
+
+(5)
+
+Besides, a Mutually Exclusion Constraint (MEC) is proposed
+
+to ensure that 𝑉𝑃 and 𝑉𝑆 are orthogonal to each other and the visual information is distributed between them without overlap. Let
+
+w𝑃 h=os{e𝑉r𝑃𝑖o}w𝑖𝐵=s1
+
+∈ are
+
+R𝐵×𝑝 and 𝑆 person and
+
+s=ur{r𝑉o𝑆u𝑖 }n𝑖𝐵d=i1ng∈s
+
+R𝐵×𝑝 denote matrices features in a training
+
+batch, respectively, where 𝐵 is the batch size, and then the mu-
+
+tually exclusion loss is
+
+𝐿𝑀𝐸𝐶 = ∥𝑃𝑇 𝑆 ∥.
+
+(6)
+
+3.2.2 Align II. With a proposed Surroundings-Person Fusion Module (SPFM), 𝑇𝑃 is fused with 𝑉𝑆 and reconstructed into the visual modality as 𝑉𝑅:
+
+𝑉𝑅 = 𝑆𝑃𝐹 𝑀 (𝑇𝑃 , 𝑉𝑆 ),
+
+(7)
+
+which is then aligned with 𝑉𝐺 and the alignment loss for 𝐴𝑙𝑖𝑔𝑛𝐼𝐼 is
+
+𝐿𝐴𝑙𝑖𝑔𝑛𝐼𝐼 = 𝐿𝑟𝑎𝑛𝑘 (𝑉𝐺 , 𝑉𝑅 ).
+
+(8)
+
+𝑆𝑃𝐹 𝑀 first combine the two input vectors by addition or concate-
+
+nation (compared in Section 4.2.1), and then the combined feature
+
+is processed by an MLP similar to 𝑆𝑃𝑆𝑀.
+
+3.2.3 Align III. A Person Describing Module (PDM), which is
+
+implemented as an MLP with a 𝑡𝑎𝑛ℎ activation function is em-
+
+ployed to reconstruct 𝑉𝑃 into the textual modality as 𝑇𝑅 and then aligned with 𝑇𝐺 :
+
+𝑇𝑅 = 𝑃𝐷𝑀 (𝑉𝑃 ).
+
+(9)
+
+The alignment loss for 𝐴𝑙𝑖𝑔𝑛𝐼𝐼𝐼 is
+
+𝐿𝐴𝑙𝑖𝑔𝑛𝐼𝐼𝐼 = 𝐿𝑟𝑎𝑛𝑘 (𝑇𝐺 , 𝑇𝑅 ).
+
+(10)
+
+3.2.4 Align IV. A Salient Attention Module (SAM) is first employed to highlight person information in the local visual feature matrix 𝑀𝑉 :
+
+(𝑉𝐿)𝑖 = 𝑆𝑖𝑔𝑚𝑜𝑖𝑑 (𝑊2 (𝐺𝑁 (𝑅𝑒𝐿𝑈 (𝑊1 (𝑉𝑃 ) +𝑏1))) +𝑏2) · (𝑀𝑉 )𝑖, (11)
+
+where 𝐺𝑁 denotes the group normalization layer while𝑊1,𝑊2 and 𝑏1, 𝑏2 denote the linear transformation. To adequately exploit finegrained clues, a cross-modal attention (CA) mechanism [18, 25] is utilized to align 𝑉𝐿 with the textual person feature 𝑇𝑃 and form a 𝑝-dim vector:
+
+𝐶𝐴(𝑉𝐿,𝑇𝑃 ) =
+
+𝛼𝑉𝑖 (𝑉𝐿)𝑖, 𝛼𝑉𝑖 =
+
+𝛼𝑉𝑖
+
+>
+
+1 𝑘
+
+𝑒𝑥
+𝑘 𝑗 =1
+
+𝑝 (𝑐𝑜𝑠 ((𝑉𝐿)𝑖,𝑇𝑃 )) 𝑒𝑥𝑝 (𝑐𝑜𝑠 ((𝑉𝐿)𝑗 ,𝑇𝑃
+
+)
+
+)
+
+,
+
+(12)
+
+wanhderteex𝛼t𝑉𝑖uarlepperressoenntfsetahtuerree.laAtniodntbheetawliegennmtheent𝑖-ltohsslofcoarl𝐴v𝑙i𝑖s𝑔u𝑛a𝐼l𝑉pairst
+
+𝐿𝐴𝑙𝑖𝑔𝑛𝐼𝑉 = 𝐿𝑟𝑎𝑛𝑘 (𝐶𝐴(𝑇𝑃 , 𝑉𝐿), 𝑇𝑃 ).
+
+(13)
+
+3.2.5 Align V. Similar with 𝐴𝑙𝑖𝑔𝑛𝐼𝑉 , the alignment loss for 𝐴𝑙𝑖𝑔𝑛𝑉
+
+is
+
+𝐿𝐴𝑙𝑖𝑔𝑛𝑉 = 𝐿𝑟𝑎𝑛𝑘 (𝐶𝐴(𝑉𝑃 , 𝑇𝐿), 𝑉𝑃 ),
+
+(14)
+
+𝐶𝐴(𝑇𝐿, 𝑉𝑃 ) =
+
+𝛼𝑇𝑖 (𝑇𝐿)𝑖, 𝛼𝑇𝑖 =
+
+𝛼𝑇𝑖
+
+>
+
+1 𝑛
+
+𝑒𝑥
+𝑛 𝑗 =1
+
+𝑝 (𝑐𝑜𝑠 ((𝑇𝐿)𝑖, 𝑉𝑃 )) 𝑒𝑥𝑝 (𝑐𝑜𝑠 ((𝑇𝐿)𝑗 , 𝑉𝑃
+
+))
+
+.
+
+(15)
+
+3.3 Loss Function for Training
+The complete training process includes 2 stages.
+
+3.3.1 Stage-1. We first fix the parameters of the ResNet-50 backbone and train the left feature extraction part of DSSL with the identification (ID) loss
+
+𝐿𝑖𝑑 (𝑋 ) = −𝑙𝑜𝑔(𝑠𝑜 𝑓 𝑡𝑚𝑎𝑥 (𝑊𝑖𝑑 × 𝐺𝑁 (𝑋 ))
+
+(16)
+
+to cluster person images into groups according to their identification, where 𝑊𝑖𝑑 ∈ R𝑄×𝑝 is a shared transformation matrix implemented as a FC layer without bias and 𝑄 is the number of different
+people in the training set. As global features can provide more com-
+plete information for clustering, only 𝑉𝐺 and 𝑇𝐺 are utilized here:
+
+𝐿𝐼𝐷1 = 𝐿𝑖𝑑 (𝑉𝐺 ) + 𝐿𝑖𝑑 (𝑇𝐺 ).
+
+(17)
+
+And the entire loss in Stage-1 is
+
+𝐿𝑆𝑡𝑎𝑔𝑒1 = 𝐿𝐼𝐷1.
+
+(18)
+
+3.3.2 Stage-2. In this stage, all the parameters of DSSL are finetuned together. Here the ID loss is also employed to ensure that the person features and reconstructed features can be correctly related to the corresponding person:
+
+𝐿𝐼𝐷2 = 𝐿𝐼𝐷1 + 𝐿𝑖𝑑 (𝑉𝑃 ) + 𝐿𝑖𝑑 (𝑇𝑃 ) + 𝐿𝑖𝑑 (𝑉𝑅) + 𝐿𝑖𝑑 (𝑇𝑅). (19) The five alignment losses are utilized to improve retrieval accuracy:
+
+𝐿𝐴𝑙𝑖𝑔𝑛𝑚𝑒𝑛𝑡 = 𝐿𝐴𝑙𝑖𝑔𝑛𝐼 +𝐿𝐴𝑙𝑖𝑔𝑛𝐼𝐼 +𝐿𝐴𝑙𝑖𝑔𝑛𝐼𝐼𝐼 +𝐿𝐴𝑙𝑖𝑔𝑛𝐼𝑉 +𝐿𝐴𝑙𝑖𝑔𝑛𝑉 . (20)
+
+Along with the mutually exclusion loss, the entire loss in Stage-2
+
+is
+
+𝐿𝑆𝑡𝑎𝑔𝑒2 = 𝐿𝐼 𝐷2 + 𝐿𝐴𝑙𝑖𝑔𝑛𝑚𝑒𝑛𝑡 + 𝐿𝑀𝐸𝐶 .
+
+(21)
+
+213
+
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+4 EXPERIMENTS
+4.1 Experimental setup
+4.1.1 Dataset and metrics. Our approach is evaluated on two challenging datasets: CUHK-PEDES [12] and our proposed Real Scenario Text-based Person Re-identification (RSTPReid) dataset.
+
+CUHK-PEDES. Previously, CUHK-PEDES [12] is the only available dataset for text-based person retrieval task. Following the official data split approach, the training set contains 34054 images, 11003 persons and 68126 textual descriptions. The validation set contains 3078 images, 1000 persons and 6158 textual descriptions while the testing set has 3074 images, 1000 persons and 6156 descriptions. Every image generally has two descriptions, and each sentence is commonly no shorter than 23 words. After dropping words that appear less than twice, the word number is 4984.
+
+RSTPReid. To properly handle real scenarios, we construct a new dataset called Real Scenario Text-based Person Re-identification (RSTPReid) based on MSMT17 [26]. RSTPReid contains 20505 images of 4,101 persons from 15 cameras. Each person has 5 corresponding images taken by different cameras and each image is annotated with 2 textual descriptions. For data division, 3701, 200 and 200 identities are utilized for training, validation and testing, respectively. Each sentence is no shorter than 23 words. After dropping words that appear less than twice, the word number is 2204. High-frequency words and examples of person images in RSTPReid are shown in Fig. 4.
+The performance is evaluated by the top-𝑘 accuracy. Given a query description, all test images are ranked by their similarities with this sentence. If any image of the corresponding person is contained in the top-𝑘 images, we call this a successful search. The top-1, top-5, and top-10 accuracy for all experiments are reported.
+
+4.1.2 Implementation details. The feature dimension 𝑝 is set to
+
+1024 and the number of local strips 𝑘 is set to 6. The total num-
+
+ber of phrases 𝑛 obtained from each sentence is kept flexible with
+
+an upper bound 26, which are obtained with the Natural Language
+
+ToolKit (NLTK) by syntactic analysis, word segmentation and part-
+
+of-speech tagging. We adopt an Adam optimizer to train DSSL with
+
+a batch size of 32. The margin 𝛼 of ranking losses is set to 0.2. In
+
+training stage-1, DSSL is trained with a learning rate of 1 × 10−3
+
+for 10 epochs with the ResNet-50 backbone fixed. In stage-2, the
+
+learning rate is initialized as 2 × 10−4 to optimize all parameters in-
+
+cluding the visual backbone for extra 30 epochs. The learning rate
+
+sisetdtoow0n.5-s.cIanletedsbtiyng110anedverreyal1a0pepploiccahtsio. n𝜆,1
+
+and 𝜆2 in 𝑆𝑖𝑚𝑇 𝐼 are both a cross-modal re-ranking
+
+scheme (RR) based on [24] is employed to further improve the re-
+
+trieval accuracy in testing and real application.
+
+4.2 Ablation Analysis
+To further investigate the effectiveness and contribution of each proposed component in DSSL, we perform a series of ablation studies on the CUHK-PEDES dataset. The top-1, top-5 and top-10 accuracies (%) are reported and the best result in each table is presented in bold. As shown in Table 1, comparing with a baseline which is proposed following IMG-Net [25] without the Inner-Modal SelfAttention Module, DSSL achieves superior performance on both
+
+Figure 4: High-frequency words and person images in our constructed RSTPReid dataset.
+CUHK-PEDES [12] and our proposed RSTPReid with the aid of proper surroundings-person separation. Additionally, images of each person in RSTPReid are caught by different ones out of 15 independent cameras in both indoor and outdoor scenarios in various periods of time and thereby differ in illumination condition, weather, view angle, body position, etc., which makes RSTPReid obviously a much more challenging benchmark, on which the retrieval performance stumbles, hence leaving much space for further research.
+4.2.1 Surroundings-person separation and fusion mechanism. As shown in Table 2, the retrieval result in the first row is given by a model without the surroundings-person separation and fusion mechanism (𝑆𝑃𝑆𝑀 + 𝑆𝑃𝐹 𝑀) along with the mutually exclusion constraint (𝑀𝐸𝐶). It directly mapping multi-modal data into a latent common space as many of the existing methods do. The top-1, top-5 and top-10 performances drop sharply by 4.46%, 2.79% and 2.37%, respectively, which demonstrates that our proposed method is more able to properly catch discriminative clues about the corresponding person while drop the misaligned information from complex high-dimensional multi-modal data than unconstrained mapping paradigms. By merely utilizing a 𝑆𝑃𝑆𝑀 + 𝑆𝑃𝐹 𝑀 mechanism, without a mutually exclusion constraint, the top-1, top-5 and top-10 performances improve by 1.79%, 1.71% and 1.67%, respectively, which further proves the validity of 𝑆𝑃𝑆𝑀 +𝑆𝑃𝐹 𝑀. However, the performance is still 2.67%, 1.08% and 0.70% respectively worse than the complete DSSL. This suggests that without the mutually exclusion constraint to ensure the orthogonality between person and surroundings features, information is not able to be well distributed between them. In Table 3, the addition and concatenation methods for combing the two input vectors before handled by the MLP in SPFM are compared. It turns out that the two methods give similar results, with the addition method slightly better.
+Some examples of the top-5 text-based person retrieval results by DSSL are shown in Fig. 5. Images of the target pedestrian are marked by red rectangles. As can be seen in the figure, many of the pedestrians in mismatched person images also look quite similar to the target one, which is consistent with the distribution pattern of features discussed above. It seems necessary to find ways
+
+214
+
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+Table 1: Ablation analysis of the five alignment paradigms in DSSL on CUHK-PEDES and RSTPReid.
+
+-
+Baseline
+✓
+× × × × × × × × × ×
+×
+
+-
+𝐴𝑙𝑖𝑔𝑛𝐼
+×
+✓ × × × × ✓ ✓ × ✓ ✓
+✓
+
+-
+𝐴𝑙 𝑖𝑔𝑛𝐼 𝐼
+×
+× ✓ × × × ✓ × ✓ ✓ ×
+✓
+
+-
+𝐴𝑙 𝑖𝑔𝑛𝐼 𝐼 𝐼
+×
+× × ✓ × × × ✓ ✓ ✓ ×
+✓
+
+-
+𝐴𝑙𝑖𝑔𝑛𝐼𝑉
+×
+× × × ✓ × × × × × ✓
+✓
+
+-
+𝐴𝑙𝑖𝑔𝑛𝑉
+×
+× × × × ✓ × × × × ✓
+✓
+
+Top-1
+52.42
+56.18 55.01 54.56 54.65 51.01 57.31 56.73 57.08 58.86 58.19
+59.98
+
+CUHK-PEDES
+Top-5
+76.06
+79.56 77.68 78.49 78.30 75.47 79.56 79.21 79.11 79.70 79.41
+80.41
+
+Top-10
+84.94
+86.45 85.25 85.64 85.51 83.01 86.42 86.65 86.06 86.95 86.52
+87.56
+
+Top-1
+26.31
+28.74 26.83 27.01 26.73 25.73 29.23 28.87 29.51 31.00 30.81
+32.43
+
+RSTPReid
+Top-5
+46.90
+50.88 49.55 50.02 50.71 48.99 51.55 51.81 51.89 53.83 53.67
+55.08
+
+Top-10
+58.33
+61.69 59.91 60.67 60.25 59.82 61.77 62.43 62.22 62.63 62.71
+63.19
+
+Table 2: Ablation analysis of the mutually exclusion constraint (MEC), surroundings-person separation and fusion (SPSM + SPFM), salient attention module (SAM) and signal denoising module (SDM) on CUHK-PEDES.
+
+𝑀𝐸𝐶
+× ×
+✓
+✓ ✓
+
+𝑆𝑃𝑆𝑀 + 𝑆𝑃𝐹𝑀
+× ✓
+✓
+✓ ✓
+
+𝑆𝐴𝑀
+✓ ✓
+✓
+× ✓
+
+𝑆𝐷𝑀
+✓ ✓
+✓
+✓ ×
+
+Top-1
+55.52 57.31
+59.98
+57.95 57.46
+
+Top-5
+77.62 79.33
+80.41
+79.89 79.67
+
+Top-10
+85.19 86.86
+87.56
+87.20 87.19
+
+Table 5: Performance comparison of Euclidean distance and ranking loss utilized in SDM on CUHK-PEDES.
+
+Method
+Euclidean Distance Ranking Loss
+
+Top-1
+58.93 59.98
+
+Top-5
+80.32 80.41
+
+Top-10
+87.47 87.56
+
+Table 3: Performance comparison of the feature combination method utilized in SPFM on CUHK-PEDES.
+
+Method
+Addition Concatenation
+
+Top-1
+59.98 59.54
+
+Top-5
+80.41 80.45
+
+Top-10
+87.56 87.17
+
+Table 4: Performance comparison of zeroing rate 𝑟 in SDM on CUHK-PEDES.
+
+𝑟 Top-1 Top-5 Top-10
+
+0 57.84 79.97 0.25 58.61 81.05 0.5 59.98 80.41 0.75 58.48 80.18 0.9 54.35 77.71
+
+87.47 87.28 87.56 87.29 86.09
+
+to dig deeper into the semantic information and draw similar clusters closer without mixing with each other, which remains for our future work.
+
+Figure 5: Examples of top-5 text-based person retrieval results by DSSL. Images of the target pedestrian are marked by red rectangles.
+4.2.2 Alignment paradigms. To adequately utilize multi-modal and multi-granular information for a higher retrieval accuracy, five different alignment paradigms are adopted. Extensive ablation experiments are conducted on both CUHK-PEDES and RSTPReid to prove the effectiveness of them and the results are reported in Table 1. The results show that utilizing more than one single alignment brings performance gain, which indicates that the use of multimodal and multi-granular features in DSSL can provide more comprehensive information, hence leading to a more accurate retrieval. By combining 𝐴𝑙𝑖𝑔𝑛𝐼𝐼 and 𝐴𝑙𝑖𝑔𝑛𝐼𝐼𝐼 with 𝐴𝑙𝑖𝑔𝑛𝐼 , SPSM can more completely separate person and surroundings information with the aid of SPFM and PDM. Besides, comparing the third row from the bottom with the last row in Table 1, the top-1, top-5 and top-10 performance increase by 1.12%, 0.71%, 0.61% and 1.43, 1.25, 0.56
+
+215
+
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+Table 6: Comparison with other state-of-the-art methods on CUHK-PEDES.
+
+Method
+CNN-RNN [20] Neural Talk [23] GNA-RNN [12] IATV [11] PWM-ATH [3] Dual Path [31] GLA [2] MIA [18] A-GANet [14] GALM [8] TIMAM [17] IMG-Net [25] CMAAM [1] HGAN [30] NAFS [5] DSSL (ours)
+NAFS + RVN [5] DSSL + RR (ours)
+
+Top-1
+8.07 13.66 19.05 25.94 27.14 44.40 43.58 53.10 53.14 54.12 54.51 56.48 56.68 59.00 59.94 59.98
+61.50 62.33
+
+Top-5
+49.45 66.26 66.93 75.00 74.03 75.45 77.56 76.89 77.18 79.49 79.86 80.41
+81.19 82.11
+
+Top-10
+32.47 41.72 53.64 60.48 61.02 75.07 76.26 82.90 81.95 82.97 84.78 85.01 84.86 86.6 86.70 87.56
+87.51 88.01
+
+respectively on CUHK-PEDES and RSTPReid after the two finegrained alignments 𝐴𝑙𝑖𝑔𝑛𝐼𝑉 and 𝐴𝑙𝑖𝑔𝑛𝑉 are added, which reals the effect of utilizing multi-granular clues.
+4.2.3 Signal denoising module (SDM). Comprehensive experimental analysis is as well carried out to study the proposed signal denoising module (SDM). As shown in Table 4, ablation experiments are conducted to search for the optimal zeroing rate 𝑟 . It can be observed that initially the performance of DSSL follows a increasing tendency with the growth of 𝑟 . After reaching a peak, the performance begins to turn worse as 𝑟 continues to go larger. It is conceivable that by randomly dropping a certain number of elements in the input vector at random and then reconstructing it following a autoencoder manner, which is required to be well matched with the original feature under a ranking loss, redundant noise signals are inclined to be removed. Note that when 𝑟 is set to 0, there is no zero setting process before the input vector is reconstructed. With the growth of 𝑟 , SDM gradually finds an optimal zeroing rate that the noise signal are just properly dropped while person information is well retained, which gives a summit in performance. After bypassing the summit, an excess of amount of information will be discarded, and hence the retrieval performance will undoubtedly go down. As can be seen in Table 4, when 𝑟 reaches 0.9, the accuracies of top-1, top-5 and top-10 all fall sharply.
+Besides, we compare the performance of utilizing Euclidean distance and ranking loss in SDM (shown in Table 5). The top-1 accuracy of DSSL with ranking loss in SDM is 1.05% higher than the one with Euclidean distance, which indicates that rather than the commonly used Euclidean distance for reconstruction, ranking loss is better at dealing with the particularity of retrieval problems. We also train and evaluate DSSL without the whole SDM (shown in Table 2). The top-1, top-5 and top-10 performance drop by 2.52%,
+
+0.74% and 0.37% respectively, which reveals the effect of SDM as well.
+4.2.4 Salient attention module (SAM). As shown in Table 2, the top-1 accuracy drops by 2.03% without the salient attention module (SAM) which utilize the extracted person information to highlight and catch body part information in the visual local features. The results indicate the effectiveness of SAM.
+4.3 Comparison With Other State-of-the-art Methods
+Table 6 shows the comparison of DSSL against 15 previous state-ofthe-art methods including CNN-RNN [20], Neural Talk [23], GNARNN [12], IATV [11], PWM-ATH [3], Dual Path [31], GLA [2], MIA [18], A-GANet [14], GALM [8], TIMAM [17], IMG-Net [25], CMAAM [1], HGAN [30] and NAFS [5] in terms of top-1, top-5 and top-10 accuracies in the text-based person retrieval task. Our proposed DSSL achieves 59.98%, 80.41% and 87.56% of top-1, top-5 and top-10 accuracies, respectively. It can be observed that DSSL outperforms existing methods, which proves the effectiveness of our proposed method. Both with a cross-modal re-ranking method, DSSL outperforms NAFS as well. With person and surroundings information separated properly, DSSL surpasses methods which directly map data into a common space. Moreover, compared to methods building similarities based on attention mechanism, DSSL achieves a significant performance improvement, which indicates that our proposed surroundings-person separation mechanism is more able to properly capture detailed person information.
+5 CONCLUSION
+In this paper, we propose a novel Deep Surroundings-person Separation Learning (DSSL) model to effectively extract and match person information, and hence achieve a superior retrieval accuracy. A surroundings-person separation and fusion mechanism plays the key role to realize an accurate and effective surroundings-person separation under a mutually exclusion constraint. In order to adequately utilize multi-modal and multi-granular information for a higher retrieval accuracy, Five diverse alignment paradigms are adopted. Extensive experiments are carried out to evaluate the proposed DSSL on CUHK-PEDES, which is currently the only accessible dataset for text-base person retrieval task. DSSL outperforms previous methods and achieves the state-of-the-art performance on CUHK-PEDES. To properly evaluate the proposed method in the real scenarios, a Real Scenarios Text-based Person Reidentification (RSTPReid) dataset is further constructed to benefit future research on text-based person retrieval.
+ACKNOWLEDGMENTS
+This work is partially supported by the National Natural Science Foundation of China (Grant No. 61972016 and 61802176), China Postdoctoral Science Foundation (Grant No.2019M661999) and Natural Science Foundation of Jiangsu Higher Education Institutions of China (19KJB520009).
+
+216
+
+Session 4: Deep Learning for Multimedia-III
+
+MM ’21, October 20–24, 2021, Virtual Event, China
+
+REFERENCES
+[1] Surbhi Aggarwal, Venkatesh Babu Radhakrishnan, and Anirban Chakraborty. 2020. Text-based person search via attribute-aided matching. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision. 2617–2625.
+[2] Dapeng Chen, Hongsheng Li, Xihui Liu, Yantao Shen, Jing Shao, Zejian Yuan, and Xiaogang Wang. 2018. Improving deep visual representation for person reidentification by global and local image-language association. In Proceedings of the European Conference on Computer Vision (ECCV). 54–70.
+[3] T. Chen, C. Xu, and J. Luo. 2018. Improving Text-Based Person Search by Spatial Matching and Adaptive Threshold. In 2018 IEEE Winter Conference on Applications of Computer Vision (WACV). 1879–1887.
+[4] Fartash Faghri, David J Fleet, Jamie Ryan Kiros, and Sanja Fidler. 2017. Vse++: Improving visual-semantic embeddings with hard negatives. arXiv preprint arXiv:1707.05612 (2017).
+[5] Chenyang Gao, Guanyu Cai, Xinyang Jiang, Feng Zheng, Jun Zhang, Yifei Gong, Pai Peng, Xiaowei Guo, and Xing Sun. 2021. Contextual Non-Local Alignment over Full-Scale Representation for Text-Based Person Search. arXiv preprint arXiv:2101.03036 (2021).
+[6] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer vision and pattern recognition. 770–778.
+[7] Ruibing Hou, Bingpeng Ma, Hong Chang, Xinqian Gu, Shiguang Shan, and Xilin Chen. 2019. Interaction-and-aggregation network for person re-identification. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 9317–9326.
+[8] Ya Jing, Chenyang Si, Junbo Wang, Wei Wang, Liang Wang, and Tieniu Tan. 2018. Pose-Guided Multi-Granularity Attention Network for Text-Based Person Search. arXiv preprint arXiv:1809.08440 (2018).
+[9] Andrej Karpathy and Li Fei-Fei. 2015. Deep visual-semantic alignments for generating image descriptions. In Proceedings of the IEEE conference on computer vision and pattern recognition. 3128–3137.
+[10] Kuang-Huei Lee, Xi Chen, Gang Hua, Houdong Hu, and Xiaodong He. 2018. Stacked cross attention for image-text matching. In Proceedings of the European Conference on Computer Vision (ECCV). 201–216.
+[11] Shuang Li, Tong Xiao, Hongsheng Li, Wei Yang, and Xiaogang Wang. 2017. Identity-aware textual-visual matching with latent co-attention. In Proceedings of the IEEE International Conference on Computer Vision. 1890–1899.
+[12] Shuang Li, Tong Xiao, Hongsheng Li, Bolei Zhou, Dayu Yue, and Xiaogang Wang. 2017. Person search with natural language description. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 1970–1979.
+[13] Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr Dollár, and C Lawrence Zitnick. 2014. Microsoft coco: Common objects in context. In European conference on computer vision. Springer, 740–755.
+[14] Jiawei Liu, Zheng-Jun Zha, Richang Hong, Meng Wang, and Yongdong Zhang. 2019. Deep adversarial graph attention convolution network for text-based person search. In Proceedings of the 27th ACM International Conference on Multimedia. 665–673.
+[15] Yu Liu, Yanming Guo, Erwin M Bakker, and Michael S Lew. 2017. Learning a recurrent residual fusion network for multimodal matching. In Proceedings of the IEEE International Conference on Computer Vision. 4107–4116.
+
+[16] Hyeonseob Nam, Jung-Woo Ha, and Jeonghee Kim. 2017. Dual attention networks for multimodal reasoning and matching. In Proceedings of the IEEE conference on computer vision and pattern recognition. 299–307.
+[17] Ioannis A. Kakadiaris Nikolaos Sarafianos, Xiang Xu. 2019. Adversarial Representation Learning for Text-to-Image Matching, In ICCV. ICCV, 5813–5823.
+[18] Kai Niu, Yan Huang, Wanli Ouyang, and Liang Wang. 2020. Improving description-based person re-identification by multi-granularity image-text alignments. IEEE Transactions on Image Processing 29 (2020), 5542–5556.
+[19] Bryan A Plummer, Liwei Wang, Chris M Cervantes, Juan C Caicedo, Julia Hockenmaier, and Svetlana Lazebnik. 2015. Flickr30k entities: Collecting region-tophrase correspondences for richer image-to-sentence models. In Proceedings of the IEEE international conference on computer vision. 2641–2649.
+[20] Scott Reed, Zeynep Akata, Honglak Lee, and Bernt Schiele. 2016. Learning deep representations of fine-grained visual descriptions. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 49–58.
+[21] Changchang Sun, Xuemeng Song, Fuli Feng, Wayne Xin Zhao, Hao Zhang, and Liqiang Nie. 2019. Supervised hierarchical cross-modal hashing. In Proceedings of the 42nd International ACM SIGIR Conference on Research and Development in Information Retrieval. 725–734.
+[22] Pascal Vincent, Hugo Larochelle, Yoshua Bengio, and Pierre-Antoine Manzagol. 2008. Extracting and composing robust features with denoising autoencoders. In Proceedings of the 25th international conference on Machine learning. 1096–1103.
+[23] Oriol Vinyals, Alexander Toshev, Samy Bengio, and Dumitru Erhan. 2015. Show and tell: A neural image caption generator. In Proceedings of the IEEE conference on computer vision and pattern recognition. 3156–3164.
+[24] Tan Wang, Xing Xu, Yang Yang, Alan Hanjalic, Heng Tao Shen, and Jingkuan Song. 2019. Matching images and text with multi-modal tensor fusion and reranking. In Proceedings of the 27th ACM international conference on multimedia. 12–20.
+[25] Zijie Wang, Aichun Zhu, Zhe Zheng, Jing Jin, Zhouxin Xue, and Gang Hua. 2020. IMG-Net: inner-cross-modal attentional multigranular network for descriptionbased person re-identification. Journal of Electronic Imaging 29, 4 (2020), 043028.
+[26] Longhui Wei, Shiliang Zhang, Wen Gao, and Qi Tian. 2018. Person transfer gan to bridge domain gap for person re-identification. In Proceedings of the IEEE conference on computer vision and pattern recognition. 79–88.
+[27] Bryan Ning Xia, Yuan Gong, Yizhe Zhang, and Christian Poellabauer. 2019. Second-order non-local attention networks for person re-identification. In Proceedings of the IEEE International Conference on Computer Vision. 3760–3769.
+[28] Fei Yan and Krystian Mikolajczyk. 2015. Deep correlation for matching images and text. In Proceedings of the IEEE conference on computer vision and pattern recognition. 3441–3450.
+[29] Dong Yi, Zhen Lei, Shengcai Liao, and Stan Z Li. 2014. Deep metric learning for person re-identification. In 2014 22nd International Conference on Pattern Recognition. IEEE, 34–39.
+[30] Kecheng Zheng, Wu Liu, Jiawei Liu, Zheng-Jun Zha, and Tao Mei. 2020. Hierarchical Gumbel Attention Network for Text-based Person Search. In Proceedings of the 28th ACM International Conference on Multimedia. 3441–3449.
+[31] Zhedong Zheng, Liang Zheng, Michael Garrett, Yi Yang, Mingliang Xu, and YiDong Shen. 2020. Dual-Path Convolutional Image-Text Embeddings with Instance Loss. ACM Transactions on Multimedia Computing, Communications, and Applications (TOMM) 16, 2 (2020), 1–23.
+
+217
+

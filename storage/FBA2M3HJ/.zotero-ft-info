@@ -1,0 +1,16 @@
+Title:          The Skills of Medium-Range Precipitation Forecasts in the Senegal River Basin
+Subject:        Reliable information on medium-range (1­15 day) precipitation forecasts is useful in reservoir operation, among many other applications. Such forecasts are increasingly becoming available from global models. The skills of medium-range precipitation forecasts derived from Global Forecast System (GFS) are assessed in the Senegal River Basin, focusing on the watershed its major hydropower dams: Manantali (located in relatively wet, Southern Sudan climate and mountainous region), Foum Gleita (relatively dry, Sahel climate and low-elevation), and Diama (a large watershed covering almost the entire basin, dominated by Sahel climate). IMERG Final, a satellite product involving rain gauge data for bias correction, is used as reference. GFS has the ability capture the overall spatial and monthly pattern of rainfall in the region. However, GFS tends to overestimate rainfall in the wet parts of the region, and slightly underestimate in the dry part. The skill of daily GFS forecast is low over Manantali (Kling-Gupta Efficiency, KGE of 0.29), but slightly higher over Foum Gleita (KGE of 0.53) and Diama (KGE of 0.59). For 15-day accumulation, GFS forecast shows higher skill over Manantali (KGE of 0.60) and Diama (KGE of 0.79) but does not change much over Foul Gleita (KGE of 0.51) compared to daily rainfall forecasts. IMERG Early, a satellite-only product available at near-real time, has better performance than GFS. This study suggests the need for further improving the accuracy of GFS forecasts, and identifies IMERG Early as a potential source of data that can help in this effort.
+Keywords:       medium-range precipitation forecasts; Senegal; global forecasting system
+Author:         Mekonnen Gebremichael, Haowen Yue, Vahid Nourani and Richard Damoah
+Creator:        LaTeX with hyperref
+Producer:       pdfTeX-1.40.21
+CreationDate:   03/14/22 14:36:55
+ModDate:        03/14/22 08:27:15
+Tagged:         no
+Form:           none
+Pages:          14
+Encrypted:      no
+Page size:      595.276 x 841.89 pts (A4) (rotated 0 degrees)
+File size:      2977167 bytes
+Optimized:      no
+PDF version:    1.7

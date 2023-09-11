@@ -1,0 +1,80 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2212.12794
+
+Help | Advanced Search
+Search
+Computer Science > Machine Learning
+(cs)
+[Submitted on 24 Dec 2022]
+Title: GraphCast: Learning skillful medium-range global weather forecasting
+Authors: Remi Lam , Alvaro Sanchez-Gonzalez , Matthew Willson , Peter Wirnsberger , Meire Fortunato , Alexander Pritzel , Suman Ravuri , Timo Ewalds , Ferran Alet , Zach Eaton-Rosen , Weihua Hu , Alexander Merose , Stephan Hoyer , George Holland , Jacklynn Stott , Oriol Vinyals , Shakir Mohamed , Peter Battaglia
+Download a PDF of the paper titled GraphCast: Learning skillful medium-range global weather forecasting, by Remi Lam and 17 other authors
+Download PDF
+
+    Abstract: We introduce a machine-learning (ML)-based weather simulator--called "GraphCast"--which outperforms the most accurate deterministic operational medium-range weather forecasting system in the world, as well as all previous ML baselines. GraphCast is an autoregressive model, based on graph neural networks and a novel high-resolution multi-scale mesh representation, which we trained on historical weather data from the European Centre for Medium-Range Weather Forecasts (ECMWF)'s ERA5 reanalysis archive. It can make 10-day forecasts, at 6-hour time intervals, of five surface variables and six atmospheric variables, each at 37 vertical pressure levels, on a 0.25-degree latitude-longitude grid, which corresponds to roughly 25 x 25 kilometer resolution at the equator. Our results show GraphCast is more accurate than ECMWF's deterministic operational forecasting system, HRES, on 90.0% of the 2760 variable and lead time combinations we evaluated. GraphCast also outperforms the most accurate previous ML-based weather forecasting model on 99.2% of the 252 targets it reported. GraphCast can generate a 10-day forecast (35 gigabytes of data) in under 60 seconds on Cloud TPU v4 hardware. Unlike traditional forecasting methods, ML-based forecasting scales well with data: by training on bigger, higher quality, and more recent data, the skill of the forecasts can improve. Together these results represent a key step forward in complementing and improving weather modeling with ML, open new opportunities for fast, accurate forecasting, and help realize the promise of ML-based simulation in the physical sciences. 
+
+Comments: 	Main text: 21 pages, 8 figures, 1 table. Appendix: 15 pages, 5 figures, 2 tables
+Subjects: 	Machine Learning (cs.LG) ; Atmospheric and Oceanic Physics (physics.ao-ph)
+Cite as: 	arXiv:2212.12794 [cs.LG]
+  	(or arXiv:2212.12794v1 [cs.LG] for this version)
+  	https://doi.org/10.48550/arXiv.2212.12794
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Peter Battaglia [ view email ]
+[v1] Sat, 24 Dec 2022 18:15:39 UTC (12,942 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled GraphCast: Learning skillful medium-range global weather forecasting, by Remi Lam and 17 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.LG
+< prev   |   next >
+new | recent | 2212
+Change to browse by:
+cs
+physics
+physics.ao-ph
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

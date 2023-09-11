@@ -1,0 +1,79 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2210.10542
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 19 Oct 2022]
+Title: PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+Authors: Thomas Lucas , Fabien Baradel , Philippe Weinzaepfel , Grégory Rogez
+Download a PDF of the paper titled PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting, by Thomas Lucas and 3 other authors
+Download PDF
+
+    Abstract: We address the problem of action-conditioned generation of human motion sequences. Existing work falls into two categories: forecast models conditioned on observed past motions, or generative models conditioned on action labels and duration only. In contrast, we generate motion conditioned on observations of arbitrary length, including none. To solve this generalized problem, we propose PoseGPT, an auto-regressive transformer-based approach which internally compresses human motion into quantized latent sequences. An auto-encoder first maps human motion to latent index sequences in a discrete space, and vice-versa. Inspired by the Generative Pretrained Transformer (GPT), we propose to train a GPT-like model for next-index prediction in that space; this allows PoseGPT to output distributions on possible futures, with or without conditioning on past motion. The discrete and compressed nature of the latent space allows the GPT-like model to focus on long-range signal, as it removes low-level redundancy in the input signal. Predicting discrete indices also alleviates the common pitfall of predicting averaged poses, a typical failure case when regressing continuous values, as the average of discrete targets is not a target itself. Our experimental results show that our proposed approach achieves state-of-the-art results on HumanAct12, a standard but small scale dataset, as well as on BABEL, a recent large scale MoCap dataset, and on GRAB, a human-object interactions dataset. 
+
+Comments: 	ECCV'22 Conference paper
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2210.10542 [cs.CV]
+  	(or arXiv:2210.10542v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2210.10542
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Thomas Lucas [ view email ]
+[v1] Wed, 19 Oct 2022 13:30:39 UTC (2,424 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting, by Thomas Lucas and 3 other authors
+    PDF
+    Other formats 
+
+( license )
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2210
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

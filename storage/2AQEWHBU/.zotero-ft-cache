@@ -1,0 +1,77 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2305.11317
+
+Help | Advanced Search
+Search
+Computer Science > Computation and Language
+(cs)
+[Submitted on 18 May 2023]
+Title: Collaborative Generative AI: Integrating GPT-k for Efficient Editing in Text-to-Image Generation
+Authors: Wanrong Zhu , Xinyi Wang , Yujie Lu , Tsu-Jui Fu , Xin Eric Wang , Miguel Eckstein , William Yang Wang
+Download a PDF of the paper titled Collaborative Generative AI: Integrating GPT-k for Efficient Editing in Text-to-Image Generation, by Wanrong Zhu and 5 other authors
+Download PDF
+
+    Abstract: The field of text-to-image (T2I) generation has garnered significant attention both within the research community and among everyday users. Despite the advancements of T2I models, a common issue encountered by users is the need for repetitive editing of input prompts in order to receive a satisfactory image, which is time-consuming and labor-intensive. Given the demonstrated text generation power of large-scale language models, such as GPT-k, we investigate the potential of utilizing such models to improve the prompt editing process for T2I generation. We conduct a series of experiments to compare the common edits made by humans and GPT-k, evaluate the performance of GPT-k in prompting T2I, and examine factors that may influence this process. We found that GPT-k models focus more on inserting modifiers while humans tend to replace words and phrases, which includes changes to the subject matter. Experimental results show that GPT-k are more effective in adjusting modifiers rather than predicting spontaneous changes in the primary subject matters. Adopting the edit suggested by GPT-k models may reduce the percentage of remaining edits by 20-30%. 
+
+Subjects: 	Computation and Language (cs.CL)
+Cite as: 	arXiv:2305.11317 [cs.CL]
+  	(or arXiv:2305.11317v1 [cs.CL] for this version)
+  	https://doi.org/10.48550/arXiv.2305.11317
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Wanrong Zhu [ view email ]
+[v1] Thu, 18 May 2023 21:53:58 UTC (9,982 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Collaborative Generative AI: Integrating GPT-k for Efficient Editing in Text-to-Image Generation, by Wanrong Zhu and 5 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CL
+< prev   |   next >
+new | recent | 2305
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

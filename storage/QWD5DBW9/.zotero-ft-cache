@@ -1,0 +1,1824 @@
+DiffFit: Unlocking Transferability of Large Diffusion Models via Simple Parameter-Efficient Fine-Tuning
+Enze Xie, Lewei Yao, Han Shi, Zhili Liu, Daquan Zhou, Zhaoqiang Liu, Jiawei Li, Zhenguo Li Huawei Noah’s Ark Lab
+
+arXiv:2304.06648v6 [cs.CV] 27 Jul 2023
+
+Figure 1: Selected samples to show parameter-efficient fine-tuned DiT-XL/2 model using DiffFit. DiffFit only needs to finetune 0.12% parameters. Top row: 512×512 image generation on ImageNet with 3.02 FID. Bottom rows: 256×256 image generation on several downstream datasets across diverse domains: Food, Fungi, Scene, Art, Bird, Flower.
+
+Abstract
+Diffusion models have proven to be highly effective in generating high-quality images. However, adapting large pre-trained diffusion models to new domains remains an open challenge, which is critical for real-world applications. This paper proposes DiffFit, a parameter-efficient strategy to fine-tune large pre-trained diffusion models that enable fast adaptation to new domains. DiffFit is embarrassingly simple that only fine-tunes the bias term and newly-added scaling factors in specific layers, yet resulting in significant training speed-up and reduced model storage costs. Compared with full fine-tuning, DiffFit achieves
+
+2× training speed-up and only needs to store approximately 0.12% of the total model parameters. Intuitive theoretical analysis has been provided to justify the efficacy of scaling factors on fast adaptation. On 8 downstream datasets, DiffFit achieves superior or competitive performances compared to the full fine-tuning while being more efficient. Remarkably, we show that DiffFit can adapt a pre-trained low-resolution generative model to a high-resolution one by adding minimal cost. Among diffusion-based methods, DiffFit sets a new state-of-the-art FID of 3.02 on ImageNet 512×512 benchmark by fine-tuning only 25 epochs from a public pre-trained ImageNet 256×256 checkpoint while being 30× more training efficient than the closest competitor.
+
+Correspondence to {xie.enze, li.zhenguo}@huawei.com
+
+1
+
+Source Domain Denoising Process
+
+1. Introduction
+Denoising diffusion probabilistic models (DDPMs) [27, 68, 66] have recently emerged as a formidable technique for generative modeling and have demonstrated impressive results in image synthesis [58, 15, 60], video generation [28, 26, 90] and 3D editing [55]. However, the current state-of-the-art DDPMs suffer from significant computational expenses due to their large parameter sizes and numerous inference steps per image. For example, the recent DALL· E 2 [60] comprises 4 separate diffusion models and requires 5.5B parameters. In practice, not all users are able to afford the necessary computational and storage resources. As such, there is a pressing need to explore methods for adapting publicly available, large, pre-trained diffusion models to suit specific tasks effectively. In light of this, a central challenge arises: Can we devise an inexpensive method to fine-tune large pre-trained diffusion models efficiently?
+Take the recent popular Diffusion Transformer (DiT) as an example, the DiT-XL/2 model, which is the largest model in the DiT family and yields state-of-the-art generative performance on the ImageNet class-conditional generation benchmark. In detail, DiT-XL/2 comprises 640M parameters and involves computationally demanding training procedures. Our estimation indicates that the training process for DiT-XL/2 on 256×256 images necessitates 950 V100 GPU days (7M iterations), whereas the training on 512×512 images requires 1733 V100 GPU days (3M iterations). The high computational cost makes training DiT from scratch unaffordable for most users. Furthermore, extensive fine-tuning of the DiT on diverse downstream datasets requires storing multiple copies of the whole model, which results in linear storage expenditures.
+In this paper, we propose DiffFit, a simple and parameter-efficient fine-tuning strategy for large diffusion models, building on the DiT as the base model. The motivation can be found in Figure 2. Recent work in natural language processing (BitFit [83]) has demonstrated that fine-tuning only the bias term in a pre-trained model performs sufficiently well on downstream tasks. We, therefore, seek to extend these efficient fine-tuning techniques to image generative tasks. We start with directly applying BitFit [83] and empirically observe that simply using the BitFit technique is a good baseline for adaptation. We then introduce learnable scaling factors γ to specific layers of the model, initialized to 1.0, and made dataset-specific to accommodate enhancement of feature scaling and results in better adaptation to new domains. Interestingly, the empirical findings show that incorporating γ at specific locations of the model is important to reaching a better FID score.
+
+Source Domain
+Target Domain
+Target Domain Denoising Process
+Figure 2: The denoising process of a diffusion model typically involves iteratively generating images from random noise. In DiffFit, the pre-trained large diffusion model in the source domain can be fine-tuned to adapt to a target domain with only a few specific parameter adjustments.
+In other words, the FID score does not improve linearly with the number of γ included in the model. In addition, we conducted a theoretical analysis of the mechanism underlying the proposed DiffFit for fine-tuning large diffusion models. We provided intuitive theoretical analysis to help understand the effect of the newly-added scaling factors in the shift of distributions.
+We employed several parameter-efficient fine-tuning techniques, including BitFit [83], AdaptFormer [9], LoRA [30], and VPT [31], and evaluated their performance on 8 downstream datasets. Our results demonstrate that DiffFit outperforms these methods regarding Frechet Inception Distance (FID) [52] trade-off and the number of trainable parameters. Furthermore, we surprisingly discovered that by treating high-resolution images as a special domain from low-resolution ones, our DiffFit approach could be seamlessly applied to fine-tune a low-resolution diffusion model, enabling it to adapt to high-resolution image generation at a minimal cost. For example, starting from a pretrained ImageNet 256×256 checkpoint, by fine-tuning DIT for only 25 epochs (≈0.1M iterations), DiffFit surpassed the previous state-of-the-art diffusion models on the ImageNet 512×512 setting. Even though DiffFit has only about 0.9 million trainable parameters, it outperforms the original DiT-XL/2-512 model (which has 640M trainable parameters and 3M iterations) in terms of FID (3.02 vs. 3.04), while reducing 30× training time. In conclusion, DiffFit aims to establish a simple and strong baseline for parameterefficient fine-tuning in image generation and shed light on the efficient fine-tuning of larger diffusion models.
+Our contributions can be summarized as follows: 1. We propose a simple parameter-efficient fine-tuning
+approach for diffusion image generation named Diff-
+
+Fit. It achieves superior results compared to full finetuning while leveraging only 0.12% trainable parameters. Quantitative evaluations across 8 downstream datasets demonstrate that DiffFit outperforms existing well-designed fine-tuning strategies (as shown in Figure 3 and Table 1).
+2. We conduct an intuitive theoretical analysis and design detailed ablation studies to provide a deeper understanding of why this simple parameter-efficient finetuning strategy can fast adapt to new distributions.
+3. We show that by treating high-resolution image generation as a downstream task of the low-resolution pretrained generative model, DiffFit can be seamlessly extended to achieve superior generation results with FID 3.02 on ImageNet and reducing training time by 30 times, thereby demonstrating its scalability.
+2. Related Works
+2.1. Transformers in Vision
+Transformer architecture was first introduced in language model [73] and became dominant because of its scalability, powerful performance and emerging ability [56, 57, 4]. Then, Vision Transformer (ViT) [16] and its variants achieved colossal success and gradually replaced ConvNets in various visual recognition tasks, e.g. image classification [71, 89, 82, 23], object detection [45, 77, 78, 6], semantic segmentation [87, 80, 69] and so on [70, 41, 86, 47, 24, 40]. Transformers are also widely adopted in GANbased generative models [18, 32] and the conditional part of text-to-image diffusion models [60, 62, 58, 1]. Recently, DiT [53] proposed a plain Transformer architecture for the denoising portion of diffusion networks and verified its scaling properties. Our paper adopts DiT as a strong baseline and studies parameter-efficient fine-tuning.
+2.2. Diffusion Models
+Diffusion models [27] (aka. score-based models [67]) have shown great success in generative tasks, including density estimation [33], image synthesis [15], text-to-image generation [60, 1, 63] and so on. Different from previous generative models like GAN [11], VAE [34] and Flow [59], diffusion models [27] transform a data distribution to a Gaussian distribution by progressively adding noise, and then, reversing the process via denoising to retrieve the original distribution. The progressive step-by-step transformation between the two distributions makes the training process of diffusion models more stable compared to other models. However, the multiple time-step generations makes the diffusion process time-consuming and expensive.
+
+Average FID
+
+80
+LoRA-R8 LoRA-R16
+VPT-Deep
+22
+
+20
+
+Adapt-Parallel
+
+Adapt-Sequential
+18
+
+17 16
+
+BitFit DiffFit (Ours)
+
+Full Fine-tuning
+
+0.20%Perce0n.t4a0g%e of th0e.6T0%rainable Paramet1e0r0s%
+
+Figure 3: Average FID score of fine-tuned DiT across 8 downstream datasets. The radius of each bubble reflects the training time (smaller is better). We observe that DiffFit performs remarkably well in terms of achieving the best FID while requiring fewer computations and parameters.
+
+2.3. Parameter-efficient Fine-tuning
+Witnessing the success of Transformers in language and vision, many large models based on Transformer architecture have been developed and pre-trained on massive upstream data. On the one hand, the industry continues to increase the model parameters to billion, even trillion scales [4, 19, 14] to probe up the upper bound of large models. On the other hand, fine-tuning and storage of large models are expensive. There are three typical ways for parameter-efficient fine-tuning as follows:
+1. Adaptor [29, 30, 9]. Adaptor is a small module inserted between Transformer layers, consisting of a down-projection, a nonlinear activation function, and an up-projection. Specifically, LoRA [30] adds two lowrank matrices to the query and value results between the self-attention sub-layer. AdaptFormer [9], however, places the trainable low-rank matrices after the feed-forward sublayer.
+2. Prompt Tuning [39, 37, 49, 31, 91]. Usually, prefix tuning [39] appends some tunable tokens before the input tokens in the self-attention module at each layer. In contrast, prompt-tuning [37] only appends the tunable tokens in the first layer for simplification. VPT [31] focuses on the computer vision field and proposes deep and shallow prompt tuning variants.
+3. Partial Parameter Tuning [83, 81, 42]. Compared with the above parameter-efficient methods, partial parameter tuning does not insert any other components and only fine-tunes the partial parameters of the original model. For example, BitFit [83] tunes the bias of each linear projection and Child-Tuning [81] evaluates the importance of parame-
+
+ters and tunes only the important ones.
+
+3. Methodology 3.1. Preliminaries
+
+Diffusion Models. Denoising diffusion probabilistic mod-
+
+els (DDPMs) [27] define generative models by adding
+
+Gaussian noise gradually to data and then reversing back.
+
+Given a real data sample x0 ∼ qdata(x), the forward pro-
+
+cess is√controlled by a Markov chain as q(xt|xt−1) = N (xt; 1 − βtxt−1, βtI), where βt is a variance schedule
+
+between 0 and √1. By usi√ng the reparameterization trick,
+
+we have xt = α¯tx0 + 1 − α¯tϵ, where ϵ ∼ N (0, I),
+
+αt = 1 − βt and α¯t =
+
+t i=1
+
+αi.
+
+For
+
+larger
+
+time
+
+step
+
+t,
+
+we
+
+have smaller α¯t, and the sample gets noisier.
+
+As for the reverse process, DDPM learns a denoise neural network pθ(xt−1|xt) = N (xt−1; µθ(xt, t), σt2I). The corresponding objective function is the following varia-
+
+tional lower bound of the negative log-likelihood:
+
+L(θ) = DKL q(xt−1|xt, x0) pθ(xt−1|xt) − pθ(x0|x1), (1)
+t
+
+where DKL(p q) represents the KL divergence measuring
+
+the distance between two distributions p and q. Further-
+
+more, the objective function can be reduced to Lvlb =
+
+Ex0,ϵ,t
+
+∥ϵ βt2
+2αt (1−α¯ t )σt2
+
+−
+
+ϵθ ∥2
+
+and a simple variant loss
+
+function Lsimple = Ex0,ϵ,t ∥ϵ − ϵθ∥2 . Following iD-
+
+DPM [50], we use a hybrid loss function as Lhybrid =
+
+Lsimple + λLvlb, where λ is set to be 0.001 in our experi-
+
+ments.
+
+Diffusion Transformers (DiT). Transformer [73] architecture has proved to be powerful in image recognition, and its design can be migrated to diffusion models for image generation. DiT [53] is a recent representative method that designs a diffusion model with Transformers. DiT follows the design of latent diffusion models (LDMs) [60], which have two parts given a training sample x: (1) An autoencoder consisting of an encoder E and a decoder D, where the latent code z = E(x) and the reconstructed data xˆ = D(z); (2) A latent diffusion transformer with patchify, sequential DiT blocks, and depatchify operation. In each block Bi, we have zi = Bi(x, t, c), where t and c are time embedding and class embedding. Each block Bi contains a selfattention and a feed-forward module. The patchification/depatchification operations are used to encode/decode latent code z to/from a sequence of image tokens.
+
+3.2. Parameter-efficient Fine-tuning
+
+DiffFit Design. This section illustrates the integration of DiT with DiffFit. Note that DiffFit may be generalized to other diffusion models e.g. Stable Diffusion. Our approach, illustrated in Figure 4, involves freezing the majority of parameters in the latent diffusion model and training only the
+
+FFN[ Weight ] Bias Layer Norm
+
+FFN[ Weight ] Bias Layer Norm
+
+Tuned Frozen Multiply Add
+𝛾(Init=1.0)
+
+Attn[ Weight ] Bias Layer Norm
+
+Attn[ Weight ] Bias Layer Norm
+
+𝛾(Init=1.0)
+
+Input Tokens Time Class
+(a) Full Fine-tuning
+
+Input Tokens Time Class
+(b) DiffFit Fine-tuning
+
+Figure 4: Architecture comparison between full fine-tuning and the proposed DiffFit. DiffFit is simple and effective, where most of the weights are frozen and only bias-term, scale factor γ, LN, and class embedding are trained.
+
+bias term, normalization, and class condition module. We moreover insert learnable scale factors γ into several blocks of the diffusion model, wherein the γ is initialized to 1.0 and multiplied on corresponding layers of each block. Each block typically contains multiple components such as multihead self-attention, feed-forward networks, and layer normalization, and the block can be stacked N times. Please refer to Algorithm 1 for additional detailed information.
+Fine-tuning. During fine-tuning, diffusion model parameters are initially frozen, after which only specific parameters related to bias, class embedding, normalization, and scale factor are selectively unfrozen. Our approach, outlined in Algorithm 2, enables fast fine-tuning while minimizing disruption to pre-trained weights. DiT-XL/2 requires updating only 0.12% of its parameters, leading to training times approximately 2× faster than full fine-tuning. Our approach avoids catastrophic forgetting while reinforcing the pre-trained model’s knowledge and enabling adaptation to specific tasks.
+Inference and Storage. After fine-tuning on K datasets, we only need to store one copy of the original model’s full parameters and K× dataset-specific trainable parameters, typically less than 1M for the latter. Combining these weights for the diffusion model enables adaptation to multiple domains for class-conditional image generation.
+3.3. Analysis
+In this subsection, we provide intuitive theoretical justifications for the efficacy of scaling factors and reveal the
+
+Algorithm 1 Add trainable scale factor γ in the model.
+import torch import torch.nn as nn
+class Block(): # An example of adding trainable scale factors def __init__(): # Initilize gamma to 1.0 self.gamma1 = nn.Parameter(torch.ones(dim)) self.gamma2 = nn.Parameter(torch.ones(dim))
+def forward(x, c, t): # Apply gamma on self-attention and ffn x = x + self.gamma1 * self.attn(wrap(x, c, t)) x = x + self.gamma2 * self.ffn(wrap(x, c, t))
+return x
+
+Algorithm 2 Parameter-efficient fine-tuning strategy.
+# List of trainable parameters trainable_names = ["bias","norm","gamma","y_embed"]
+def finetune(): # Step 1: Freeze all params for name, param in model.named_parameters(): param.requires_grad = False
+# Step 2: Unfreeze specific params for name, param in model.named_parameters():
+# unfreeze specific parameters with name if match(name, trainable_names):
+param.requires_grad = True
+# Step 3: Fine-tuning train(model, data, epochs)
+
+Dataset Method
+
+Food SUN
+
+DF-20M
+
+Caltech
+
+CUB-Bird
+
+ArtBench
+
+Oxford Flowers
+
+Full Fine-tuning Adapt-Parallel [9] Adapt-Sequential BitFit [83] VPT-Deep [31] LoRA-R8 [30] LoRA-R16
+
+10.46 13.67 11.93 9.17 18.47 33.75 34.34
+
+7.96 11.47 10.68 9.11 14.54 32.53 32.15
+
+17.26 22.38 19.01 17.78 32.89 120.25 121.51
+
+35.25 35.76 34.17 34.21 42.78 86.05 86.51
+
+5.68 7.73 7.00 8.81 17.29 56.03 58.25
+
+25.31 38.43 35.04 24.53 40.74 80.99 80.72
+
+21.05 21.24 21.36 20.31 25.59 164.13 161.68
+
+DiffFit (ours)
+
+6.96 8.55 17.35 33.84 5.48
+
+20.87 20.18
+
+Standard Cars
+9.79 10.73 10.45 10.64 22.12 76.24 75.35
+9.90
+
+Average FID
+
+Params. (M)
+
+Train Time
+
+16.59 20.17 18.70 16.82 26.80 81.25 81.31
+
+673.8 (100%) 1× 4.28 (0.63%) 0.47× 4.28 (0.63%) 0.43× 0.61 (0.09%) 0.45× 2.81 (0.42%) 0.50× 1.15 (0.17%) 0.63× 2.18 (0.32%) 0.68×
+
+15.39 0.83 (0.12%) 0.49×
+
+Table 1: FID performance comparisons on 8 downstream datasets with DiT-XL-2 pre-trained on ImageNet 256×256.
+
+principle behind their effectiveness. We note that these theoretical justifications are intended as a simple proof of concept rather than seeking to be comprehensive, as our contributions are primarily experimental.
+Specifically, recent theoretical works for diffusion models, such as [13, 12, 36, 8, 7], have shown that under suitable conditions on the data distribution and the assumption of approximately correct score matching, diffusion models can generate samples that approximately follow the data distribution, starting from a standard Gaussian distribution. Given a mapping f and a distribution P , we denote f #P as a pushforward measure, i.e., for any measurable Ω, we have (f #P )(Ω) = P (f −1(Ω)). Note that our base model DiT is pre-trained on ImageNet with a resolution of 256 × 256 and is fine-tuned on downstream datasets with the same resolution but much fewer data points and classes. Motivated by this, if assuming that the data in the ImageNet 256 × 256 dataset follows a distribution Q0, then we can assume that the data in the downstream dataset follows a distribution P0 = fγ∗ #Q0, where fγ∗ is a linear mapping dependent on some ground-truth scaling factors γ∗.
+With these assumptions in place, we can formulate an intuitive theorem that provides insight into the effectiveness of scaling factors. A formal version of this theorem is included in the supplementary material.
+Theorem 1 (informal). Suppose that for a dataset generated from data distribution Q0, we can train a neural net-
+
+work such that the diffusion model generates samples that approximately follow Q0. Further assuming that the data distribution P0 for a relatively small dataset can be written as P0 = fγ∗ #Q0 with fγ∗ being a linear mapping dependent on ground-truth scaling factors γ∗. Then, if only retraining the neural network with the goal of optimizing scaling factors (and all other parameters remain unchanged), under suitable conditions, a simple gradient descent algorithm seeks an estimate γˆ that is close to γ∗ with high probability. Furthermore, with the fine-tuned neural network corresponding to γˆ, the denoising process produces samples following a distribution that is close to P0.
+In summary, Theorem 1 essentially states that when distributions Q0 and P0 satisfy the condition that P0 = fγ∗ #Q0 with fγ∗ being dependent on ground-truth scaling factors γ∗, diffusion models can transfer from distribution Q0 to P0 in the denoising process with fine-tuning the scaling factors in the training process.
+4. Experiments
+4.1. Implementation Details
+Our base model is the DiT1, which is pre-trained on ImageNet 256×256 with 7 million iterations, achieving an FID score of 2.272. However, since the original DiT reposi-
+1https://github.com/facebookresearch/DiT 2https://dl.fbaipublicfiles.com/DiT/models/DiT-XL-2-256x256.pt
+
+Epoch0
+
+Epoch5
+
+Epoch10
+
+Epoch15
+
+Epoch20
+
+Epoch25
+
+Figure 5: Fine-tune DiT-XL/2-512 from the checkpoint of DiT-XL/2-256 using DiffFit with the positional encoding trick.
+
+tory does not provide training code, we re-implemented this and achieved reasonable results. Following DiT, we set the constant lr=1e-4 for full fine-tuning and set the classifierfree guidance to 1.5 for evaluation and 4.0 for visualization. In addition, we re-implemented several parameter-efficient fine-tuning methods such as Adaptor, BitFit, Visual Prompt Tuning (VPT), and LoRA. We found VPT to be sensitive to depth and token number while training was exceptionally unstable. As such, we sought for a more stable configuration with depth=5, token=1, and kept the final layers unfrozen for all tasks. We enlarge lr ×10 for parameterefficient fine-tuning settings to obtain better results following previous works [30, 9].
+4.2. Transfer to Downstream Datasets
+Setup. For fine-tuning downstream small datasets with 256×256 resolutions, we use 8 V100 GPUs with a total batch size of 256 and train 24K iterations. We choose 8 commonly used fine-grained datasets: Food101, SUN397, DF-20M mini, Caltech101, CUB-200-2011, ArtBench-10, Oxford Flowers and Stanford Cars. We report FID using
+
+50 sampling steps for all the tasks. Most of these datasets are selected from CLIP downstream tasks except ArtBench10 since it has distinct distribution from ImageNet, which enables a more comprehensive evaluation of the out-ofdistribtion generalization performance of our DiffFit.
+Results. We list the performance of different parameterefficient fine-tuning methods in Table 1. As can be seen, by tuning only 0.12% parameters, our DiffFit achieves the lowest FID on average over 8 downstream tasks. While full fine-tuning is a strong baseline and has slightly better results on 3/8 datasets, it is necessary to fine-tune 100% parameters. Among all baselines, the performance of LoRA is surprisingly poor. As discussed in [25], LoRA performs worse on image classification tasks than other parameterefficient fine-tuning methods. As the image generation task is conceptually more challenging than the image classification task, it is reasonable that the performance gap between LoRA and other approaches becomes larger here.
+
+Method
+BigGAN-Deep [3] StyleGAN-XL [64] ADM-G, AMD-U [15] DiT-XL/2 [53] DiffFit (ours)
+
+FID ↓
+8.43 2.41 3.85 3.04 3.02
+
+Training Cost (GPU days)
+
+↓
+
+256-512 400
+
+1914 1733
+
+51 (+950†)
+
+Table 2: Class-conditional image generation on ImageNet 512×512. The training cost of the original DiT model and our method is measured on V100 GPU devices, and other methods are quoted from original papers. †: 950 GPU days indicates the pre-training time of DiT-XL/2 model on ImageNet 256×256 with 7M steps.
+
+Method
+Full Fine-tune DiffFit DiffFit +PosEnc Trick
+
+Pre-trained Checkpoint
+IN256(7M)→Food256
+IN512 (3M) IN256 (7M)→Food256 IN256 (7M)→Food256
+
+FID ↓
+23.08 19.25 19.50 19.10
+
+Table 3: Class-conditional image generation on Food101 512×512. We use two pre-trained models from: (1) ImageNet 512×512, and (2) ImageNet 256×256 and firstly fine-tuned on Food-101 256×256.
+
+4.3. From Low Resolution to High Resolution
+Setup. Considering the generating images with different resolutions as a special type of distribution shift, our proposed method can effortlessly adapt a pre-trained lowresolution diffusion model to generate high-resolution images. To demonstrate the effectiveness of DiffFit, we load a pre-trained ImageNet 256 × 256 DiT-XL/2 checkpoint and fine-tune the model on the ImageNet 512 × 512. We employ a positional encoding trick to speed up fine-tuning. We fine-tune DiT-XL/2 on ImageNet 512 × 512 using 32 V100 GPUs with 1024 batch size and 30K iterations. We report FID using 250 sampling steps. Note that we do not need to fine-tune the label embedding here since the label does not change.
+Positional Encoding Trick. DiT [53] adopts a static sinusoidal 2D positional encoding scheme. To better utilize the positional information encoded in the pre-trained model, we develop a sinusoidal interpolation that aligns the positional encoding of 512×512 resolution with that of 256×256 resolution. This is implemented by replacing each pixel coordinate (i, j) in the positional encoding formula with its half value (i/2, j/2), which is simple and have no extra costs.
+
+Results. As demonstrated in Table 2, DiffFit achieves 3.02 FID on the ImageNet 512 × 512 benchmark, surpassing ADM’s 3.84 and the official DiT’s 3.04. DiffFit sets a new state-of-the-art among diffusion-based methods. Importantly, our method is significantly more efficient than the previous methods, as the fine-tuning process only requires an overhead of 51 GPU days. Even when accounting for the 950 GPU days of pre-training, our method remains superior to the 1500+ GPU days required by DiT and ADM. We observe faster training convergence using the positional encoding trick, as shown in Figure 5. For more visualizations please see Figure 1 and appendix.
+In Table 3, we conducted fine-tuning experiments on the Food101 dataset with a resolution of 512×512 using the DiffFit method. Our results reveal that fine-tuning a pre-trained Food101 256×256 checkpoint with DiffFit yields a FID of 4 improvements over full fine-tuning. Interestingly, we found that utilizing a pre-trained ImageNet 512×512 checkpoint leads to a FID performance similar to that achieved by the pre-trained Food101 with 256×256 resolution. Moreover, we observed a slight improvement in FID performance by incorporating the proposed positional encoding trick into the fine-tuning process.
+4.4. Fine-tuning Convergence Analysis
+To facilitate the analysis of converging speed, we present the FID scores for several methods every 15,000 iterations in the Food-101, ArtBench-10, Flowers-102 and CUB-200 datasets, as shown in Figure 6. Our observations demonstrate that full fine-tuning, BitFit, and our proposed DiffFit exhibit similar convergence rates, which surpass the initial performance of AdaptFormer and VPT. While AdaptFormer initially presents inferior performance, it shows a rapid improvement in the middle of training. In contrast, VPT exhibits the slowest rate of convergence. Compared to full fine-tuning, DiffFit freezes most of the parameters and thus maximally preserves the information learned during the pre-training and thus achieves a better fine-tuned performance. Compared to BifFit, DiffFit adjusts the feature using scale factor, resulting in faster convergence and better results.
+The above observation and analysis verify that our proposed DiffFit demonstrates fast adaptation abilities to target domains and an excellent image generation capability.
+4.5. Ablation studies
+Setup. We conduct ablation studies on Food101 dataset, which has 101 classes. Each class has 750/250 images in the train/test set. Other settings are the same as Section 4.2.
+Scale factor γ in different layers. We investigate the effect of the scaling factor γ via 2 designs: gradually adding γ from deep to shallow (Table 4a) and from shallow to
+
+Blocks #params (M) FID ↓
+
+28→25 28→22 28→18 28→14 28→11 28→8 28→4 28→1
+
+0.747 0.754 0.763 0.770 0.779 0.786 0.796 0.803
+
+10.04 10.03 10.33 10.51 9.92 9.28 8.87 8.19
+
+Blocks #params (M) FID ↓
+
+1→3
+
+0.745
+
+8.29
+
+1→7
+
+0.754
+
+7.99
+
+1→11
+
+0.763
+
+7.72
+
+1→14
+
+0.770
+
+7.61
+
+1→18
+
+0.779
+
+7.63
+
+1→21
+
+0.786
+
+7.67
+
+1→25
+
+0.796
+
+7.85
+
+1→28
+
+0.803
+
+8.19
+
+#ID Scale Factor
+
+FID ↓
+
+1 NA (BitFit)
+
+9.17
+
+2 +Blocks
+
+8.19
+
+3 +PatchEmb
+
+9.05
+
+4 +TimeEmb
+
+8.46
+
+5 +QKV-Linear 7.37
+
+6 +Final Layer 7.49
+
+7 +ID 1, 2, 5, 6
+
+7.17
+
+8 +(1→14 Layers) 6.96
+
+LR Ratio FID ↓
+
+0.1× 0.2× 0.5× 1× 2× 5× 10× 20×
+
+25.85 21.42 17.16 15.68 13.84 10.97 8.19 8.30
+
+(a) Scale: Deep→Shallow.
+
+(b) Scale: Shallow→Deep.
+
+(c) Scale Location.
+
+(d) Learning Rate.
+
+Table 4: Ablation experiments on Food101 dataset with DiT-XL/2. Red means adding scale factor leads to negative results and green means positive. The best setting are marked in gray .
+
+FID FID FID FID
+
+Food-101
+350 Full Fine-tune
+
+300
+
+DiffFit
+
+BitFit
+
+250
+
+Adapt-Parallel
+
+200
+
+VPT
+
+150
+
+100
+
+50
+
+0 15K 45K 75K 105K 135K 165K 195K 225K Training Steps
+
+ArtBench-10
+
+Full Fine-tune
+
+360
+
+DiffFit
+
+310
+
+BitFit
+
+260
+
+Adapt-Parallel
+
+VPT
+
+210
+
+160
+
+110
+
+60
+
+10 15K 45K 75K 105K 135K 165K 195K 225K Training Steps
+
+Flowers 102
+
+350
+
+Full Fine-tune
+
+DiffFit
+
+300
+
+BitFit
+
+250
+
+Adapt-Parallel
+
+VPT
+
+200
+
+150
+
+100
+
+50
+
+0 15K 45K 75K 105K 135K 165K 195K 225K Training Steps
+
+CUB 200
+350 Full Fine-tune
+
+300
+
+DiffFit
+
+BitFit
+
+250
+
+Adapt-Parallel
+
+200
+
+VPT
+
+150
+
+100
+
+50
+
+0 15K 45K 75K 105K 135K 165K 195K 225K Training Steps
+
+Figure 6: FID of five methods every 15K iterations on four downstream datasets. Our observations indicate that DiffFit can rapidly adapt to the target domain while maintaining a robust FID score.
+
+deep (Table 4b). The results demonstrate that adding γ before the 14th layer of DiT-XL/2 gradually increases the performance from 8.29 to 7.61 FID while adding more γ in the deeper layers hurts the performance. We hypothesize that deeper layers are responsible for learning high-level features that capture abstract data patterns, which contribute to synthesizing the final output and are often complex and nonlinear. Adding γ in deeper layers poses a risk of disrupting the learned correlations between the high-level features and data, which might negatively impact the model.
+Scale factor γ in different modules. We study the impact of scaling factor γ in various DiT modules, as illustrated in Table 4c. Based on BitFit [83]’s FID score of 9.17, incorporating the scaling factor γ in transformer blocks and QKVlinear layers of self-attention can significantly enhance the performance, resulting in a FID score of 7.37 (row 5). However, introducing scale factors in other modules, such as patch embedding (row 3) and time embedding (row 4), does not bring noticeable improvements. By integrating the effective designs, i.e., adding γ in blocks, QKV-linear and final layers, we improve FID score to 7.17 (row 7). We further improve the FID score of 6.96 by placing γ in the first 14 blocks (Table 4b). This optimal setting is adopted as the final setting for our approach.
+Learning rate. Adjusting the learning rate is a crucial step in fine-tuning. Parameter-efficient fine-tuning typically
+
+requires a larger learning rate than the pre-training [30, 9] since pre-training has already initialized most of the model’s parameters to a certain extent and a larger learning rate can help quickly adapt the remaining parameters to the new tasks. We perform a learning rate search on our method, as shown in Table 4d. We observe that using a learning rate 10× greater than pre-training yields the best result. Larger learning rates than 10× resulted in decreased performance and even unstable training.
+5. Conclusions and Limitations
+In this paper, we propose DiffFit, a straightforward yet effective fine-tuning approach that can quickly adapt a large pre-trained diffusion model to various downstream domains, including different datasets or varying resolutions. By only fine-tuning bias terms and scaling factors, DiffFit provides a cost-effective solution to reduce storage requirements and speed up fine-tuning without compromising performance. One limitation is that our experiments mainly focus on class-conditioned image generation. It is still unclear whether this strategy could perform equally well in more complex tasks such as text-to-image generation or video/3D generation. We leave these areas for future research.
+Acknowledgement. We would like to express our gratitude to Junsong Chen, Chongjian Ge, and Jincheng Yu for their assistance with experiments on LLaMA and DreamBooth.
+
+Supplementary Material
+DiffFit: Unlocking Transferability of Large Diffusion Models via Simple Parameter-efficient Fine-Tuning
+6. More Applications
+6.1. Combine DiffFit with ControlNet
+Setup. To verify that DiffFit can be applied to large-scale text-to-image generation models, we conducted experiments on the recent popular ControlNet [84] model. We used the official code of ControlNet3, and chose the semantic segmentation mask as the additional condition. We used the COCO-Stuff [5] as our dataset and the text prompt was generated by the BLIP [38]. The model was trained on the training set and evaluated on the validation set using 8 V100 GPUs with a batch size of 2 per GPU and 20 epochs. Unless otherwise stated, we followed the official implementation of ControlNet for all hyper-parameters including the learning rate and the resolution.
+Combination. ControlNet [84] enhances the original Stable Diffusion (SD) by incorporating a conditioning network comprising two parts: a set of zero convolutional layers initialized to zero and a trainable copy of 13 layers of SD initialized from a pre-trained model.
+In our DiffFit setting, we freeze the entire trainable copy part and introduce a scale factor of γ in each layer. Then, we unfreeze the γ and all the bias terms. Note that in ControlNet, the zero convolutional layers are required to be trainable. Table 5 shows that DiffFit has 11.2M trainable parameters while the zero convolutional layers contribute 10.8M parameters. Reducing the trainable parameters in zero convolutional layers is plausible, but it is beyond the scope of this paper.
+Results. Table 5 displays the results obtained from the original ControlNet and the results from combining DiffFit with ControlNet. Our results show that the addition of DiffFit leads to comparable FID and CLIP scores while significantly reducing the number of trainable parameters. In addition, we note that ControlNet primarily focuses on fine-grained controllable generation while FID and CLIP score may not accurately reflect the overall performance of a model. Figures 7 and 8 compare the results from ControlNet and DiffFit. When using the same mask and text prompt as conditions, fine-tuning with DiffFit produces more visually appealing results compared to fine-tuning with the original ControlNet.
+Our experimental results suggest that DiffFit has great potential to improve the training of other types of advanced generative models.
+6.2. Combine DiffFit with DreamBooth
+Setup. Our DiffFit can also be easily combined with the DreamBooth [61]. DreamBooth is a personalized text-to-image diffusion model that fine-tunes a pre-trained text-to-image model using a few reference images of a specific subject, allowing it to synthesize fully-novel photorealistic images of the subject contextualized in different scenes. Our implementation on DreamBooth utilizes the codebase from Diffusers4, with Stable Diffusion as the base text-to-image model.
+Implementation detail. Given 3-5 input images, the original DreamBooth fine-tunes the subject embedding and the entire text-to-image (T2I) model. In contrast, our DiffFit simplifies the fine-tuning process by incorporating scale factor γ into all attention layers of the model and requiring only the γ, bias term, LN, and subject embedding to be fine-tuned.
+Results. We compare the original full-finetuning approach of DreamBooth with the fine-tuning using LoRA and DiffFit, as shown in Figures 9 and 10. First, we observe that all three methods produce similar generation quality. Second, we find that the original full-finetuning approach is storage-intensive, requiring the storage of 859M parameters for one subject-driven fine-tuning. In contrast, LoRA and DiffFit are both parameter-efficient (requiring the storage of less than 1% parameters), with DiffFit further reducing trainable parameters by about 26% compared to LoRA.
+6.3. Combine DiffFit with LLaMA and Alpaca
+Setup. LLaMA [72] is an open and efficient large language model (LLM) from Meta, ranging from 7B to 65B parameters. Alpaca is a model fully fine-tuned from the LLaMA 7B model on 52K instruction-following demonstrations and behaves qualitatively similarly to OpenAI’s ChatGPT model text-davinci-003.
+3https://github.com/lllyasviel/ControlNet 4https://github.com/huggingface/diffusers/tree/main/examples/dreambooth
+
+Combination. We use the original code from Alpaca5 as the baseline and compare it with Alpaca-LoRA6. Since LLaMA and DiT have a similar Transformer design, the fine-tuning strategy of LLaMA-DiffFit is exactly the same as that of DiT-DiffFit, except that the learning rate is set to 3e-4 to align with Alpaca-LoRA.
+Results. In Table 6, we showcase the instruction tuning results on llama using Alpaca, LoRA, and DiffFit. The trainable parameters of Alpaca, LoRA, and DiffFit are 7B, 6.7M, and 0.7M. The model fine-tuned with DiffFit exhibits strong performance in natural language question-answering tasks (e.g., common sense questioning, programming, etc.). This validates the efficacy of DiffFit for instruction tuning in NLP models, highlighting DiffFit as a flexible and general fine-tuning approach.
+
+Method
+ControlNet ControlNet + DiffFit
+
+FID ↓
+20.1 19.5
+
+CLIP Score ↑
+0.3067 0.3064
+
+Total Params (M)
+1343 1343
+
+Trainable Params (M)
+361 11.2
+
+Table 5: Results of original ControlNet and combined DiffFit on COCO-Stuff dataset.
+
+GT Image
+
+Mask
+
+ControlNet
+
+ControlNet+DiffFit
+
+Text prompt: a red double decker bus driving down a street
+
+Text prompt: a couple of zebra standing on top of a lush green field
+Figure 7: Visualization of original ControlNet and combined DiffFit on COCO-Stuff dataset.
+7. More Implementation Details 7.1. Adding the Scale Factor γ in Self-Attention
+This section demonstrates the incorporation of scale factor γ into the self-attention modules. Traditionally, a self-attention layer comprises two linear operations: (1) QKV-Linear operation and (2) Project-Linear operation. Consistent with the
+5https://github.com/tatsu-lab/stanford_alpaca 6https://github.com/tloen/alpaca-lora
+
+GT Image
+
+Mask
+
+ControlNet
+
+ControlNet+DiffFit
+
+Text prompt: a bed sitting next to a window in a bedroom
+
+Text Prompt: a brown teddy bear sitting on top of a brown chair
+Figure 8: Visualization of original ControlNet and combined DiffFit on COCO-Stuff dataset.
+approach discussed above in the paper, the learnable scale factor is initialized to 1.0 and subsequently fine-tuned. Algorithm 3 presents the Pytorch-style pseudo code.
+7.2. Dataset Description
+This section describes 8 downstream datasets/tasks that we have utilized in our experiments to fine-tune the DiT with our DiffFit method. Food101 [2]. This dataset contains 101 food categories, totaling 101,000 images. Each category includes 750 training images and 250 manually reviewed test images. The training images were kept intentionally uncleaned, preserving some degree of noise, primarily vivid colors and occasionally incorrect labels. All images have been adjusted to a maximum side length of 512 pixels. SUN 397 [79]. The SUN benchmark database comprises 108,753 images labeled into 397 distinct categories. The quantities of images vary among the categories, however, each category is represented by a minimum of 100 images. These images are commonly used in scene understanding applications. DF20M [54]. DF20 is a new fine-grained dataset and benchmark featuring highly accurate class labels based on the taxonomy of observations submitted to the Danish Fungal Atlas. The dataset has a well-defined class hierarchy and a rich observational metadata. It is characterized by a highly imbalanced long-tailed class distribution and a negligible error rate. Importantly, DF20 has no intersection with ImageNet, ensuring unbiased comparison of models fine-tuned from ImageNet checkpoints. Caltech 101 [22]. The Caltech 101 dataset comprises photos of objects within 101 distinct categories, with roughly 40 to 800 images allocated to each category. The majority of the categories have around 50 images. Each image is approximately 300×200 pixels in size. CUB-200-2011 [76]. CUB-200-2011 (Caltech-UCSD Birds-200-2011) is an expansion of the CUB-200 dataset by approximately doubling the number of images per category and adding new annotations for part locations. The dataset consists of
+
+DreamBooth
+
+Full FT (859.5M, 100%) LoRA (0.79M, 0.092%) DiffFit (0.58M, 0.067%)
+
+Text prompt: A photo of [V] dog in the beach
+
+Input Images Text prompt: A photo of [V] dog
+
+Text prompt: A photo of [V] dog sleeping under a big tree
+
+Figure 9: Visualization of original DreamBooth, with LoRA and DiffFit.
+
+DreamBooth
+
+Full FT (859.5M, 100%) LoRA (0.79M, 0.092%) DiffFit (0.58M, 0.067%)
+
+Text prompt: a photo of [yellow] [V] car in HK street
+Input Images: 问界M5 Text prompt: A photo of [gray] [V] car
+Text prompt: a photo of [green] [V] car on the highway
+Figure 10: Visualization of original DreamBooth, with LoRA and DiffFit.
+11,788 images divided into 200 categories. ArtBench-10 [43]. ArtBench-10 is a class-balanced, standardized dataset comprising 60,000 high-quality images of artwork annotated with clean and precise labels. It offers several advantages over previous artwork datasets including balanced class distribution, high-quality images, and standardized data collection and pre-processing procedures. It contains 5,000 training images and 1,000 testing images per style.
+
+Instruction: Tell me about alpacas. Alpaca: Alpacas are small, fluffy animals related to camels and llamas. They are native to Peru and Bolivia, and were first domesticated around 5,000 years ago. They are kept mainly for their fine, soft fleece, which is used to make knitwear and other garments. Alpacas are herd animals and live in small family groups, led by an older male. They are highly social animals and can form strong bonds with their owners. Alpaca-LoRA: Alpacas are members of the camelid family and are native to the Andes Mountains of South America. They are known for their soft, luxurious fleece, which is used to make clothing, blankets, and other items. Alpacas are herbivores and graze on grasses and other plants. They are social animals and live in herds of up to 20 individuals. LLaMA-DiffFit: Alpacas are members of the camelid family and are native to the Andes Mountains in South America. They are domesticated for their soft, luxurious fleece, which is used to make clothing, blankets, and other textiles. Alpacas are herbivores and graze on grasses and other plants. They can live up to 20 years in captivity and are known for their gentle nature.
+Instruction: List all Canadian provinces in alphabetical order. Alpaca: Alberta, British Columbia, Manitoba, New Brunswick, Newfoundland and Labrador, Nova Scotia, Ontario, Prince Edward Island, Quebec, Saskatchewan, Northwest Territories, Nunavut, Yukon. Alpaca-LoRA: Alberta, British Columbia, Manitoba, New Brunswick, Newfoundland and Labrador, Nova Scotia, Ontario, Prince Edward Island, Quebec, Saskatchewan. LLaMA-DiffFit: Alberta, British Columbia, Manitoba, New Brunswick, Newfoundland and Labrador, Northwest Territories, Nova Scotia, Nunavut, Ontario, Prince Edward Island, Quebec, Saskatchewan, Yukon.
+Instruction: Tell me five words that rhyme with ’shock’. Alpaca: Five words that rhyme with shock are: rock, pop, shock, cook, and snock. Alpaca-LoRA: Flock, lock, rock, stock, and sock. LLaMA-DiffFit: Shock, sock, rock, cook, and book.
+Instruction: Write a Python program that prints the first 10 Fibonacci numbers. Alpaca:
+numbers = [0, 1]
+for i in range(2, 11): numbers.append(numbers[i-2] + numbers[i-1])
+print(numbers) # Output: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+Alpaca-LoRA:
+def fibonacci(n): if n == 0: return 0 elif n == 1: return 1 else: return fibonacci(n-1) + fibonacci(n-2)
+print(fibonacci(10))
+LLaMA-DiffFit:
+def fib(n): if n == 0: return 0 elif n == 1: return 1 else: return fib(n-1) + fib(n-2)
+print(fib(10))
+Table 6: Instruction-following Comparison between Alpaca, Alpaca-LoRA and LLaMA-DiffFit.
+Oxford Flowers [51]. The Oxford 102 Flowers Dataset contains high quality images of 102 commonly occurring flower categories in the United Kingdom. The number of images per category range between 40 and 258. This extensive dataset provides an excellent resource for various computer vision applications, especially those focused on flower recognition and
+
+Algorithm 3 Adding the trainable scale factor γ in the attention block.
+import torch import torch.nn as nn
+class Attention(nn.Module): def __init__(self, dim, num_heads=8, qkv_bias=False, proj_bias=True, attn_drop=0., proj_drop=0., eta=None): super().__init__() self.num_heads = num_heads head_dim = dim // num_heads self.scale = head_dim ** -0.5
+self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias) self.attn_drop = nn.Dropout(attn_drop) self.proj = nn.Linear(dim, dim, bias=proj_bias) self.proj_drop = nn.Dropout(proj_drop)
+# Initilize gamma to 1.0 self.gamma1 = nn.Parameter(torch.ones(dim * 3)) self.gamma2 = nn.Parameter(torch.ones(dim))
+def forward(self, x): B, N, C = x.shape # Apply gamma qkv = (self.gamma1 * self.qkv(x)).reshape(B, N, 3, self.num_heads, C//self.num_heads).permute(2,0,3,1,4) q, k, v = qkv.unbind(0)
+attn = (q @ k.transpose(-2, -1)) * self.scale attn = attn.softmax(dim=-1) attn = self.attn_drop(attn)
+x = (attn @ v).transpose(1, 2).reshape(B, N, C) # Apply gamma x = self.gamma2 * self.proj(x) x = self.proj_drop(x) return x
+
+classification.
+Stanford Cars [35]. In the Stanford Cars dataset, there are 16,185 images that display 196 distinct classes of cars. These images are divided into a training and a testing set: 8,144 images for training and 8,041 images for testing. The distribution of samples among classes is almost balanced. Each class represents a specific make, model, and year combination, e.g., the 2012 Tesla Model S or the 2012 BMW M3 coupe.
+
+8. More FID Curves
+We present additional FID curves for the following datasets: Stanford Cars, SUN 397, Caltech 101, and DF20M as illustrated in Figures 11 through 14, respectively. The results demonstrate that our DiffFit achieves rapid convergence, delivers compelling FID scores compared to other parameter-efficient finetuning strategies, and is competitive in the fullfinetuning setting.
+
+9. More Theoretical Analysis
+In this section, we will provide a more detailed analysis of the effect of scaling factors. Specifically, we will present a formal version and proof of Theorem 1, which was informally stated in the main document.
+Our theoretical results are closely related to the learning of neural networks. It is worth noting that the majority of works in this area concentrate on the simplified setting where the neural network only has one non-linearly activated hidden layer with no bias terms, see, e.g., [88, 21, 17, 85, 20, 74]. As our contributions are mainly experimental, we only provide some intuitive theoretical analysis to reveal the effect of scaling factors. To this end, we will consider the following simplified settings.
+
+• Foll√owing the approach of [33, 10], we replace the noise neural network ϵθ(xt, t) used in the diffusion model with
+
+xt −
+
+√α¯txθ (xt 1−α¯t
+
+,t)
+
+,7
+
+where
+
+xθ (xt ,
+
+t)
+
+is
+
+a
+
+neural
+
+network
+
+that
+
+approximates
+
+the
+
+original
+
+signal.
+
+In
+
+addition,
+
+in
+
+the
+
+sampling
+
+process, we assume a single sampling step from the end time t = E to the initial time t = 0, which gives x0 =
+
+7Here
+
+we
+
+assume
+
+that
+
+in
+
+the
+
+forward
+
+process,
+
+the
+
+conditional
+
+distribution
+
+q0t(xt|x0)
+
+=
+
+N
+
+√ ( α¯tx0,
+
+(1
+
+−
+
+α¯t)I).
+
+See
+
+Section
+
+3.1
+
+in
+
+the
+
+main
+
+document.
+
+FID
+
+Stanford Cars
+350 Full Fine-tune
+
+300
+
+DiffFit
+
+BitFit
+
+250
+
+Adapt-Parallel
+
+200
+
+VPT
+
+150
+
+100
+
+50
+
+0 15K 45K 75K 105K 135K 165K 195K 225K
+Training Steps
+
+Figure 11: FID of five methods every 15K iterations on
+
+Stanford Cars dataset.
+
+Caltech-101
+380 Full Fine-tune
+
+330
+
+DiffFit
+
+BitFit
+
+280
+
+Adapt-Parallel
+
+230
+
+VPT
+
+FID
+
+180
+
+130
+
+80
+
+30 15K 45K 75K 105K 135K 165K 195K 225K
+Training Steps
+
+Figure 13: FID of five methods every 15K iterations on Caltech 101 dataset.
+
+FID
+
+SUN-397
+
+300
+
+Full Fine-tune
+
+DiffFit 250
+BitFit
+
+Adapt-Parallel 200
+VPT
+
+150
+
+100
+
+50
+
+0 15K 45K 75K 105K 135K 165K 195K 225K
+Training Steps
+
+Figure 12: FID of five methods every 15K iterations on SUN 397 dataset.
+
+DF-20M
+350 Full Fine-tune
+
+300
+
+DiffFit
+
+BitFit
+
+250
+
+Adapt-Parallel
+
+VPT 200
+
+FID
+
+150
+
+100
+
+50
+
+0 15K 45K 75K 105K 135K 165K 195K 225K
+Training Steps
+
+Figure 14: FID of five methods every 15K iterations on DF20M dataset.
+
+xθ(xE, E). For brevity, we denote xθ(·, E) by G(·), and we assume that G(s) = f (Ws + b) for all s ∈ RD, where W ∈ RD×D is a weight matrix, b ∈ RD is the offset vector, and f : R → R represents a non-linear activation function that does not grow super-linearly (cf. Appendix 9.3) and it is applied element-wise. While one-step generation may seem restrictive, recent works [44, 65] have achieved it for the diffusion models.
+• Suppose that we have a dataset generated from distribution Q0 ∈ RD. Further assuming that there exist groundtruth scaling factors γ∗ ∈ RD such that each entry of any data point in a relatively small dataset generated from distribution P0 ∈ RD can be written as xT γ∗ for some x sampled from Q0. We denote this transition from Q0 to P0 as P0 = fγ∗ #Q0 for brevity.
+• Recent theoretical results for diffusion models [13, 12, 36, 8, 7] show that under appropriate conditions, diffusion models can generate samples that approximately follow the original data distribution. Based on these results, we assume that G(ϵ) ∼ Qˆ0 for ϵ ∼ N (0, I), where Qˆ0 is close to Q0 in some probability distance.
+Under the above settings, in the training process for the diffusion model using the relatively small dataset, if we only
+
+fine-tune the scaling factors, the objective function can be expressed as:
+
+m
+
+min
+γ ∈RD
+
+i=1
+
+∥G(ϵi)T
+
+γ
+
+−
+
+xTi
+
+γ ∗ ∥22 ,
+
+(2)
+
+where ϵi ∼ N (0, I), xi ∼ Q0 (then xTi γ∗ corresponds to an entry of data point generated from P0), and m is the number of training samples. As G(ϵi) is sub-Gaussian (cf. Appendix 9.2) and G(ϵi) ∼ Qˆ0 with Qˆ0 being close to Q0, we assume that
+xi can be represented as xi = G(ϵi) + zi, where each entry of zi is zero-mean sub-Gaussian with the sub-Gaussian norm
+(cf. Appendix 9.2 for the definition of sub-Gaussian norm) being upper bounded by some small constant η > 0. Let ai = G(ϵi) = f (Wϵi + b) ∈ RD. We write A = [a1, . . . , am]T ∈ Rm×D, Z = [z1, . . . , zm]T ∈ Rm×D, and
+y = [y1, . . . , ym]T with yi = xTi γ∗. Then, we have y = (A + Z)γ∗ and the objective function (2) can be re-written as
+
+min
+γ ∈RD
+
+∥Aγ
+
+−
+
+y∥22.
+
+(3)
+
+Let Vmin := mini∈{1,...,D} Var[f (Xi)] with Xi ∼ N (bi, ∥wi∥22), where bi is the i-th entry of the offset vector b and wiT ∈ R1×D is the i-th row of the weight matrix W. Then, we have the following theorem concerning the optimal solution to (3). The proof of Theorem 2 is deferred to Section 9.4.
+
+Theorem 2. Under the above settings, if γˆ is an optimal solution to (3) and m = Ω(D2 log D), with probability 1 −
+
+e−Ω(D log D), it holds that
+
+√
+
+∥γˆ
+
+− γ∗∥2
+
+<
+
+4 2η √
+Vmin
+
+·
+
+∥γ ∗ ∥2 .
+
+(4)
+
+Note that η > 0 is considered to be small and Vmin is a fixed positive constant. In addition, the gradient descent algorithm
+aims to minimize (3). Therefore, Theorem 2 essentially says that when the number of training samples is sufficiently large, the simple gradient descent algorithm finds an estimate γˆ that is close to γ∗ with high probability (in the sense that the relative distance ∥γˆ − γ∗∥2/∥γ∗∥2 is small). Furthermore, with this γˆ, the diffusion model generates distribution Pˆ0 = fγˆ #Qˆ0, which is naturally considered to be close to P0 = fγ∗ #Q0 since γˆ is close to γ∗ and Qˆ0 is close to Q0.
+Before presenting the proof of Theorem 2 in Section 9.4, we provide some auxiliary results.
+
+9.1. Notation
+We write [N ] = {1, 2, . . . , N } for a positive integer N . The unit sphere in RD is denoted by SD−1 := {x ∈ RD : ∥x∥2 = 1}. We use ∥X∥2 to denote the spectral norm of a matrix X. We use the symbols C, C′, c to denote absolute constants, whose values may differ from line to line.
+
+9.2. General Auxiliary Results
+
+First, the widely-used notion of an ϵ-net is presented as follows, see, e.g., [46, Definition 3].
+
+Definition 1. Let (X , d) be a metric space, and fix ϵ > 0. A subset S ⊆ X is said be an ϵ-net of X if, for all x ∈ X , there exists some s ∈ S such that d(s, x) ≤ ϵ. The minimal cardinality of an ϵ-net of X , if finite, is denoted C(X , ϵ) and is called the covering number of X (at scale ϵ).
+
+The following lemma provides a useful bound for the covering number of the unit sphere.
+
+Lemma 1. [75, Lemma 5.2] The unit Euclidean sphere SD−1 equipped with the Euclidean metric satisfies for every ϵ > 0
+
+that
+
+C(SD−1, ϵ) ≤
+
+2 1+
+
+D
+.
+
+(5)
+
+ϵ
+
+In addition, we have the following lemma concerning the spectral norm of a matrix.
+
+Lemma 2. [75, Lemma 5.3] Let A be an m × D matrix, and let Nϵ be an ϵ-net of SD−1 for some ϵ ∈ (0, 1). Then
+
+∥A∥2 ≤ (1 − ϵ)−1 max ∥Ax∥2.
+
+(6)
+
+x∈Nϵ
+
+Standard definitions for sub-Gaussian and sub-exponential random variables are presented as follows.
+
+Definition 2. A random variable X is said to be sub-Gaussian if there exists a positive constant C such that (E [|X|p])1/p ≤ C√p for all p ≥ 1, and the corresponding sub-Gaussian norm is defined as ∥X∥ψ2 := supp≥1 p−1/2 (E [|X|p])1/p.
+Definition 3. A random variable X is said to be sub-exponential if there exists a positive constant C such that (E [|X|p])1/p ≤ Cp for all p ≥ 1, and the corresponding sub-exponential norm is defined as ∥X∥ψ1 := supp≥1 p−1 (E [|X|p])1/p.
+The following lemma concerns the relation between sub-Gaussian and sub-exponential random variables.
+Lemma 3. [75, Lemma 5.14] A random variable X is sub-Gaussian if and only if X2 is sub-exponential. Moreover,
+
+∥X∥2ψ2 ≤ ∥X∥2ψ1 ≤ 2∥X∥2ψ2 .
+
+(7)
+
+The following lemma provides a useful concentration inequality for the sum of independent sub-exponential random variables.
+
+Lemma 4. [75, Proposition 5.16] Let X1, . . . , XN be independent zero-mean sub-exponential random variables, and K = maxi ∥Xi∥ψ1 . Then for every α = [α1, . . . , αN ]T ∈ RN and ϵ ≥ 0, it holds that
+
+N
+
+ϵ2
+
+ϵ
+
+P
+
+αiXi ≥ ϵ
+i=1
+
+≤ 2 exp
+
+−c · min K2∥α∥22 , K∥α∥∞
+
+,
+
+(8)
+
+where c > 0 is an absolute constant. In particular, with α =
+
+1 N
+
+,
+
+.
+
+.
+
+.
+
+,
+
+1 N
+
+T , we have
+
+1N
+
+N ϵ2 N ϵ
+
+P N Xi ≥ ϵ ≤ 2 exp −c · min K2 , K .
+
+(9)
+
+i=1
+
+9.3. Useful Lemmas
+
+Throughout the following, we use f (·) to denote some non-linear activation function that does not grow faster than linear, i.e., there exist scalars a and b such that f (x) ≤ a|x| + b for all x ∈ R. Then, if X ∼ N (µ, σ2) is a random Gaussian variable, f (X) will be sub-Gaussian [48]. Note that the condition that f (·) does not grow super-linearly is satisfied by
+popular activation functions such as ReLU, Sigmoid, and Hyperbolic tangent function.
+
+Lemma 5. For i ∈ [N ], let Xi ∼ N (µi, σi2) be a random Gaussian variable. Then for every γ = [γ1, . . . , γN ]T ∈ RN , we
+
+have
+
+
+N
+
+2
+
+Vmin∥γ∥22 ≤ E 
+
+γif (Xi)  ≤ (N + 1)Umax∥γ∥22,
+
+(10)
+
+i=1
+
+where Vmin = mini∈[N] Var [f (Xi)] and Umax = maxi∈[N] E f (Xi)2 are dependent on {µi, σi2}i∈[N] and the non-linear activation function f (·).
+
+Proof. We have
+
+
+N
+
+2 N
+
+E
+
+γif (Xi)  = γi2E f (Xi)2 + γiγjE[f (Xi)] · E[f (Xj)]
+
+(11)
+
+i=1
+
+i=1
+
+i̸=j
+
+N
+
+N
+
+2
+
+= γi2Var [f (Xi)] +
+
+γiE[f (Xi)]
+
+(12)
+
+i=1
+
+i=1
+
+N
+
+≥ γi2Var [f (Xi)]
+
+(13)
+
+i=1
+
+≥ Vmin∥γ∥22.
+
+(14)
+
+In addition, from (12), by the Cauchy-Schwarz Inequality, we obtain
+
+
+N
+
+2
+
+N
+
+E
+
+γif (Xi)  ≤ Umax∥γ∥22 +
+
+E[f (Xi)]2 ∥γ∥22
+
+(15)
+
+i=1
+
+i=1
+
+≤ (N + 1)Umax∥γ∥22.
+
+(16)
+
+This completes the proof.
+
+Lemma 6. Let E ∈ Rm×D be a standard Gaussian matrix, i.e., each entry of E is sampled from standard Gaussian distribution, and let W ∈ RD×D be a fixed matrix that has no zero rows. In addition, for a fixed vector b ∈ RD, let B = [b, b, . . . , b]T ∈ Rm×D. Then, when m = Ω(D), with probability 1 − e−Ω(m), it holds that
+
+√1 ∥f (EWT m
+
++
+
+B)∥2
+
+≤
+
+√ C D,
+
+(17)
+
+where C is an absolute constant and the non-linear activation function f (·) is applied element-wise.
+
+Proof. Let wiT ∈ R1×D be the i-th row of W. By the assumption that W has no zero rows, we have ∥wi∥2 > 0 for
+
+all i ∈ [N ]. Let H = EWT + B ∈ Rm×D. Then the (i, j)-th entry of H, denoted hij, follows the N bj, ∥wj∥22
+
+distribution. For any γ ∈ SD−1 and any fixed i, from Lemma 3, we obtain that
+
+D j=1
+
+f
+
+(hij
+
+)γj
+
+2 is sub-exponential with
+
+the sub-exponential norm being upper bounded by C, where C is some absolute constant. Let Eγ be the expectation of
+
+D j=1
+
+f
+
+(hij
+
+)γj
+
+2. From Lemma 5, we obtain that it holds uniformly for all γ ∈ SD−1 that
+
+Eγ ≤ C′D,
+
+(18)
+
+where C′ is an absolute constant. In addition, from Lemma 4, for any ϵ ∈ (0, 1), we obtain
+
+ 
+
+2
+
+
+
+1
+
+P
+
+ 
+
+m
+
+m
+
+D
+
+
+f (hij )γj 
+
+− Eγ
+
+≥ ϵ ≤ 2 exp(−Ω(mϵ2)). 
+
+(19)
+
+i=1 j=1
+
+From Lemma 1, there exists an ϵ-net Nϵ of SD−1 with Nϵ ≤ (1 + 2/ϵ)D. Taking a union bound over Nϵ, we have that
+
+when m = Ω
+
+D ϵ2
+
+log
+
+1 ϵ
+
+, with probability 1 − e−Ω(mϵ2), it holds for all γ ∈ Nϵ that
+
+
+
+2
+
+Eγ
+
+−
+
+ϵ
+
+≤
+
+1 ∥f (EWT m
+
++
+
+B)γ ∥22
+
+=
+
+1 m
+
+mD
+
+
+f (hij )γj 
+
+≤ Eγ + ϵ.
+
+(20)
+
+i=1 j=1
+
+Then,
+
+since
+
+(18)
+
+holds
+
+uniformly
+
+for
+
+all
+
+γ
+
+∈
+
+S D−1 ,
+
+setting
+
+ϵ
+
+=
+
+1 2
+
+,
+
+Lemma
+
+2
+
+implies
+
+that
+
+when
+
+m
+
+=
+
+Ω(D),
+
+with
+
+probability
+
+1 − e−Ω(m),
+
+√1 ∥f (EWT m
+
++
+
+B)∥2
+
+≤
+
+2 max
+γ ∈N1/2
+
+√1 ∥f (EWT m
+
++
+
+B)γ∥2
+
+(21)
+
+1
+
+≤ 2 max
+γ ∈N1/2
+
+Eγ + 2
+
+(22)
+
+√
+
+≤ C D.
+
+(23)
+
+Lemma 7. Let us use the same notation as in Lemma 6. When m = Ω(D2 log D), with probability 1 − e−Ω(D log D), it holds
+
+for all γ ∈ RD that
+
+1 √
+
+∥f (EWT
+
+m
+
++
+
+B)γ∥2
+
+>
+
+Vmin 2
+
+∥γ∥2
+
+,
+
+(24)
+
+where Vmin = mini∈[D] Var[f (Xi)] with Xi ∼ N (bi, ∥wi∥22).
+
+Proof.
+
+It suffices to consider the case that γ
+
+∈
+
+S D−1 .
+
+From (20), we have that when m
+
+=Ω
+
+D ϵ2
+
+log
+
+1 ϵ
+
+, with probability
+
+1 − e−Ω(mϵ2), it holds for all γ ∈ Nϵ that
+
+1 ∥f (EWT m
+
++
+
+B)γ ∥22
+
+≥
+
+Eγ
+
+−
+
+ϵ.
+
+(25)
+
+In addition, from Lemma 5, we have that it hold uniformly for all γ ∈ SD−1 that
+
+Eγ ≥ Vmin.
+
+(26)
+
+Then, if setting ϵ = √c for some small absolute constant c, we have that when m = Ω D2 log D , with probability
+D
+
+1 − e−Ω(D log D), for all γ ∈ Nϵ,
+
+1 √
+
+∥f (EWT
+
+m
+
++
+
+B)γ∥2
+
+≥
+
+Eγ − ϵ.
+
+(27)
+
+For any γ ∈ SD−1, there exists an s ∈ Nϵ such that ∥s − γ∥2 ≤ ϵ, and thus
+
+1 √
+
+∥f (EWT
+
+m
+
++
+
+B)γ∥2
+
+≥
+
+1 √
+
+∥f (EWT
+
+m
+
++
+
+B)s∥2
+
+−
+
+1 √
+
+∥f (EWT
+
+m
+
++
+
+B)(γ
+
+−
+
+s)∥2
+
+(28)
+
+≥
+
+Eγ
+
+−
+
+ϵ
+
+−
+
+1 √
+
+∥f (EWT
+
+m
+
++
+
+B)∥2
+
+·
+
+ϵ
+
+(29)
+
+≥ Eγ − ϵ − cC,
+
+(30)
+
+where (30) follows from Lemma 6 and the setting ϵ = √c . Then, if c is set to be sufficiently small, from (26), we have for
+D
+all γ ∈ SD−1 that
+
+1 √
+
+∥f (EWT
+
+m
+
++
+
+B)γ∥2
+
+>
+
+Vmin . 2
+
+(31)
+
+Lemma 8. Let Z ∈ Rm×D be a matrix with independent zero-mean sub-Gaussian entries. Suppose that the sub-Gaussian norm of all entries of Z is upper bounded by some η > 0. Then, for any γ ∈ RD, we have that with probability 1 − e−Ω(m),
+
+1
+
+√ m
+
+∥Zγ
+
+∥2
+
+≤
+
+2η∥γ∥2.
+
+(32)
+
+Proof. Let zTi ∈ R1×D be the i-th row of Z ∈ Rm×D. From the definition of sub-Gaussian norm, we have that if a random variable X is zero-mean sub-Gaussian with ∥X∥ψ2 ≤ η, then
+
+η = sup p−1/2(E[|X|p])1/p ≥ 2−1/2(E[|X|2])1/2,
+
+(33)
+
+p≥1
+
+which implies
+
+E[X2] ≤ 2η2.
+
+(34)
+
+Then, we have
+
+E[(zTi γ)2] ≤ 2η2∥γ∥22.
+
+(35)
+
+In addition, from Lemma 3, we also have that (zTi γ)2 is sub-exponential with the sub-exponential norm being upper bounded by Cη2∥γ∥22. Then, from Lemma 4, we obtain that for any ϵ ∈ (0, 1), with probability 1 − e−Ω(mϵ2),
+
+1m m
+
+(zTi γ)2 − E (zTi γ)2
+
+≤ Cϵη2∥γ∥22,
+
+(36)
+
+i=1
+
+which implies
+
+1 m
+
+∥Zγ
+
+∥22
+
+=
+
+1 m
+
+m
+
+(zTi γ)2
+
+≤
+
+1 m
+
+m
+
+E
+
+(zTi γ)2
+
++ Cϵη2∥γ∥22 ≤ 2η2∥γ∥22 + Cϵη2∥γ∥22,
+
+(37)
+
+i=1
+
+i=1
+
+where
+
+the
+
+last
+
+inequality
+
+follows
+
+from
+
+(34).
+
+Setting
+
+ϵ
+
+=
+
+min{
+
+2 C
+
+,
+
+1},
+
+we
+
+obtain
+
+the
+
+desired
+
+result.
+
+9.4. Proof of Theorem 2
+Let E = [ϵ1, . . . , ϵm]T ∈ Rm×D. Then A can be written as A = f (EWT + B), where B = [b, . . . , b]T ∈ Rm×D. Then, we have
+
+√ m∥γˆ
+
+−
+
+γ ∗ ∥2
+
+<
+
+2 Vmin
+
+f (EWT + B)(γˆ − γ∗) 2
+
+(38)
+
+=
+
+2 Vmin
+
+∥A(γˆ
+
+−
+
+γ ∗ )∥2
+
+(39)
+
+≤
+
+2 Vmin
+
+(∥Aγˆ
+
+−
+
+y∥2
+
++
+
+∥y
+
+−
+
+Aγ ∗ ∥2 )
+
+(40)
+
+≤
+
+8 Vmin
+
+∥y
+
+−
+
+Aγ ∗ ∥2
+
+(41)
+
+=
+
+8 √Vmin
+
+∥Zγ
+
+∗
+
+∥2
+
+(42)
+
+≤
+
+4 2mη √
+Vmin
+
+· ∥γ∗∥2,
+
+(43)
+
+where (38) follows from Lemma 7, (40) follows from the triangle inequality, (41) follows from the condition that γˆ minimizes (3), (42) follows from y = (A + Z)γ∗. Finally, we use Lemma 8 to obtain (43).
+
+10. More Visualization Results
+In this section, we present additional samples generated by the DiT-XL/2 + DiffFit fine-tuning. Specifically, we demonstrate its efficacy by generating high-quality images with a resolution of 512×512 on the ImageNet dataset, as illustrated in Figures 15, 16, and 17. Additionally, we showcase the model’s capability on 8 downstream tasks by displaying its image generation results with a resolution of 256×256, as depicted in Figures 18 through 25.
+
+Figure 15: Visualization of DiffFit on ImageNet 512×512. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 16: Visualization of DiffFit on ImageNet 512×512. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 17: Visualization of DiffFit on ImageNet 512×512. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 18: Visualization of DiffFit on Food 101. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 19: Visualization of DiffFit on ArtBench 10. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 20: Visualization of DiffFit on Stanford Cars. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 21: Visualization of DiffFit on Caltech 101. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 22: Visualization of DiffFit on DF20M. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 23: Visualization of DiffFit on Flowers 102. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 24: Visualization of DiffFit on CUB-200-2011. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+Figure 25: Visualization of DiffFit on SUN 397. Classifier-free guidance scale = 4.0, sampling steps = 250.
+
+References
+[1] Yogesh Balaji, Seungjun Nah, Xun Huang, Arash Vahdat, Jiaming Song, Karsten Kreis, Miika Aittala, Timo Aila, Samuli Laine, Bryan Catanzaro, et al. ediffi: Text-to-image diffusion models with an ensemble of expert denoisers. arXiv, 2022. 3
+[2] Lukas Bossard, Matthieu Guillaumin, and Luc Van Gool. Food-101–mining discriminative components with random forests. In ECCV, 2014. 11
+[3] Andrew Brock, Jeff Donahue, and Karen Simonyan. Large scale gan training for high fidelity natural image synthesis. arXiv, 2018. 7
+[4] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are few-shot learners. NeurIPS, 2020. 3
+[5] Holger Caesar, Jasper Uijlings, and Vittorio Ferrari. Coco-stuff: Thing and stuff classes in context. In CVPR, 2018. 9 [6] Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-end object
+detection with transformers. In ECCV, 2020. 3 [7] Minshuo Chen, Kaixuan Huang, Tuo Zhao, and Mengdi Wang. Score approximation, estimation and distribution recovery of diffusion
+models on low-dimensional data. arxiv, 2023. 5, 15 [8] Sitan Chen, Sinho Chewi, Jerry Li, Yuanzhi Li, Adil Salim, and Anru R Zhang. Sampling is as easy as learning the score: theory for
+diffusion models with minimal data assumptions. In ICLR, 2023. 5, 15 [9] Shoufa Chen, Chongjian Ge, Zhan Tong, Jiangliu Wang, Yibing Song, Jue Wang, and Ping Luo. Adaptformer: Adapting vision
+transformers for scalable visual recognition. arXiv, 2022. 2, 3, 5, 6, 8 [10] Ting Chen, Ruixiang Zhang, and Geoffrey Hinton. Analog bits: Generating discrete data using diffusion models with self-
+conditioning. In ICLR, 2023. 14 [11] Antonia Creswell, Tom White, Vincent Dumoulin, Kai Arulkumaran, Biswa Sengupta, and Anil A Bharath. Generative adversarial
+networks: An overview. IEEE signal processing magazine, 2018. 3 [12] Valentin De Bortoli. Convergence of denoising diffusion models under the manifold hypothesis. TMLR, 2022. 5, 15 [13] Valentin De Bortoli, James Thornton, Jeremy Heng, and Arnaud Doucet. Diffusion schro¨dinger bridge with applications to score-
+based generative modeling. In NeurIPS, 2021. 5, 15 [14] Mostafa Dehghani, Josip Djolonga, Basil Mustafa, Piotr Padlewski, Jonathan Heek, Justin Gilmer, Andreas Steiner, Mathilde Caron,
+Robert Geirhos, Ibrahim Alabdulmohsin, et al. Scaling vision transformers to 22 billion parameters. arXiv, 2023. 3 [15] Prafulla Dhariwal and Alexander Nichol. Diffusion models beat gans on image synthesis. NeurIPS, 2021. 2, 3, 7 [16] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani,
+Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An image is worth 16x16 words: Transformers for image recognition at scale. arXiv, 2020. 3 [17] Simon S Du, Xiyu Zhai, Barnabas Poczos, and Aarti Singh. Gradient descent provably optimizes over-parameterized neural networks. In ICLR, 2019. 14 [18] Patrick Esser, Robin Rombach, and Bjorn Ommer. Taming transformers for high-resolution image synthesis. In CVPR, 2021. 3 [19] William Fedus, Barret Zoph, and Noam Shazeer. Switch transformers: Scaling to trillion parameter models with simple and efficient sparsity. JMLR, 2021. 3 [20] Weihao Gao, Ashok V Makkuva, Sewoong Oh, and Pramod Viswanath. Learning one-hidden-layer neural networks under general input distributions. In AISTATS, 2019. 14 [21] Rong Ge, Jason D Lee, and Tengyu Ma. Learning one-hidden-layer neural networks with landscape design. In ICLR, 2018. 14 [22] Gregory Griffin, Alex Holub, and Pietro Perona. Caltech-256 object category dataset. 2007. 11 [23] Kai Han, An Xiao, Enhua Wu, Jianyuan Guo, Chunjing Xu, and Yunhe Wang. Transformer in transformer. NeurIPS, 2021. 3 [24] Kaiming He, Xinlei Chen, Saining Xie, Yanghao Li, Piotr Dolla´r, and Ross Girshick. Masked autoencoders are scalable vision learners. In CVPR, 2022. 3 [25] Xuehai He, Chunyuan Li, Pengchuan Zhang, Jianwei Yang, and Xin Eric Wang. Parameter-efficient fine-tuning for vision transformers. arXiv, 2022. 6 [26] Jonathan Ho, William Chan, Chitwan Saharia, Jay Whang, Ruiqi Gao, Alexey Gritsenko, Diederik P Kingma, Ben Poole, Mohammad Norouzi, David J Fleet, et al. Imagen video: High definition video generation with diffusion models. arXiv, 2022. 2 [27] Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. NeurIPS, 2020. 2, 3, 4 [28] Jonathan Ho, Tim Salimans, Alexey Gritsenko, William Chan, Mohammad Norouzi, and David J Fleet. Video diffusion models. arXiv, 2022. 2 [29] Neil Houlsby, Andrei Giurgiu, Stanislaw Jastrzebski, Bruna Morrone, Quentin De Laroussilhe, Andrea Gesmundo, Mona Attariyan, and Sylvain Gelly. Parameter-efficient transfer learning for nlp. In ICML, 2019. 3 [30] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. Lora: Low-rank adaptation of large language models. arxiv, 2021. 2, 3, 5, 6, 8 [31] Menglin Jia, Luming Tang, Bor-Chun Chen, Claire Cardie, Serge Belongie, Bharath Hariharan, and Ser-Nam Lim. Visual prompt tuning. In ECCV, 2022. 2, 3, 5
+
+[32] Yifan Jiang, Shiyu Chang, and Zhangyang Wang. Transgan: Two pure transformers can make one strong gan, and that can scale up. NeurIPS, 2021. 3
+[33] Diederik Kingma, Tim Salimans, Ben Poole, and Jonathan Ho. Variational diffusion models. NeurIPS, 2021. 3, 14 [34] Diederik P Kingma, Max Welling, et al. An introduction to variational autoencoders. Foundations and Trends® in Machine Learning,
+2019. 3 [35] Jonathan Krause, Michael Stark, Jia Deng, and Li Fei-Fei. 3d object representations for fine-grained categorization. In ICCV
+workshops, 2013. 14 [36] Holden Lee, Jianfeng Lu, and Yixin Tan. Convergence for score-based generative modeling with polynomial complexity. In NeurIPS,
+2022. 5, 15 [37] Brian Lester, Rami Al-Rfou, and Noah Constant. The power of scale for parameter-efficient prompt tuning. arXiv, 2021. 3 [38] Junnan Li, Dongxu Li, Caiming Xiong, and Steven Hoi. Blip: Bootstrapping language-image pre-training for unified vision-language
+understanding and generation. In ICML, 2022. 9 [39] Xiang Lisa Li and Percy Liang. Prefix-tuning: Optimizing continuous prompts for generation. arXiv, 2021. 3 [40] Zhiqi Li, Wenhai Wang, Hongyang Li, Enze Xie, Chonghao Sima, Tong Lu, Yu Qiao, and Jifeng Dai. Bevformer: Learning bird’s-
+eye-view representation from multi-camera images via spatiotemporal transformers. In ECCV, 2022. 3 [41] Zhiqi Li, Wenhai Wang, Enze Xie, Zhiding Yu, Anima Anandkumar, Jose M Alvarez, Ping Luo, and Tong Lu. Panoptic segformer:
+Delving deeper into panoptic segmentation with transformers. In CVPR, 2022. 3 [42] Dongze Lian, Daquan Zhou, Jiashi Feng, and Xinchao Wang. Scaling & shifting your features: A new baseline for efficient model
+tuning. arXiv, 2022. 3 [43] Peiyuan Liao, Xiuyu Li, Xihui Liu, and Kurt Keutzer. The artbench dataset: Benchmarking generative models with artworks. arXiv,
+2022. 12 [44] Xingchao Liu, Chengyue Gong, and Qiang Liu. Flow straight and fast: Learning to generate and transfer data with rectified flow. In
+ICLR, 2023. 15 [45] Ze Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng Zhang, Stephen Lin, and Baining Guo. Swin transformer: Hierarchical
+vision transformer using shifted windows. In ICCV, 2021. 3 [46] Zhaoqiang Liu, Jiulong Liu, Subhroshekhar Ghosh, Jun Han, and Jonathan Scarlett. Generative principal component analysis. In
+ICLR, 2022. 16 [47] Ze Liu, Jia Ning, Yue Cao, Yixuan Wei, Zheng Zhang, Stephen Lin, and Han Hu. Video swin transformer. In CVPR, 2022. 3 [48] Zhaoqiang Liu and Jonathan Scarlett. The generalized lasso with nonlinear observations and generative priors. In NeurIPS, 2020. 17 [49] Robert L Logan IV, Ivana Balazˇevic´, Eric Wallace, Fabio Petroni, Sameer Singh, and Sebastian Riedel. Cutting down on prompts and
+parameters: Simple few-shot learning with language models. arXiv, 2021. 3 [50] Alexander Quinn Nichol and Prafulla Dhariwal. Improved denoising diffusion probabilistic models. In ICML, 2021. 4 [51] Maria-Elena Nilsback and Andrew Zisserman. Automated flower classification over a large number of classes. In 2008 Sixth Indian
+Conference on Computer Vision, Graphics & Image Processing, 2008. 13 [52] Gaurav Parmar, Richard Zhang, and Jun-Yan Zhu. On aliased resizing and surprising subtleties in gan evaluation. In CVPR, 2022. 2 [53] William Peebles and Saining Xie. Scalable diffusion models with transformers. arXiv, 2022. 3, 4, 7 [54] Luka´sˇ Picek, Milan Sˇ ulc, Jiˇr´ı Matas, Thomas S Jeppesen, Jacob Heilmann-Clausen, Thomas Læssøe, and Tobias Frøslev. Danish
+fungi 2020-not just another image recognition dataset. In WACV, 2022. 11 [55] Ben Poole, Ajay Jain, Jonathan T Barron, and Ben Mildenhall. Dreamfusion: Text-to-3d using 2d diffusion. arXiv, 2022. 2 [56] Alec Radford, Karthik Narasimhan, Tim Salimans, Ilya Sutskever, et al. Improving language understanding by generative pre-training.
+2018. 3 [57] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever, et al. Language models are unsupervised
+multitask learners. OpenAI blog, 2019. 3 [58] Aditya Ramesh, Prafulla Dhariwal, Alex Nichol, Casey Chu, and Mark Chen. Hierarchical text-conditional image generation with
+clip latents. arXiv, 2022. 2, 3 [59] Danilo Rezende and Shakir Mohamed. Variational inference with normalizing flows. In ICML, 2015. 3 [60] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bjo¨rn Ommer. High-resolution image synthesis with latent
+diffusion models. In CVPR, 2022. 2, 3, 4 [61] Nataniel Ruiz, Yuanzhen Li, Varun Jampani, Yael Pritch, Michael Rubinstein, and Kfir Aberman. Dreambooth: Fine tuning text-to-
+image diffusion models for subject-driven generation. arXiv, 2022. 9 [62] Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily Denton, Seyed Kamyar Seyed Ghasemipour,
+Burcu Karagol Ayan, S Sara Mahdavi, Rapha Gontijo Lopes, et al. Photorealistic text-to-image diffusion models with deep language understanding. arXiv, 2022. 3 [63] Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily Denton, Seyed Kamyar Seyed Ghasemipour, Raphael Gontijo-Lopes, Burcu Karagol Ayan, Tim Salimans, et al. Photorealistic text-to-image diffusion models with deep language understanding. In NeurIPS. 3
+
+[64] Axel Sauer, Katja Schwarz, and Andreas Geiger. Stylegan-xl: Scaling stylegan to large diverse datasets. In SIGGRAPH, 2022. 7 [65] Yang Song, Prafulla Dhariwal, Mark Chen, and Ilya Sutskever. Consistency models. arxiv, 2023. 15 [66] Yang Song and Stefano Ermon. Generative modeling by estimating gradients of the data distribution. NeurIPS, 2019. 2 [67] Yang Song, Jascha Sohl-Dickstein, Diederik P Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. Score-based generative
+modeling through stochastic differential equations. In ICLR. 3 [68] Yang Song, Jascha Sohl-Dickstein, Diederik P Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. Score-based generative
+modeling through stochastic differential equations. In ICLR, 2021. 2 [69] Robin Strudel, Ricardo Garcia, Ivan Laptev, and Cordelia Schmid. Segmenter: Transformer for semantic segmentation. In ICCV,
+2021. 3 [70] Peize Sun, Jinkun Cao, Yi Jiang, Rufeng Zhang, Enze Xie, Zehuan Yuan, Changhu Wang, and Ping Luo. Transtrack: Multiple object
+tracking with transformer. arXiv, 2020. 3 [71] Hugo Touvron, Matthieu Cord, Matthijs Douze, Francisco Massa, Alexandre Sablayrolles, and Herve´ Je´gou. Training data-efficient
+image transformers & distillation through attention. In ICML, 2021. 3 [72] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothe´e Lacroix, Baptiste Rozie`re, Naman
+Goyal, Eric Hambro, Faisal Azhar, et al. Llama: Open and efficient foundation language models. arXiv, 2023. 9 [73] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin.
+Attention is all you need. NeurIPS, 2017. 3, 4 [74] Luca Venturi, Afonso S Bandeira, and Joan Bruna. Spurious valleys in one-hidden-layer neural network optimization landscapes.
+JMLR, 2019. 14 [75] Roman Vershynin. Introduction to the non-asymptotic analysis of random matrices. arxiv, 2010. 16, 17 [76] Catherine Wah, Steve Branson, Peter Welinder, Pietro Perona, and Serge J. Belongie. The caltech-ucsd birds-200-2011 dataset. 2011.
+11 [77] Wenhai Wang, Enze Xie, Xiang Li, Deng-Ping Fan, Kaitao Song, Ding Liang, Tong Lu, Ping Luo, and Ling Shao. Pyramid vision
+transformer: A versatile backbone for dense prediction without convolutions. In ICCV, 2021. 3 [78] Wenhai Wang, Enze Xie, Xiang Li, Deng-Ping Fan, Kaitao Song, Ding Liang, Tong Lu, Ping Luo, and Ling Shao. Pvt v2: Improved
+baselines with pyramid vision transformer. Computational Visual Media, 2022. 3 [79] Jianxiong Xiao, James Hays, Krista A Ehinger, Aude Oliva, and Antonio Torralba. Sun database: Large-scale scene recognition from
+abbey to zoo. In 2010 IEEE computer society conference on computer vision and pattern recognition, 2010. 11 [80] Enze Xie, Wenhai Wang, Zhiding Yu, Anima Anandkumar, Jose M Alvarez, and Ping Luo. Segformer: Simple and efficient design
+for semantic segmentation with transformers. NeurIPS, 2021. 3 [81] Runxin Xu, Fuli Luo, Zhiyuan Zhang, Chuanqi Tan, Baobao Chang, Songfang Huang, and Fei Huang. Raise a child in large language
+model: Towards effective and generalizable fine-tuning. arXiv, 2021. 3 [82] Li Yuan, Yunpeng Chen, Tao Wang, Weihao Yu, Yujun Shi, Zi-Hang Jiang, Francis EH Tay, Jiashi Feng, and Shuicheng Yan. Tokens-
+to-token vit: Training vision transformers from scratch on imagenet. In ICCV, 2021. 3 [83] Elad Ben Zaken, Shauli Ravfogel, and Yoav Goldberg. Bitfit: Simple parameter-efficient fine-tuning for transformer-based masked
+language-models. arXiv, 2021. 2, 3, 5, 8 [84] Lvmin Zhang and Maneesh Agrawala. Adding conditional control to text-to-image diffusion models. arXiv, 2023. 9 [85] Xiao Zhang, Yaodong Yu, Lingxiao Wang, and Quanquan Gu. Learning one-hidden-layer relu networks via gradient descent. In
+AISTATS, 2019. 14 [86] Hengshuang Zhao, Li Jiang, Jiaya Jia, Philip HS Torr, and Vladlen Koltun. Point transformer. In ICCV, 2021. 3 [87] Sixiao Zheng, Jiachen Lu, Hengshuang Zhao, Xiatian Zhu, Zekun Luo, Yabiao Wang, Yanwei Fu, Jianfeng Feng, Tao Xiang,
+Philip HS Torr, et al. Rethinking semantic segmentation from a sequence-to-sequence perspective with transformers. In CVPR, 2021. 3 [88] Kai Zhong, Zhao Song, Prateek Jain, Peter L Bartlett, and Inderjit S Dhillon. Recovery guarantees for one-hidden-layer neural networks. In ICML, 2017. 14 [89] Daquan Zhou, Bingyi Kang, Xiaojie Jin, Linjie Yang, Xiaochen Lian, Zihang Jiang, Qibin Hou, and Jiashi Feng. Deepvit: Towards deeper vision transformer. arXiv, 2021. 3 [90] Daquan Zhou, Weimin Wang, Hanshu Yan, Weiwei Lv, Yizhe Zhu, and Jiashi Feng. Magicvideo: Efficient video generation with latent diffusion models. arXiv, 2022. 2 [91] Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. Learning to prompt for vision-language models. IJCV, 2022. 3
+

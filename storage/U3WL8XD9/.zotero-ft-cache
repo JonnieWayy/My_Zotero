@@ -1,0 +1,78 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2304.10592
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 20 Apr 2023]
+Title: MiniGPT-4: Enhancing Vision-Language Understanding with Advanced Large Language Models
+Authors: Deyao Zhu , Jun Chen , Xiaoqian Shen , Xiang Li , Mohamed Elhoseiny
+Download a PDF of the paper titled MiniGPT-4: Enhancing Vision-Language Understanding with Advanced Large Language Models, by Deyao Zhu and 4 other authors
+Download PDF
+
+    Abstract: The recent GPT-4 has demonstrated extraordinary multi-modal abilities, such as directly generating websites from handwritten text and identifying humorous elements within images. These features are rarely observed in previous vision-language models. We believe the primary reason for GPT-4's advanced multi-modal generation capabilities lies in the utilization of a more advanced large language model (LLM). To examine this phenomenon, we present MiniGPT-4, which aligns a frozen visual encoder with a frozen LLM, Vicuna, using just one projection layer. Our findings reveal that MiniGPT-4 possesses many capabilities similar to those exhibited by GPT-4 like detailed image description generation and website creation from hand-written drafts. Furthermore, we also observe other emerging capabilities in MiniGPT-4, including writing stories and poems inspired by given images, providing solutions to problems shown in images, teaching users how to cook based on food photos, etc. In our experiment, we found that only performing the pretraining on raw image-text pairs could produce unnatural language outputs that lack coherency including repetition and fragmented sentences. To address this problem, we curate a high-quality, well-aligned dataset in the second stage to finetune our model using a conversational template. This step proved crucial for augmenting the model's generation reliability and overall usability. Notably, our model is highly computationally efficient, as we only train a projection layer utilizing approximately 5 million aligned image-text pairs. Our code, pre-trained model, and collected dataset are available at this https URL . 
+
+Comments: 	Project Website: this https URL Code, Pretrained Model, and Dataset: this https URL Deyao Zhu and Jun Chen contributed equally to this work
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2304.10592 [cs.CV]
+  	(or arXiv:2304.10592v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2304.10592
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Deyao Zhu [ view email ]
+[v1] Thu, 20 Apr 2023 18:25:35 UTC (6,248 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled MiniGPT-4: Enhancing Vision-Language Understanding with Advanced Large Language Models, by Deyao Zhu and 4 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2304
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

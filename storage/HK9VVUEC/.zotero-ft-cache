@@ -1,0 +1,606 @@
+Collaborative Generative AI: Integrating GPT-k for Efﬁcient Editing in Text-to-Image Generation
+Wanrong Zhu¶, Xinyi Wang¶, Yujie Lu¶, Tsu-Jui Fu¶, Xin Eric Wang§, Miguel Eckstein¶, William Yang Wang¶
+¶UC Santa Barbara, §UC Santa Cruz {wanrongzhu, xinyi_wang, yujielu, tsu-juifu, migueleckstein, william}@ucsb.edu, xwang366@ucsc.edu
+
+arXiv:2305.11317v1 [cs.CL] 18 May 2023 Count Percentage(%)
+
+Abstract
+The ﬁeld of text-to-image (T2I) generation has garnered signiﬁcant attention both within the research community and among everyday users. Despite the advancements of T2I models, a common issue encountered by users is the need for repetitive editing of input prompts in order to receive a satisfactory image, which is time-consuming and labor-intensive. Given the demonstrated text generation power of large-scale language models, such as GPT-k, we investigate the potential of utilizing such models to improve the prompt editing process for T2I generation. We conduct a series of experiments to compare the common edits made by humans and GPT-k, evaluate the performance of GPT-k in prompting T2I, and examine factors that may inﬂuence this process. We found that GPT-k models focus more on inserting modiﬁers while humans tend to replace words and phrases, which includes changes to the subject matter. Experimental results show that GPT-k are more effective in adjusting modiﬁers rather than predicting spontaneous changes in the primary subject matters. Adopting the edit suggested by GPT-k models may reduce the percentage of remaining edits by 2030%.
+1 Introduction
+The task of text-to-image (T2I) generation, which involves generating images from natural language descriptions, holds signiﬁcant potential to create new avenues and job opportunities for content creators while also providing insights into the grounding of natural language in the visual world through the application of generative AI. A number of models have demonstrated exceptional performance in terms of image quality, such as StableDiffusion (Rombach et al., 2021), Midjourney (Midjourney, 2022), Imagen (Saharia et al., 2022), and DALLE-2 (Ramesh et al., 2022). Despite the popularity of T2I generation and the ability of these models to generate impressive images, the difﬁculty of
+
+100
+
+104
+
+80
+
+102
+
+60
+
+20 40 60 8#0Edit10/0Trac12e0 140 160 180 Figure 1: The histogram plots #edit per trace in DiffusionDB (Wang et al., 2022) while the lineplot shows the cumulative percentage of traces less than certain #edit. The y-axis on the left is on log-scale. On average, there are 6.9 edits being made in each user editing trace.
+
+“prompt-engineering” – which is writing accurate prompts to describe the desired image in this scenario – still remains a signiﬁcant challenge. Users often need to edit the prompt for several rounds before arriving at a satisfactory image, which makes the process of T2I generation time-consuming and laborious (and expensive for commercialized models). Figure 1 shows the #edits distribution in the editing traces made by StableDiffusion Discord server users (Wang et al., 2022). This issue highlights the need to improve the efﬁciency and effectiveness of prompting T2I models.
+Recently, large language models (LLMs) such as GPT-k (Radford et al., 2019; Brown et al., 2020; Ouyang et al., 2022) have demonstrated impressive abilities in text generation. This leads to the natural question of whether these models can be utilized to improve the T2I prompting process. However, LLMs and T2I models are trained on different modalities and architectures, which makes it challenging to integrate them seamlessly.
+In this paper, we conduct a series of experiments and analyses on user editing traces on StableDiffusion,1 and attempt to modify the T2I prompts with eight GPT-k models. The primary objective of our research is to examine the potential of modifying T2I prompts with GPT-k models. More speciﬁcally,
+1Our experiments are conducted upon StableDiffusion since it is a wide-adopted open-source large text-to-image generative model with SoTA performance.
+
+1
+
+we aim to investigate the common edits made by humans and by GPT-k, as well as the performance of prompting T2I generation with GPT-k models. Additionally, we aim to identify and investigate possible factors that might inﬂuence the performance of GPT-k in T2I generation tasks.
+Through our experiments, we observe that: • While GPT-k models tend to focus more
+on inserting modiﬁers, human users have a greater tendency towards replacing words and phrases, which may include spontaneous changes to the subject matter of the prompt. • Modifying the T2I prompt with GPT-k models may not necessarily result in a direct increase in similarity to the ﬁnal target image in the editing trace. Instead, the edit suggested by GPT-k may be closely related to intermediate editing steps, and the percentage of remaining edits may decrease by 20-30% if the edit suggested by GPT-k is adopted. • These ﬁndings suggest that instead of attempting to predict spontaneous changes made by human users on the primary subject matter, GPT-k models are more effective in improving prompts by rewriting and performing edits related to modiﬁers adjusting.
+2 Research Questions and Settings
+To investigate the potential of modifying T2I prompts with GPT-k models, we conduct a series of experiments and analysis, aiming to answer the following questions:
+1. To what extent can GPT-k models help prompt text-to-image generation?
+2. What are the common types of edits made by humans and by GPT-k models?
+3. What are the factors that may inﬂuence GPT-k prompting text-to-image generation?
+We describe the dataset, models and evaluation metrics used in this study below. Dataset DiffusionDB-2M (Wang et al., 2022) scrapes 2M groups of user prompts, hyperparameters and images generated by StableDiffusion (Rombach et al., 2021) from the ofﬁcial Stable Diffusion Discord server. We group the prompts by anonymized user_id, then cluster the user prompts into traces of edits based on the prompt contents. More speciﬁcally, we encode prompts with Universal Sentence Encoder (Cer et al., 2018), then cluster upon the prompt embeddings with DBSCAN (Ester et al., 1996). We receive 100k traces
+
+GPT-k
+
+Model Name
+
+#Parameters
+
+GPT-2 (Radford et al., 2019)
+
+gpt2-base gpt2-medium gpt2-large gpt2-xl
+
+117M 345M 774M 1.2B
+
+GPT-3 (Brown et al., 2020)
+
+text-ada-001 text-babbage-001 text-curie-001
+
+350M 1.3B 6.7B
+
+GPT-3.5 (Ouyang et al., 2022) text-davinci-003
+
+175B
+
+Table 1: The names and corresponding parameter sizes of the GPT-k models covered in our study.
+
+of edits, the mean #edit per trace is 6.9, with a
+
+standard deviation of 16.1. Figure 1 plots the #edit
+
+in the clustered traces, which shows a long-tail dis-
+
+tribution with about 5% of the traces having more
+
+than 20 edits. Thus, in the following experiments,
+
+we consider traces with at most 20 edits.
+
+GPT-k & Text-to-Image Models Table 1 lists
+
+the names and parameter sizes of the eight GPT-k
+
+models we covered in this study. We conduct T2I
+
+experiments with the open-source StableDiffusion-
+
+v1-4 (Rombach et al., 2021), which is used to ren-
+
+der images in DiffusionDB (Wang et al., 2022).
+
+Annotations For each trace of length n, we de-
+
+note the prompts as (t1, t2, . . . , tn), and the gen-
+
+erated images as (i1, i2, . . . , in). We refer to the GPT-k-modiﬁed prompt as t1, and refer to the im-
+
+age rendered from the modiﬁed prompt as i1.
+
+Metrics We use the cosine similarity of CLIP-
+
+ViT/B-32 (Radford et al., 2021) visual features to
+
+evaluate the similarity between images. Let ik de-
+
+notes the image in the original edit trace that is
+
+most similar to i1, we deﬁne the Relative Number
+
+of
+
+Edits
+
+(RNE)
+
+as
+
+n´k n´1
+
+.
+
+The
+
+RNE
+
+metric
+
+reﬂects
+
+the relative position of the edit in the original trace
+
+that is most similar to the edit suggested by GPT-k
+
+and also represents the percentage of remaining ed-
+
+its after the edit suggested by GPT-k is performed.
+
+3 Prompting T2I w/ GPT-k
+
+In the following experiments, we only reveal the initial prompts in the user editing traces to GPT-k, and ask the models to perform one round of edit. Procedure We split the 100k trace of edits into two halves, with 30k traces used for evaluations and the remaining 70k serving as holdout set. For each of the listed GPT-k models, we provide the ﬁrst prompt t1 in each evaluation trace to the model, and let GPT-k generate the modiﬁed prompt t1.
+GPT-2 models are ﬁnetuned with the prompts in the holdout traces for two epochs with a learning rate of 5e ´ 5 and a batch size of 128. For GPT-
+
+2
+
+Model
+gpt2-base gpt2-medium gpt2-large gpt2-xl gpt3-ada gpt3-babbage gpt3-curie gpt3.5-davinci
+
+i1-in 71.72
+
+in´1-in 74.82
+
+i1-in
+69.58 69.63 69.70 69.57 66.95 68.79 68.45 68.79
+
+i1 -iM S
+80.16 80.39 80.50 80.37 76.37 78.81 78.28 78.09
+
+RNE(%)
+75.28 78.28 78.88 75.25 69.43 72.33 71.41 69.22
+
+Table 2: The CLIP cosine similarity scores between im-
+ages and the relative number of edits (RNE). Here, i1, in´1, in denotes the ﬁrst, last-but-one, and last image in the trace of edits; i1 is the image generated from the
+modiﬁed prompt, and iMS is the image that is most similar to i1 with regard to CLIP cosine similarity. RNE
+scores suggest a 20-30% decrease in the percentage of
+remaining edits if adopting edits suggested by GPT-k.
+
+3/3.5 models, an in-context learning approach is adopted. Following previous studies (Yang et al., 2021; Alayrac et al., 2022), supporting examples for in-context learning are selected by comparing the similarity of the prompt text features and retrieving (tˆ1, tˆn) pairs from the top-m most similar traces. Modiﬁed prompts are generated through 16-shot in-context learning with m=16. Appendix Table 8 shows how we prompt GPT-3/3.5.
+After receiving the GPT-k-modiﬁed prompt t1, we provide it to StableDiffusion to generate image i1. The effectiveness of GPT-k in prompting T2I generation is evaluated by comparing the similarity of the generated image i1 to images in the original trace. The results reported in the following sections are the mean of three repeated runs.
+Automatic Evaluation The CLIP cosine similarity scores, as listed in Table 2, are used to evaluate image similarity. Two model-agnostic baselines are established for comparison: the similarity between the ﬁrst and last images (i1-in), and the similarity between the last-but-one and last images (in´1-in).
+We denote iMS as the image in the original trace that is most similar to the generated image i1 (has the highest CLIP cosine similarity score). Examining results in Table 2, we notice that the image i1 generated from the modiﬁed prompt may not be directly similar to the ﬁnal target in, as (i1-in) is lower than the baselines. However, it appears that i1 may be related to the intermediate steps in the editing trace, as evidenced by the signiﬁcantly higher similarity between i1 and iMS compared to the baselines. RNE scores show that, i1 is most similar to images in the ﬁrst one-third of the trace, and that the percentage of remaining edits decreases by 20-30% if the edit suggested by GPT-k is adopted.
+
+Effectiveness
+
+Likelihood
+
+Win(%) Tie(%) Lose(%) Win(%) Tie(%) Lose(%)
+
+gpt2-xl gpt3-curie gpt3.5-davinci
+
+38.57 40.89 39.58
+
+29.77 21.33 21.67
+
+31.66 37.78 38.75
+
+38.99 39.33 38.13
+
+22.01 21.56 25.00
+
+38.99 39.11 36.87
+
+Table 3: Human evaluation results of head-to-head comparison between edits suggested by GPT-k and human-made edits. We evaluate the effectiveness of the edit and the likelihood of this edit being adopted by humans. “Win” and “Tie” indicate that GPT-k-suggested edits are better than or comparable to human edits.
+
+Insert Delete Swap Replace
+
+Human -
+
+29.9% 21.1% 2.0% 47.0%
+
+GPT-k
+
+gpt2-base gpt2-medium gpt2-large gpt2-xl gpt3-ada gpt3-babbage gpt3-curie gpt3.5-davinci
+
+95.4% 95.6% 95.0% 95.9% 36.5% 39.6% 42.9% 68.5%
+
+0.0% 0.1% 0.1% 0.0% 14.9% 18.8% 17.7% 3.9%
+
+0.0% 0.0% 0.0% 0.0% 2.0% 3.3% 4.1% 2.3%
+
+4.6% 4.4% 4.9% 4.1% 46.6% 38.3% 35.3% 25.3%
+
+Table 4: The distribution of the common types of edits made by human and by GPT-k models.
+
+Human Evaluation For each editing trace, we present MTurk annotators with the initial prompt and image (t1, i1), and two candidate edits: (1) the GPT-k-modiﬁed prompt, t1; (2) the human edit, tMS, from the original editing trace. Here, tMS is the corresponding prompt to iMS, which has the highest CLIP cosine similarity with i1. The annotators are then asked to decide which edit was more effective and more likely to be adopted by human editors, t1 or tMS. We evaluate each listed GPT-k model with 200 traces. For each trace, three annotators are invited to provide their judgments.
+As shown in Table 3, the three GPT-k models all show tight wins against the human edits regarding both effectiveness and likelihood of being adopted. This veriﬁes that the edits made by GPT-k models are similar or comparable to the intermediate steps in the human editing trace.
+4 Human’s Common Edits vs. GPT-k’s
+Upon examination of the user editing traces, we identify four types of edits commonly made by humans: (1) Insert: adding descriptive terms such as modiﬁers to the prompt to specify the style, artistic technique, camera view, lighting, etc; (2) Delete: removing certain terms; (3) Swap: changing the order of certain terms in the prompt; (4) Replace: changing the modiﬁers or the main subject of the prompt. Appendix Table 5 shows edit examples.
+To count the frequency of edits, we ﬁrst re-
+
+3
+
+All-mixed
+
+Insert
+
+Delete
+
+Swap
+
+Replace 65
+
+66
+
+67
+
+68
+
+69
+
+70
+
+71
+
+Figure 2: The CLIP cosine similarity scores between the image generated from the GPT-3.5-modiﬁed prompt and the last image. Results are reported on Seval (All-mixed), Sinsert, Sdelete, Sswap and Sreplace.
+
+move punctuation marks and stopwords using NLTK (Bird et al., 2009). We then utilize the SequenceMatcher2 to compare the adjacent prompts in the trace and detect the edit type. Table 4 lists the frequency of common edits made by humans and by GPT-k models. We notice a discrepancy between the distribution of human edits and the ones made by GPT-k. Nearly half of human edits pertain to replace, followed by insert and delete. GPT-2 models, due to their autoregressive training nature, have a tendency towards continual generation, resulting in a majority of edits being insert. GPT-3 models have a relatively similar edit distribution as humans. As the model size increases, we see an increase in the frequency of insert and a decrease in replace. For GPT-3.5, the most frequent edit is insert, followed by replace; while delete and swap are relatively rare.
+5 Ablations & Analyses
+Effects of Edit Types To investigate the effects of each individual edit type ei, we create four subsets Sinsert, Sdelete, Sswap and Sreplace from the evaluation set Seval. Each subset Sei, comprises of traces that meet the criteria of “if and only if edit ei is applied on the ﬁrst prompt can we receive the last prompt.” For each edit type ei, the image similarity between the image generated from the modiﬁed prompt and the last image for traces in Sei is calculated and compared to the baseline results obtained from the complete Seval that mixes all types of edits.
+Figure 2 illustrates the impact of different edit types on image similarity. The CLIP cosine similarities of traces that solely consist of insert, delete, and swap edits are higher or comparable to the all-mixed baseline. This suggests that GPT-k performs better at adding, removing, and reordering modiﬁers. Conversely, we observe that replace edits lead to lower image similarities. This is likely due to the fact that the replace edit sometimes results in a change of the subject matter, which
+2https://docs.python.org/3/library/difﬂib.html
+
+RNE(%) CLIP cosine
+
+80
+70
+4 6 8 10 12 14 16 20 80 70
+4 6 8 #Ed10it / Tr1a2ce 14 16 20
+
+iiiiin1nvv2v1ss1s...vviiiMnssn.S. iinn
+
+Figure 3: The CLIP cosine similarity (upper) and RNE
+
+(lower) on traces with #edit ranging from 2 to 20.
+
+Prompts for T2I generation are modiﬁed with GPT-3.5.
+
+Here,
+
+i1,
+
+it
+
+n´1 2
+
+u,
+
+in´1,
+
+in
+
+denotes
+
+the
+
+ﬁrst,
+
+middle,
+
+last-
+
+but-one, and last image in the trace of edits; i1 is the
+
+image generated from the modiﬁed prompt, and iMS is the image that is most similar to i1.
+
+can drastically alter the painting. It is worth not-
+
+ing that shifting the primary subject matter of the
+
+painting is a relatively spontaneous action made
+
+by humans. Appendix Table 6 shows a trace with
+
+multiple replace operation. The vast number of
+
+potential replacements makes it particularly difﬁ-
+
+cult for GPT-k to accurately select the desired edit.
+
+Effects of #Edits Figure 3 depicts how the CLIP
+
+cosine similarity changes with the #edit in the
+
+trace. As #edit increases, the similarity between
+
+the last image in and those at the beginning or
+
+middle
+
+of
+
+the
+
+trace
+
+(i1
+
+or
+
+it
+
+n´1 2
+
+u
+
+)
+
+decreases.
+
+This
+
+trend may be attributed to the higher likelihood of
+
+changing primary subject matters in longer traces.
+
+Meanwhile, the similarity between the last-but-one
+
+and the last images (in´1 vs. in) remains consis-
+
+tent, suggesting that the majority of edits made
+
+towards the end of the prompt editing process are
+
+minor in nature. As the trace of edits gets longer,
+
+the similarity between the image i1 generated from
+
+the modiﬁed prompt and the most similar image
+
+iMS in the trace remains constant, while the RNE
+
+metric gradually increases to approximately 80%.
+
+This indicates that the modiﬁed prompt is related
+
+to the early edits in the trace. This aligns with our
+
+previous ﬁndings, which suggest that GPT-k is pro-
+
+ﬁcient in rewriting prompts and adjusting modiﬁers,
+
+but may struggle to predict spontaneous changes in
+
+the main subject matter of the painting.
+
+6 Conclusion
+
+Through our experiments and analyses, we hope to gain a deeper understanding of the capabilities and limitations of using GPT-k to edit prompts for textto-image generation, and provide valuable insights for future research in this ﬁeld.
+
+4
+
+Limitations
+In this work, we are focusing on the StableDiffusion model for text-to-image generation. However, we have not examined user traces from other online text-to-image generation servers such as Midjourney or DALLE-2, as these models have not been publicly released and therefore cannot be replicated locally for experimentation.
+Additionally, the current experimental setup only uses GPT-k for a single round of editing, and future work should include human studies that use GPT-k to suggest edits for multiple turns, and compare these to user traces without the use of GPT-k.
+Furthermore, the current implementation only utilizes the initial prompt as input to GPT-k. In future studies, it would be beneﬁcial to provide additional information to the GPT-k models, including additional steps of editing or the generated image, in order to receive more speciﬁc feedback on the editing suggestions.
+Ethics Statement
+The ﬁeld of text-to-image generation is of great interest to the broad public, and every content creator should have the opportunity to explore its potential. However, the current prompt engineering process can be time-consuming and expensive for content creators, and the repetitive editing and regeneration process is computationally intensive and not environmentally friendly. The goal of our work is to improve the efﬁciency of prompting text-toimage models, beneﬁting both users and service providers.
+We recognize that large language models (LLMs) such as GPT-k may have the possibility of generating biased content, as they may prefer the content they have seen during training, resulting in a smaller chance of showing other possibly related content. In light of this, we utilize GPT-k models solely for assisting humans in the prompt editing process, and will continue to keep humans in the loop for the content creation process.
+
+Sharifzadeh, Mikolaj Binkowski, Ricardo Barreira, Oriol Vinyals, Andrew Zisserman, and Karen Simonyan. 2022. Flamingo: a visual language model for few-shot learning. ArXiv, abs/2204.14198.
+Steven Bird, Ewan Klein, and Edward Loper. 2009. Natural language processing with Python: analyzing text with the natural language toolkit. " O’Reilly Media, Inc.".
+Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, T. J. Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler, Jeff Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. 2020. Language models are few-shot learners. ArXiv, abs/2005.14165.
+Daniel Matthew Cer, Yinfei Yang, Sheng yi Kong, Nan Hua, Nicole Limtiaco, Rhomni St. John, Noah Constant, Mario Guajardo-Cespedes, Steve Yuan, Chris Tar, Brian Strope, and Ray Kurzweil. 2018. Universal sentence encoder for english. In Conference on Empirical Methods in Natural Language Processing.
+Chao Dong, Chen Change Loy, Kaiming He, and Xiaoou Tang. 2014. Image super-resolution using deep convolutional networks. IEEE Transactions on Pattern Analysis and Machine Intelligence, 38:295– 307.
+Martin Ester, Hans-Peter Kriegel, Jörg Sander, and Xiaowei Xu. 1996. A density-based algorithm for discovering clusters in large spatial databases with noise. In Knowledge Discovery and Data Mining.
+Wei Han, Shiyu Chang, Ding Liu, Mo Yu, M. Witbrock, and Thomas S. Huang. 2018. Image superresolution via dual-state recurrent networks. 2018 IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 1654–1663.
+Xia Li, Jianlong Wu, Zhouchen Lin, Hong Liu, and Hongbin Zha. 2018. Recurrent squeeze-andexcitation context aggregation net for single image deraining. In European Conference on Computer Vision.
+Lab Midjourney. 2022. [link].
+
+References
+Jean-Baptiste Alayrac, Jeff Donahue, Pauline Luc, Antoine Miech, Iain Barr, Yana Hasson, Karel Lenc, Arthur Mensch, Katie Millican, Malcolm Reynolds, Roman Ring, Eliza Rutherford, Serkan Cabi, Tengda Han, Zhitao Gong, Sina Samangooei, Marianne Monteiro, Jacob Menick, Sebastian Borgeaud, Andy Brock, Aida Nematzadeh, Sahand
+
+Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob Hilton, Fraser Kelton, Luke E. Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul Francis Christiano, Jan Leike, and Ryan J. Lowe. 2022. Training language models to follow instructions with human feedback. ArXiv, abs/2203.02155.
+
+5
+
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger, and Ilya Sutskever. 2021. Learning transferable visual models from natural language supervision. In International Conference on Machine Learning.
+Alec Radford, Jeff Wu, Rewon Child, David Luan, Dario Amodei, and Ilya Sutskever. 2019. Language models are unsupervised multitask learners.
+Aditya Ramesh, Prafulla Dhariwal, Alex Nichol, Casey Chu, and Mark Chen. 2022. Hierarchical text-conditional image generation with clip latents. ArXiv, abs/2204.06125.
+
+A Appendix
+
+A.1 DiffusionDB
+DiffusionDB-2M (Wang et al., 2022) is on MIT License. It contains 2M user prompts with an average #token of 30.7 ˘ 21.2. Figure 4 shows the distribution of #token per prompt.
+
+Count
+
+100000 80000 60000 40000 20000
+0
+
+20 40 60#Tok8e0ns 100 120 140
+
+Robin Rombach, A. Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. 2021. Highresolution image synthesis with latent diffusion models. 2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 10674– 10685.
+
+Figure 4: The distribution of the number of tokens per prompt in DiffusionDB (Wang et al., 2022).
+A.2 Showcases
+
+Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily L. Denton, Seyed Kamyar Seyed Ghasemipour, Burcu Karagol Ayan, Seyedeh Sara Mahdavi, Raphael Gontijo Lopes, Tim Salimans, Jonathan Ho, David J. Fleet, and Mohammad Norouzi. 2022. Photorealistic text-to-image diffusion models with deep language understanding. ArXiv, abs/2205.11487.
+Tianyu Wang, Xin Yang, Ke Xu, Shaozhe Chen, Qiang Zhang, and Rynson W. H. Lau. 2019. Spatial attentive single-image deraining with a high quality real rain dataset. 2019 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 12262–12271.
+
+Table 5 presents an excerpt from an editing trace and provides examples of the four types of common edits, including insert, delete, swap, and replace. Table 6 illustrates a user editing trace where the edit of replace occurs in every step, and the primary subject matter of the prompt is constantly changing. Table 9 displays two sets of prompts that have been modiﬁed by the eight covered GPT-k models. Figures 6 and 7 provide examples of the edits suggested by GPT-k and those made by humans for head-to-head comparisons in terms of effectiveness and likelihood to be adopted by humans.
+
+Zhou Wang, Alan Conrad Bovik, Hamid R. Sheikh, and Eero P. Simoncelli. 2004. Image quality assessment: from error visibility to structural similarity. IEEE Transactions on Image Processing, 13:600–612.
+
+User Input Prompt
+
+Generated Image
+
+circular ornated ceiling highly detailed
+
+Zijie J. Wang, Evan Montoya, David Munechika, Haoyang Yang, Benjamin Hoover, and Duen Horng Chau. 2022. Diffusiondb: A large-scale prompt gallery dataset for text-to-image generative models.
+Zhengyuan Yang, Zhe Gan, Jianfeng Wang, Xiaowei Hu, Yumao Lu, Zicheng Liu, and Lijuan Wang. 2021. An empirical study of gpt-3 for few-shot knowledge-based vqa. In AAAI Conference on Artiﬁcial Intelligence.
+Yu Zeng, Zhe L. Lin, and Vishal M. Patel. 2021. Sketchedit: Mask-free local image manipulation with partial sketches. 2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 5941–5951.
+
+photo of an ornated circular ceiling, full of paintings of angels, centered symmetrical, highly detailed
+SWAP: “circular ornated” -> “ornated circular” INSERTION: “full of painting of angels”, “centered symmetrical” ornate marble and gold wall, full of paintings of angels, highly detailed
+REPLACE: “ceiling” -> “marble and gold wall” DELETION: removed “centered symmetrical”
+Table 5: Common types of edits.
+
+6
+
+User Input Prompt
+side profile centered painted portrait, spidergwen, matte painting concept art, art nouveau, beautifully backlit, swirly vibrant color lines, fantastically gaudy, aesthetic octane render, 8 k hd resolution, by ilya kuvshinov and cushart krentz and gilleard james
+
+Generated Image
+
+side profile centered painted portrait, megan fox as spidergwen, matte painting concept art, art nouveau, beautifully backlit, swirly vibrant color lines, fantastically gaudy, aesthetic octane render, 8 k hd resolution, by ilya kuvshinov and cushart krentz and gilleard james
+
+side profile centered painted portrait, spiderman, matte painting concept art, art nouveau, beautifully backlit, swirly vibrant color lines, fantastically gaudy, aesthetic octane render, 8 k hd resolution, by ilya kuvshinov and cushart krentz and gilleard james
+
+side profile centered painted portrait, boba fett, matte painting concept art, art nouveau, beautifully backlit, swirly vibrant color lines, fantastically gaudy, aesthetic octane render, 8 k hd resolution, by ilya kuvshinov and cushart krentz and gilleard james
+
+side profile centered painted portrait, darth maul, matte painting concept art, art nouveau, beautifully backlit, swirly vibrant color lines, fantastically gaudy, aesthetic octane render, 8 k hd resolution, by ilya kuvshinov and cushart krentz and gilleard james
+
+side profile centered painted portrait, the punisher, matte painting concept art, art nouveau, beautifully backlit, swirly vibrant color lines, fantastically gaudy, aesthetic octane render, 8 k hd resolution, by ilya kuvshinov and cushart krentz and gilleard james
+
+side profile centered painted portrait, wolverine, matte painting concept art, art nouveau, beautifully backlit, swirly vibrant color lines, fantastically gaudy, aesthetic octane render, 8 k hd resolution, by ilya kuvshinov and cushart krentz and gilleard james
+Table 6: A user trace where the edit of replace constantly occurs. The primary subject matters of the prompts are in bold, and we can see that the main subject changes from step to step in this editing trace.
+A.3 Human Evaluation
+
+In our study, we recruited Amazon Mechanical Turk annotators to conduct human evaluations. To ensure the quality of the evaluations, we established two additional qualiﬁcations for the annotators, which included a HIT Approval Rate of higher than 99% and the completion of more than 100 approved HITs. The instructions provided to the MTurk annotators are displayed in Figures 6 and 7. Each HIT assignment was compensated with a payment of $0.30, and the average completion time for each assignment was approximately 2 minutes. This equates to an average hourly pay of $9-10.
+
+All-mixed
+
+Insert
+
+Delete
+
+Swap
+
+Replace
+
+19
+
+18
+
+17
+
+16
+
+SSIM
+
+9.4
+
+9.2
+
+9.0
+
+8.8
+
+PSNR
+
+70
+68
+66 CLIP cosine
+
+Figure 5: The SSIM, PSNR and CLIP cosine similarity scores between the image generated from the GPT3.5-modiﬁed prompt and the last image. Results are reported on Seval (All-mixed), Sinsert, Sdelete, Sswap and Sreplace.
+
+A.4 Other Image Similarity Metrics
+In line with previous studies on image editing/generation (Dong et al., 2014; Han et al., 2018; Li et al., 2018; Wang et al., 2019; Zeng et al., 2021), we also employed the following metrics to evaluate the similarity between images: (1) SSIM (Wang et al., 2004) which assesses pixel-wise errors from the perspective of luminance, contrast, and structure; (2) PSNR, which compares pixels using the mean squared error.
+Table 7 presents the SSIM and PSNR scores used to evaluate image similarity. For each metric, we established the similarity score between the ﬁrst and last images (i1-in) and the last-but-one and last images (in´1-in) as baselines. The similarity between the images generated from the modiﬁed prompts and the target image of the current trace (i1-in) is comparable to the baselines as per PSNR, however, it is lower as per SSIM. However, we also observed that the similarity between i1-iMS is signiﬁcantly higher than the baselines, as per both listed metrics. This suggests that even though the image generated from the modiﬁed prompt may not be directly similar to the ﬁnal target, it may be related to the intermediate steps in the editing trace. The RNE results, as per SSIM and PSNR, indicate that i1 is most similar to images in the middle of the trace in terms of pixel-wise comparison.
+Figure 5 plots the effect of the four common types of edits. Similar to what we found in Section 5, SSIM and PSNR have similar performances on the ablated evaluation traces – metric scores on traces that only involve insert, delete and swap are higher than or comparable to corresponding baselines. Meanwhile, we notice that replace leads to lower image similarities, which applies to all three image similarity metrics.
+
+7
+
+Model
+gpt2-base gpt2-medium gpt2-large gpt2-xl gpt3-ada gpt3-babbage gpt3-curie gpt3.5-davinci
+
+i1-in 18.93
+
+SSIM
+
+in´1-in i1-in
+
+20.39
+
+17.60 17.54 17.52 17.51 17.11 16.97 17.41 16.91
+
+i1 -iM S
+22.99 22.96 22.94 22.86 22.28 22.12 22.80 22.00
+
+RNE
+52.32 52.60 52.80 52.98 53.71 52.85 53.51 51.92
+
+i1-in 9.16
+
+PSNR
+
+in´1-in i1-in i1-iMS
+
+9.35
+
+9.36
+
+9.36
+
+9.37
+
+9.35 9.33
+
+9.26
+
+9.29
+
+9.22
+
+10.44 10.45 10.45 10.44 10.37 10.30 10.36 10.27
+
+RNE
+52.92 53.30 52.57 53.29 52.67 52.40 52.25 52.32
+
+Table 7: The SSIM and PSNR scores to evaluate image similarity. Here, i1, in´1, in denotes the ﬁrst, last-but-one, and last image in the trace of edits; i1 is the image generated from the modiﬁed prompt, and iMS is the image that is most similar to i1 with regard to current similarity metric.
+
+Mode
+
+Prompt
+The user wants to draw a picture and is deciding upon what key elements should be included. You may add, swap, or remove the modifiers, or even replace the main character. Please refer to the examples of edits and predict the elements in the final painting.
+
+Input: {first prompt in the k-most related trace} Output: {last prompt in the k-most related trace}
+
+Input: {first prompt in the (k-1)-most related trace} In-Context k-Shot Output: {last prompt in the (k-1)-most related trace}
+
+...
+
+Input: {first prompt in the most related trace} Output: {last prompt in the most related trace}
+
+Input: {first prompt in current trace} Output:
+
+Table 8: The prompts for GPT-3 and GPT-3.5 models.
+
+Trace#1
+
+Initial Prompt in User Editing Trace guns and roses on a crimson and black background, intricate illustration Last Prompt in User Editing Trace an epic guns and roses mural on a crimson and black background, intricate illustration, highly ornate, exquisite detail, rtx, 4k
+
+Modiﬁed Prompt Trace#2
+
+gpt2-base
+gpt2-medium
+gpt2-large gpt2-xl gpt3-ada gpt3-babbage gpt3-curie gpt3.5-davinci
+
+guns and roses on a crimson and black background, intricate illustration, highly detailed, simple, no jagged lines, smooth, artstation, centered artwork by obey guns and roses on a crimson and black background, intricate illustration, concept art, pixiv fanbox, art by wlop and greg rutkowski and makoto shinkai and studio ghibli and kyoto animation guns and roses on a crimson and black background, intricate illustration, detailed, award - winning, trending on artstation, 4 k, 8 k guns and roses on a crimson and black background, intricate illustration funky 8 0s eurobeat, album cover, realistic, hdr, clear image guns and roses on a crimson and black background, art by david deutsch, inspired by the movie ’Guns and Roses’ guns and roses on a crimson and black background, intricate illustration, david hellyer guns and roses on a crimson and black background, intricate illustration, vivid colors, concept art, artstation
+
+Initial Prompt in User Editing Trace a bottle ﬁlled with dreams Last Prompt in User Editing Trace a hamburger in the bottle
+
+Modiﬁed Prompt
+
+gpt2-base gpt2-medium gpt2-large gpt2-xl gpt3-ada gpt3-babbage gpt3-curie gpt3.5-davinci
+
+a bottle ﬁlled with dreams, highly detailed, digital painting, artstation, concept art, sharp focus, illustration, art by artgerm and greg rutkowski and alphonse mucha a bottle ﬁlled with dreams, highly detailed, digital painting, artstation, concept art, sharp focus, illustration, art by artgerm and greg rutkowski and alphonse mucha a bottle ﬁlled with dreams a bottle ﬁlled with dreams, art by James Jean and Wayne Barlowe, high detail, cinematic, cgsociety 8k A dream ﬁlled bottle. a transparent plastic bottle ﬁlled with dreams, close up, 1 5 mm lens photograph a bottle ﬁlled with dreams, dreamlike background a bottle of colorful dreams, vibrant colors, dreamlike elements, surrealism, magical realism, abstract painting.
+
+Table 9: Two sets of examples that compares the modiﬁed prompt generated by each GPT-k model.
+
+8
+
+Figure 6: This screenshot illustrates the interface used in the MTurk study for a head-to-head comparison of the effectiveness of the edits suggested by the GPT-k model and those made by humans. In this speciﬁc example, “Edit 1” was suggested by GPT-2-xl, while “Edit 2” represents the most similar human edit in the original editing trace.
+9
+
+Figure 7: This screenshot illustrates the interface used in the MTurk study for a head-to-head comparison of the edits suggested by the GPT-k model and those made by humans. The purpose of this evaluation was to assess the likelihood of an edit being adopted by humans. In this speciﬁc example, “Edit 1” was suggested by GPT-3.5davinci, while “Edit 2” represents the most similar human edit in the original editing trace.
+10
+

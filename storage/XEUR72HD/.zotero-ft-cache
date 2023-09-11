@@ -1,0 +1,521 @@
+Frozen CLIP Model is An Efﬁcient Point Cloud Backbone
+
+Xiaoshui Huang[1]*, Sheng Li[2]*, Wentao Qu[2], Tong He[1]†, Yifan Zuo[2], Wanli Ouyang[1] [1] Shanghai AI Laboratory, [2] Jiangxi University of Finance and Economics
+
+arXiv:2212.04098v2 [cs.CV] 9 Dec 2022
+
+Abstract
+The pretraining-ﬁnetuning paradigm has demonstrated great success in NLP and 2D image ﬁelds because of the high-quality representation ability and transferability of their pretrained models. However, pretraining such a strong model is difﬁcult in the 3D point cloud ﬁeld since the training data is limited and point cloud collection is expensive. This paper introduces Efﬁcient Point Cloud Learning (EPCL), an effective and efﬁcient point cloud learner for directly training high-quality point cloud models with a frozen CLIP model. Our EPCL connects the 2D and 3D modalities by semantically aligning the 2D features and point cloud features without paired 2D-3D data. Speciﬁcally, the input point cloud is divided into a sequence of tokens and directly fed into the frozen CLIP model to learn point cloud representation. Furthermore, we design a task token to narrow the gap between 2D images and 3D point clouds. Comprehensive experiments on 3D detection, semantic segmentation, classiﬁcation and few-shot learning demonstrate that the 2D CLIP model can be an efﬁcient point cloud backbone and our method achieves state-of-the-art accuracy on both real-world and synthetic downstream tasks. Code will be available.
+1. Introduction
+Recently, the pretraining-ﬁnetuning paradigm has achieved great success in natural language processing (NLP) [6, 10] and 2D image ﬁelds [1, 9, 24]. The main idea of this paradigm is that a pretrained backbone is trained on a large-scale dataset to perceive a broad prior knowledge to generate high-quality representation. Then, a downstream task model can be learned by ﬁnetuning on a few or no training samples. The CLIP models [24] are strong pretrained models, which is trained by aligning more than 400 million paired image and text. In the end, the CLIP models perceive high-quality representation ability and transferability. The inherent alignment between the 2D image and language
+*Equal contribution †Corresponding author
+
+Point CLoud
+
+Traditional Paradigms
+
+Backbone
+
+Heads
+
+Ours Point Cloud Learner
+
+Backbone
+
+Tokenizer
+
+Transformer
+ (CLIP)
+
+Heads
+
+Figure 1. Traditional paradigm ﬁne-tunes the whole model, while our method only ﬁne-tunes the tokenizer (T) and head (H). The transformer initialized from the CLIP model is frozen during training.
+domain makes it ﬂexible to be applied under few-shot and zero-shot settings.
+In the 3D computer vision ﬁeld, most of the current pretraining methods [21, 21, 23, 34, 35] are trained with limited data, e.g., ShapeNet [4] or ScanNet dataset [8]. The ShapeNet contains about 50000 objects and the ScanNet contains about 0.11 million valid point clouds cropped from about 1700 indoor rooms [34]. Compared to the pretraining data of CLIP in 2D image ﬁeld, the number of training samples in the 3D point cloud is merely one thousandth. The prior knowledge learned from the limited training samples is also limited.
+Inspired by the great success of CLIP, we ask a question: can we apply the CLIP model to point cloud tasks as a pretrained backbone? If the answer is yes, the 2D and 3D modalities are bridged and we can leverage most of the successful 2D pretrained models for learning effective representations in the 3D point cloud. The current 3D pretraining data limitation can be partially addressed. However, it is nontrivial to utilize the 2D CLIP model to point cloud tasks due to the inherent domain gap.
+Our insight is that the tokenizer is the key. We hypothesise that the tokenizer can weakly align the 2D and 3D features, and the transformer backbone aligns them further. We validate this hypothesis in the experimental results (Figure 4 and Figure 6). Based on this ﬁnding, we propose an Efﬁcient Point Cloud Learning (EPCL) framework to
+
+1
+
+2D image 2D classification Lamp
+
+2D saliency map
+
+3D classification
+
+3D point cloud
+
+3D saliency map
+
+Figure 2. Using the frozen CLIP image Transformer as backbone for 2D and 3D classiﬁcation, the saliency maps show the frozen CLIP model can focus on similar regions at different modalities.
+
+directly leverage the frozen CLIP models to learn models for point cloud tasks. The difference between our method and other 3D pretraining-ﬁnetuning methods is illustrated in Figure 1. Speciﬁcally, our EPCL learns a tokenizer and task token to convert the input point cloud into a sequence of tokens. Then, these tokens are fed into the frozen transformer from CLIP without any change to the 2D pretrained CLIP model.
+The proposed EPCL framework contains several merits:
+Bridging 2D CLIP model and 3D point cloud model. EPCL builds a bridge between 2D image pretrained CLIP model and 3D downstream tasks.
+Aligning 3D and 2D models without paired data. Aligning multi-modal models has become a mainstream to train a strong pretrained model while the existing methods [1, 24] usually require paired data (e.g., image-text pairs [24], video-text pairs [1]). Our EPCL does not need 3D-2D paired data to train the model when adapting a 2Dimage CLIP model for 3D point clouds. Figure 2 shows our method can semantically align similar regions in a 3D point cloud compared to CLIP in a 2D image on the recognition task.
+Not requiring 3D pretraining. The strong 2D pretrained CLIP model is directly used for 3D point clouds in EPCL without requiring 3D pretraining, which helps to circumvent the barrier from much fewer 3D data than 2D data.
+Facilitating few-shot learning in downstream tasks. Leveraging the large volume of knowledge learned in CLIP, EPCL is effective when downstream tasks have few data.
+We conduct comprehensive experiments on mainstream point cloud tasks (detection, segmentation, recognition, classiﬁcation and few-shot learning) to demonstrate that EPCL achieves better performance than the current stateof-the-art 3D pretraining methods.
+
+2. Related works
+In this section, we review the related works from three aspects: CLIP-based methods, point cloud representation learning and point cloud pretrained methods.
+2.1. CLIP-based methods
+CLIP [24], which aims to to learn transferable visual representation from natural languages, has attracted increasing attention due to its promising results on various downstream tasks [13, 14, 25]. It consists of two encoders for visual and text representations, respectively. The method is jointly trained to align the two modalities with over 400 million of image-text pairs. The rich semantic representation shared by both domains inspires many works and have been demonstrated effective in tasks like image caption [28] and video [3]. Clipcap [20] trained a light-weight mapping network to generate meaningful captions, while the CLIP and language model is frozen. EVL [15] addressed the task of zero-shot video understanding via contrastive learning between video and text representations. The method is free from annotation of the downstream tasks. Although promising, directly applying CLIP to 3D tasks is nontrivial, due to the signiﬁcant domain gap.
+2.2. Point cloud representation learning
+Learning discriminative point cloud representation plays critical role for downstream tasks. The existing methods can be divided into three categories: point-based and voxelbased.
+Point-based methods start from 3D points and extract representation based on multi-layer perception [22], graph convolution [31] and kernel-based convolution [27]. The objective of these methods is to leverage the global structure information or local property of point neighbour to describe the 3D point cloud. The advantages of these methods are that feature can directly extract from analyzing point neighbours, the memory consumption is relatively small and no preprocessing steps are required.
+Voxel-based methods require to pre-process the given point clouds into voxels. Then, voxel-based convolution neural networks are applied to extract the representation. Typical examples are voxelNet [26] and Minkowski Engine [7]. They design octree-based convolution and sparse convolution to effectively extract the local representation of 3D point cloud without large GPU memory consumption. The advantage of these methods are that the representation can easily overcome the density variation.
+2.3. 3D pretrained methods
+Pretrained models aims to learn prior knowledge from training data. The existing pretrained methods can be divided into three categories: global contrastive, local con-
+
+2
+
+Figure 3. The overall architecture of the proposed algorithm. The Point Tokenizer contains two successive steps: farthest point sampling (FPS) for downsampling point clouds and multilayer perceptron (MLP) for extracting features to be processed by the transformer pretrained by CLIP. The Task Token are task-speciﬁc tokens that can be learned. Tokens from the point tokenizer and task token are fed into the Transformer, which is the frozen CLIP model. The Head uses the tokens from the Transformer for different downstream task heads. The transformer pretrained from CLIP is frozen during the training stage, while the others (point tokenizer, task token and head) are trainable.
+
+trastive and masking autoencoder (MAE). The global contrastive learning methods [18, 29] compare the global feature difference of point clouds. In contrast, local constrastive learning methods [34] compare the local point feature differences. Recently, the masking autoencoder (MAE) strategy is imported into the 3D point cloud ﬁeld and several pretrained methods [21, 35] are proposed to learn pretrained transformer backbones. These methods leverage the knowledge of pretrained dataset so that the downstream task models initialize from a better starting point.
+Recently, several methods are proposed to use the 2D pretraied models on point cloud tasks. PointClip [36] projects the point clouds into images and directly uses the frozen 2D pretrained models for 3D recognition. [23,30] use the 2D pretrained models as starting point and ﬁne-tuning the whole model on the 3D training datasets of downstream tasks. P2P [32] designs a projector module to project the 3D objects into images and design several prompts to use the frozen 2D pretrained backbones.
+Instead of pretraining on 3D data, this paper proposes a method to directly utilize the pretrained 2D CLIP model on point clouds. Our method can apply on both real-world synthetic point cloud tasks.
+3. Method
+This section ﬁrst introduces the Vision Transformer (ViT) [9] in the 2D image ﬁeld and the transformer in the point cloud ﬁeld. Then we introduce our method.
+3.1. Preliminary
+Vision Transformer in 2D image. Given a 2D image I ∈ RH×W ×C , the ViT [9] divides the 2D image into a sequence of ﬂattened 2D image patches xp ∈ RN×(P 2·C) and uses a tokenizer to convert these patches into a 1D sequence of visual token embeddings EI (I) ∈ RN×D, where N is the token number, P × P is the image patch size, D is the dimension of each image token. H and W are the height and width of the given image, the total patch number is N = HW/(P 2). The position embedding are concatenated
+
+to the visual token embeddings. Visual tokens and class token are fed into the transformer for feature extraction. Afterwards, the feature goes into a classiﬁcation header to get the output classiﬁcation label. Mathematically, the 2D ViT can be formulated as follows:
+
+z0
+
+=
+
+[xcls,
+
+EI (I1,1), ...,
+
+EI
+
+(I
+
+H P
+
+,
+
+W P
+
+)]
+
++
+
+Epos,
+
+(1)
+
+zl = M SA(LN (zl−1) + zl−1),
+
+(2)
+
+zl = M LP (LN (zl)) + zl,
+
+(3)
+
+y = Hcls(LN (zL0 )),
+
+(4)
+
+where EI (.) is the image tokenizer module to extract the token embedding for each image patch, xcls is the class token. The transformer consists of L layers of layer normalization LN (∗), multi-head self-attention M SA(∗) and multi-layer perception M LP (∗). The residual connection is applied after every block. Hcls represents the classiﬁcation head and takes the feature of the class token at the last layer as input. The Hcls usually refers to a single MLP to map the input feature into a 1000-dimension output for 1000-class image classiﬁcation prediction.
+Transformer in point cloud. Before the standard transformer is applied to the point cloud ﬁeld, there are some speciﬁc transformer layers [11,37] designed for point cloud processing. Starting from PointBert [35], the standard transformer has been applied to point cloud tasks. Similar to the ViT, the point cloud P ∈ RA×3 is divided into a sequence of point cloud patches Pp ∈ RM×(3K), where A and M respectively denote the point number and patch number, and K denotes the number of points in each patch. These patches go through a tokenizer to extract point token embeddings. Then these point token embeddings, position embedding and class token are fed into the standard transformer for feature extraction. Afterwards, these features are fed into a task head for downstream tasks. The Transformer
+
+3
+
+for point cloud can be formulated as follows:
+
+f0 = [xcls, Ep(P1), ..., Ep(PM )] + Epos,
+
+(5)
+
+fl = M SA(LN (fl−1) + fl−1),
+
+(6)
+
+fl = M LP (LN (fl)) + fl,
+
+(7)
+
+y = Hpcls(LN (fL0 )),
+
+(8)
+
+where the Ep is the point cloud tokenizer module, the threelayer MLP is usually applied for obtaining point cloud token embedding. The Hpcls usually refers to three-layer MLPs to map the input feature into a C-dimension class prediction result for C-class point cloud classiﬁcation tasks.
+Comparison between 2D and 3D transformer. By comparing the equation (1)-(3) and (5)-(8), the standard transformer module is the same, which consists of chains of the LN, MSA and MLP, the only differences are the tokenizer modules EI and Ep during the deep feature extraction. Then, the deep feature are fed into different 2D/3D task heads for 2D/3D downstream tasks. Here, we ask that could the same standard transformer module pretrained on 2D directly apply to 3D point cloud tasks. If the answer is YES, we can consider 3D point cloud tasks as additional downstream tasks for a 2D pretrained transformer without any pretraining.
+
+3.2. EPCL framework
+
+The motivation of our method is to leverage the frozen 2D CLIP model for 3D downstream tasks. To achieve this goal, we propose Efﬁcient Point Cloud Learning (EPCL) framework to use the 2D frozen CLIP model and only ﬁnetune the tokenizer, task token and task head. The overall framework is shown in Figure 3.
+
+3.2.1 Tokenizer, task token, and backbone
+
+Point Cloud Tokenizer. Given a 3D point cloud P ∈ RA×3, similar to the objective of the 2D tokenizer, the point cloud tokenizer aims to convert the input point cloud into a
+sequence of token embeddings. Speciﬁcally, we ﬁrst sample M points as centers of point patches by the farthest point sampling algorithm, then group K points from each center by the K-nearest neighborhood algorithm to construct M
+patches. The patches are then fed into several MLP layers to obtain the token embeddings Ep(P ) ∈ RM×Dp , i ∈ [1...M ] as follows:
+
+Ep(Pi) = M LP (Pi), Pi ∈ RK×3,
+
+(9)
+
+where Dp is the dimension of each point token (e.g., 768).
+
+Task token. Our task token module is implemented by a fully-connected layer with several learnable parameters. Following [17], we initialize the task token as enumerated numbers.
+
+Frozen backbone CLIP for reuse. After the input point cloud is converted into a sequence of visual tokens, we feed visual tokens and task tokens into 2D pretrained transformer and directly reuse the parameters of the transformer in the 2D CLIP model to extract deep features for downstream tasks.
+3.2.2 Head and optimization on downstream tasks
+The output of the Transformer is token features F ∈ RM×Dp , where M is the number of point cloud patches and Dp is the dimension of token feature. In this section, we introduce the different task head designs and optimization strategies for different downstream tasks.
+Object classiﬁcation. For object classiﬁcation, we follow the recent point cloud transformer-based methods [21, 35] to utilize three-layer MLP as the tokenizer. Except for the last layer of classiﬁcation head and cross-entropy loss, the deep features from the Transformer are also compared with the CLIP text feature of the label to optimize the tokenizer and task token. The contrastive loss function is the same as that in CLIP.
+Indoor object detection. Following the MaskPoint [16], we use the 3DETR [19] as the detection head. We follow the same data pre-processing steps and settings as MaskPoint for a fair comparison. The tokenizer and task embedding modules are the same as that for the classiﬁcation task.
+Indoor semantic segmentation. For the semantic segmentation task, we adopt the scheme in PointTransformer [37] to downsample the point cloud and use threeinterpolation to up-sample the point clouds. Speciﬁcally, we design a tokenizer with three down-sampling layers to downsample the point cloud into different scales. After encoding the features of the downsampled tokens in the Transformer, we gradually decode the point cloud back in the head at multiple scales and concatenate the multi-scale features with the tokenizer features. We use CrossEntropy as the loss function during the ﬁnetuning for segmentation.
+4. Experiments
+This section introduces our experiments. We introduce the datasets and experimental settings in section 4.1. Then, the downstream tasks experiments are described in section 4.2, section 4.3 and section 4.4. Afterwards, the ablation studies and deep analysis are introduced in section 4.5.
+4.1. Datasets and experimental settings
+Datasets. We conduct real-world detection on ScanNet [8] and semantic segmentation on S3DIS [2]. Also, we evaluate the accuracy of few-shot learning and classiﬁcation on synthetic ModelNet40 [33]. ScanNet is a widely used realworld indoor detection dataset captured from 1513 scenes
+
+4
+
+and contains axis-aligned bounding box labels from 18 categories. S3DIS is a real-world semantic segmentation dataset that contains ﬁve large-scale indoor scans with twelve semantic elements. Area 5 is utilized as the test case, while the remaining areas are treated as training data. For the semantic segmentation, we sampled 4096 points for every partitioned indoor scene with the standard process. ModelNet40 is a synthetic dataset contains more than 12000 CAD objects from 40 categories.
+Implementation details. Our method used the AdamW optimizer, and the learning rate was 0.0003 for the whole experiment. The decay ratio was 0.04. The experiments were conducted on a Nvidia A100 GPU.
+
+4.2. Detection
+For many recently 3D pretrained works, they tested the performance mainly on object-level classiﬁcation and part segmentation tasks, which is unclear in real-world point cloud tasks. Moreover, the most recent P2P [32] needs to project the point cloud into images, which faces challenges in solving real-world point cloud tasks. This paper does not require any projections, so it has a wide application to real-world point cloud applications. In this section, the detection on ScanNet V2 is evaluated and compared with the state-of-the-art 3D pretrained models [21, 35].
+To fairly compare the detection accuracy, we select the pretrained transformer of PointBERT, MaskPoint, 2D ViT and CLIP image encoder to replace the original transformer backbone in the 3DETR. We adopt the relatively strict metric AP50 to evaluate the detection accuracy.
+
+Method PointBERT [35] MaskPoint [21] Simple3D-Former [30]
+Ours
+
+3D Pretrain
+
+AP50 38.3 42.1 40.7 43.0
+
+Table 1. Detection on ScanNet V2.
+
+Table 1 shows that the frozen model achieves the better accuracy than other compared methods. This observation shows that the CLIP model can effectively learn 3D representation to solve real-world 3D detection and achieve better performance than state-of-the-art 3D pretrained methods. We want to highlight that the CLIP model is frozen and has not seen any 3D point cloud in their learned parameters. Our method only ﬁne-tune on the same training dataset with other compared methods. However, our method using CLIP model achieve better accuracy. The reason is that the CLIP model has the ability to align the features in different modalities (Refer to Section 4.5 for more analysis).
+
+4.3. Semantic segmentation
+In this section, we introduce the experiments on realworld semantic segmentation dataset S3DIS [2]. We adopt a three-layer hierarchical tokenizer. At each layer, the farthest point sampling is applied to downsample the point cloud, e.g., 4096− > 2048− > 1024. Then, the tokens at the last layer are input into frozen CLIP to extract deep features. Afterwards, we concatenate the input coordinatefeature pair with the deep feature to interpolate back the input number of points. We interpolate three times steadily back to the original point cloud.
+We compare with the most recent state-of-the-art 3D pretrained model [21], Simple3D-former [30] and other recent 3D representation learning methods [27,37]. To fairly compare the performance, we put all these backbones on the same code base, which shares the same hierarchical tokenizer and semantic task head. The MaskpPoint initializes the backbone with the pretrained model of MaskPoint, and the Simple3D-Former initializes the backbone with 2D ViT. Then, the MaskPoint and Simple3D-Former methods ﬁnetune the whole model on the S3DIS training samples. In contrast, our method froze the CLIP model and only tuned the tokenizer and task head during the ﬁnetuning process.
+
+Method KPCov [27] Point Transformer [37] MaskPoint [21] Simple3D-Former [30]
+Ours
+
+mAcc. 72.8 76.5 82.2 72.5 84.1
+
+ins.mIoU. 67.1 70.4 69.8 67.0 72.6
+
+Table 2. Semantic segmentation on S3DIS.
+
+Table 2 shows that the frozen CLIP model obtains obviously better accuracy (both mAcc. and mIoU) than other state-of-the-art 3D pretrained methods, other 2D pretrained models and 3D representation learning methods. This observation illustrates that the frozen CLIP model is an efﬁcient point cloud learner in the real-world semantic segmentation task.
+4.4. Classiﬁcation
+Table 4 shows that the classiﬁcation results on synthetic ModelNet40 dataset. Our method achieves comparable performance to the state-of-the-art 3D pretrained models although our method does not pretrain on a larger object dataset, ShapeNet. Compared to the P2P, which is the recent state-of-the-art method that directly used 2D pretrained model, our method demonstrates better accuracy. P2P designs a projection module to render images from 3D objects which is speciﬁc for 3D classiﬁcation. Our method does not need to project 3D to 2D image and directly process the 3D tokens, which shows potential in other applications except-
+
+5
+
+Tuning Method PointBert MaskPoint Ours
+
+5-w,10-s 94.6 ± 3.1 95.0 ± 3.7 95.1 ± 2.7
+
+5-w,20-s 96.3 ± 2.7 97.2 ± 1.7 97.3 ± 1.6
+
+10-w,10-s 91.0 ± 5.4 91.4 ± 4.0 91.1 ± 4.2
+
+10-w,20-s 92.7 ± 5.1 93.4 ± 3.5 93.5 ± 3.8
+
+30-w,10-s 81.4 ± 2.4 80.7 ± 4.9 81.7 ± 0.7
+
+Table 3. Few-shot learning accuracy of 3D pretrained methods and frozen CLIP model on ModelNet40.
+
+ing classiﬁcation. Compared to Simple3D-Former, which is ﬁne-tuning the whole model starting from 2D pretrained model, our method still achieves better accuracy. These observations verify our argument: the frozen CLIP model is an effective learner to learn 3D representation for point cloud understanding.
+
+Method
+
+3D Pretrain OA
+
+PointBERT [35]
+
+93.8
+
+MaskPoint [21]
+
+93.8
+
+PointNet [22]
+
+89.2
+
+DGCNN [31]
+
+92.2
+
+P2P [32]
+
+92.7
+
+Simple3D-Former [30]
+
+92.0
+
+Ours + w/o CLIP frozen
+
+92.3
+
+Ours
+
+92.9
+
+Table 4. Classiﬁcation on ModelNet40. Our method achieves best accuracy in the methods using 2D pretrained models.
+
+Few-shot learning. One important advantage of pretrained model is that less training samples are required in downstream tasks. This is usually evaluated by the fewshot learning task. To evaluate the few-shot learning ability, we conduct two experiments. One experiment follows the setting of ”K-way N -shot” [21, 35], it randomly selects K class and then samples N samples on each class for training. The other experiment follows the setting of ”16-shot” [36] without pretraining. For the ”K-way N -shot”, it randomly selects K class and then samples N samples on each class for training. For the ”16-shot” few-shot learning, it randomly selects ”16” samples for the whole 40 categories and use the selected samples to train the neural network. This aims to evaluate the few-shot ability without seeing largescale 3D objects. Then, 20 samples are picked for each class from the test set to evaluate the performance. These fewshot learning tasks are evaluated on dataset ModelNet40. The previous studies evaluate four settings: 5way-10shot, 5way-20shot,10way-10shot, 10way-20shot. To further evaluate the robustness of few-shot learning, we add a challenging setting 30-way,10-shot and 16-shot. The comparison methods are pretrained on the ShapeNet. In comparison, our method does not require the pretraining step in the fewshot learning.
+
+Table 3 shows the comparison experiments on ”K-way N -shot” few-shot learning. The proposed method achieves better accuracy than the state-of-the-art 3D pretrained methods. This observation shows that the 2D frozen CLIP model shows effective representation learning in the challenging few-shot learning setting. Moreover, the accuracy of our frozen CLIP model (without any further pretraining) achieves >90% in the challenging few-shot learning setting, which also shows the effectiveness of frozen 2D CLIP model in point cloud tasks.
+
+Method PointClip [36] Simple3D-Former [30]
+Ours
+
+Acc (16-shot) 83.8 76.2 85.2
+
+Table 5. 16-shot classiﬁcation results on ModelNet40.
+
+Table 5 shows the comparison experiments on the 16shot classiﬁcation task. Our method achieves the best accuracy compared to the recent existing state-of-the-art fewshot learning methods. These few-shot learning experiments show that the 2D frozen CLIP model works well on limited training samples in the 3D point cloud classiﬁcation task.
+4.5. Ablation studies and analysis
+In this section, we conduct several ablation studies and deep analysis to fully understand the mechanism behind our method.
+Semantic similarity. To understand what the feature learned by the frozen CLIP model, we compare the semantic similarity by visually compare their signiﬁcance maps at its corresponding 2D images. For the 2D image, we crop a view from ShapeNet models to keep the texture and apply the CLIP model to classify the image view. We use transformer explanation tool [5] to obtain the signiﬁcance map at the original input data for its classiﬁcation at 2D image and 3D point cloud.
+Figure 5 shows that the signiﬁcance maps at 2D image and 3D point cloud show similar signiﬁcance maps. This observation illustrates that the frozen CLIP model can capture similar semantic regions at both 2D and 3D modalities.
+Feature alignment. To understand the effectiveness of CLIP model in learning 3D representation, we also con-
+
+6
+
+Layer-1
+
+Layer-9
+
+Layer-12
+
+Figure 4. The cross correlation between 2D image feature and 3D point cloud feature at different layers on different categories.
+
+3D Point Cloud
+
+2D Image
+
+Figure 5. The semantic similarity between 2D image and 3D point cloud from signiﬁcance maps.
+
+duct an ablation studies to visually inspect the similarity of the extracted 2D representation and 3D representation for a same task. Since the CLIP model works on zero-shot classiﬁcation, we conduct the experiments on classiﬁcation task. We crop images for the models in the ShapeNet dataset. Then, the CLIP model extracts a global feature for each image and compare the feature difference with its corresponding 3D model global feature from our method.
+Figure 4 shows that the tokenizer can weakly align the 2D and 3D feature which reﬂects by only a few categories are matched in the left sub-ﬁgure. By going through the transformer, the 2D-3D features are matched with high cross correlation in the same category (see the right subﬁgure). Figure 6 reﬂects that the cross correlation goes steadily high when the transformer going deeper. This also demonstrates that the tokenizer weakly align the 2D and 3D, and the CLIP model further align them.
+Figure 7 shows that the CLIP model and our method extract similar features for the same objects and different fea-
+
+Figure 6. The increase of cross correlation (Y-axis) between 2D and 3D feature for the same object when layers go deeper (X-axis).
+
+tures for different objects. Figure7 gives a detailed example that the features from the same object are similar and features from different objects in the same category are different.
+
+Method w/o task token ViT [9] frozen Ours + w/o CLIP frozen
+Ours
+
+3D Pretrain
+
+AP50 41.6 38.2 40.7 43.0
+
+Table 6. Ablation studies about w/o task embedding, pretrained models and w/o frozen strategy on ScanNet V2 detection task.
+
+Task token. The task token module aims to learn task embedding for speciﬁc task. As the task embedding module is only trainable on the training stage and the parameters and initialization are stable during the inference stage. The
+
+7
+
+Figure 7. The TSNE maps of our 3D feature, CLIP 2D feature of the corresponding images and the 3D airplane feature compared with other 2D image features.
+
+task token seems to be a bias. To demonstrate its effectiveness, we conduct ablation study by removing the task token module on the real-world dataset ScanNet V2 at detection task. Table 6 shows that the detection accuracy decrease when the task embedding is dropped. This experiment illustrates that learning additional task-related feature bias is beneﬁcial to the CLIP model applying in 3D point cloud tasks.
+Different ViT pretrained models. The CLIP model is trained on a large-scale internet image-text paired dataset which contains plentiful of real-world knowledge. To demonstrate its effectiveness of more knowledge in 3D representation learning, we replace the frozen CLIP model with other frozen ViT [9]. Table 6 shows that the CLIP with more knowledge achieves much better accuracy (4.8% ↑) than other ViT that is trained on ImageNet-21K.
+Frozen or not? We frozen the CLIP during the whole training process. A natural question is how about the performance by turning the parameters on during the training stage. To answer this question, we turn the whole neural network on during the training stage and conduct an ablation study on real-world detection task. Table 6 shows that the accuracy drops 2.3% when the CLIP model is turned on. The reason is that the relative small-scale 3D training dataset ﬁne-tune the CLIP model to a worse parameter space compared to the one trained on the large-scale dataset.
+
+Method MaskPoint Simple3D-former Ours
+
+Time(s) 50.5
+
+82
+
+41
+
+Table 7. Epoch training time of different transformer-based methods. The batch size set to 32.
+
+Training efﬁciency. We compare the epoch training time with the recent transformer method MaskPoint and Simpele3D-former. Table 7 shows that our method achieves much better training efﬁciency than other transformer-based
+
+methods. The reason is that our method froze the CLIP backbone so that the parameters do not need to update on the backbone, which improves the training efﬁciency.
+Can frozen CLIP model generate text for 3D point cloud? We use the trained model of ScanObjectNN as backbone and used it to replace the CLIP model in the CLIP-Caption method [20] to generate text for the given 3D point cloud. Figure 8 shows that our method can generate reasonable caption for 3D point clouds. We ﬁnd the generated caption contains the key concepts of the given point clouds. This observation shows that the frozen CLIP perceives the ability to generate semantically aligned caption for the 3D point clouds. Surprisingly, the frozen CLIP can generate the new texture information (e.g., wooden) that point cloud is missing, which illustrates that the backbone of Frozen CLIP may implicitly consider the texture information to represent the point clouds. However, the semantically alignment between point cloud and language requires further investigated. For example, the chair is missing in the second example and the texture information is not correct in the ﬁrst example.
+
+Blue wooden chair on the floor.
+
+Simple icon on the wooden table.
+
+Figure 8. Our method can generate text for 3D point cloud by concatenating with a caption head. The 2D image is the corresponding region for the point cloud.
+
+5. Conclusion
+This paper proposes a simple and effective method to learn point cloud models by using frozen CLIP model. Our method converts the input point cloud into sequential tokens with a point tokenizer. These tokens and a learnable task token input into frozen CLIP model can generate robust 3D representation. We conduct deeply analysis about the behind mechanism and ﬁnd the tokenizer can weak align the 3D and 2D features at different modalities. Then, the role of CLIP model can align them further. Our method shows wide applications, which can be applied on both real-world detection and segmentation, and synthetic object-level classiﬁcation tasks.
+Acknowledgments
+This work was supported by Shanghai Artiﬁcial Intelligence Laboratory.
+
+8
+
+References
+[1] Jean-Baptiste Alayrac, Jeff Donahue, Pauline Luc, Antoine Miech, Iain Barr, Yana Hasson, Karel Lenc, Arthur Mensch, Katie Millican, Malcolm Reynolds, et al. Flamingo: a visual language model for few-shot learning. arXiv preprint arXiv:2204.14198, 2022. 1, 2
+[2] Iro Armeni, Ozan Sener, Amir R Zamir, Helen Jiang, Ioannis Brilakis, Martin Fischer, and Silvio Savarese. 3d semantic parsing of large-scale indoor spaces. In Proceedings of the IEEE conference on computer vision and pattern recognition, pages 1534–1543, 2016. 4, 5
+[3] Joao Carreira, Eric Noland, Chloe Hillier, and Andrew Zisserman. A short note on the kinetics-700 human action dataset. arXiv preprint arXiv:1907.06987, 2019. 2
+[4] Angel X. Chang, Thomas Funkhouser, Leonidas Guibas, Pat Hanrahan, Qixing Huang, Zimo Li, Silvio Savarese, Manolis Savva, Shuran Song, Hao Su, Jianxiong Xiao, Li Yi, and Fisher Yu. ShapeNet: An Information-Rich 3D Model Repository. Technical Report arXiv:1512.03012 [cs.GR], Stanford University — Princeton University — Toyota Technological Institute at Chicago, 2015. 1
+[5] Hila Chefer, Shir Gur, and Lior Wolf. Generic attentionmodel explainability for interpreting bi-modal and encoderdecoder transformers. In Proceedings of the IEEE/CVF International Conference on Computer Vision, pages 397–406, 2021. 6
+[6] Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung Won Chung, Charles Sutton, Sebastian Gehrmann, et al. Palm: Scaling language modeling with pathways. arXiv preprint arXiv:2204.02311, 2022. 1
+[7] Christopher Choy, JunYoung Gwak, and Silvio Savarese. 4d spatio-temporal convnets: Minkowski convolutional neural networks. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 3075– 3084, 2019. 2
+[8] Angela Dai, Angel X Chang, Manolis Savva, Maciej Halber, Thomas Funkhouser, and Matthias Nießner. Scannet: Richly-annotated 3d reconstructions of indoor scenes. In Proceedings of the IEEE conference on computer vision and pattern recognition, pages 5828–5839, 2017. 1, 4
+[9] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby. An image is worth 16x16 words: Transformers for image recognition at scale. ICLR, 2021. 1, 3, 7, 8
+[10] Yuxian Gu, Xu Han, Zhiyuan Liu, and Minlie Huang. Ppt: Pre-trained prompt tuning for few-shot learning. arXiv preprint arXiv:2109.04332, 2021. 1
+[11] Meng-Hao Guo, Jun-Xiong Cai, Zheng-Ning Liu, Tai-Jiang Mu, Ralph R Martin, and Shi-Min Hu. Pct: Point cloud transformer. Computational Visual Media, 7(2):187–199, 2021. 3
+[12] Menglin Jia, Luming Tang, Bor-Chun Chen, Claire Cardie, Serge Belongie, Bharath Hariharan, and Ser-Nam Lim. Vi-
+
+sual prompt tuning. arXiv preprint arXiv:2203.12119, 2022. 11
+[13] Simon Kornblith, Jonathon Shlens, and Quoc V Le. Do better imagenet models transfer better? In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pages 2661–2671, 2019. 2
+[14] Jimmy Lei Ba, Kevin Swersky, Sanja Fidler, et al. Predicting deep zero-shot convolutional neural networks using textual descriptions. In Proceedings of the IEEE international conference on computer vision, pages 4247–4255, 2015. 2
+[15] Ziyi Lin, Shijie Geng, Renrui Zhang, Peng Gao, Gerard de Melo, Xiaogang Wang, Jifeng Dai, Yu Qiao, and Hongsheng Li. Frozen clip models are efﬁcient video learners. In European Conference on Computer Vision, pages 388–404. Springer, 2022. 2
+[16] Haotian Liu, Mu Cai, and Yong Jae Lee. Masked discrimination for self-supervised learning on point clouds. arXiv preprint arXiv:2203.11183, 2022. 4
+[17] Xiao Liu, Kaixuan Ji, Yicheng Fu, Zhengxiao Du, Zhilin Yang, and Jie Tang. P-tuning v2: Prompt tuning can be comparable to ﬁne-tuning universally across scales and tasks. arXiv preprint arXiv:2110.07602, 2021. 4
+[18] Guofeng Mei, Xiaoshui Huang, Juan Liu, Jian Zhang, and Qiang Wu. Unsupervised point cloud pre-training via contrasting and clustering. In 2022 IEEE International Conference on Image Processing (ICIP), pages 66–70. IEEE, 2022. 3
+[19] Ishan Misra, Rohit Girdhar, and Armand Joulin. An end-toend transformer model for 3d object detection. In Proceedings of the IEEE/CVF International Conference on Computer Vision, pages 2906–2917, 2021. 4
+[20] Ron Mokady, Amir Hertz, and Amit H Bermano. Clipcap: Clip preﬁx for image captioning. arXiv preprint arXiv:2111.09734, 2021. 2, 8
+[21] Yatian Pang, Wenxiao Wang, Francis EH Tay, Wei Liu, Yonghong Tian, and Li Yuan. Masked autoencoders for point cloud self-supervised learning. arXiv preprint arXiv:2203.06604, 2022. 1, 3, 4, 5, 6
+[22] Charles R Qi, Hao Su, Kaichun Mo, and Leonidas J Guibas. Pointnet: Deep learning on point sets for 3d classiﬁcation and segmentation. In Proceedings of the IEEE conference on computer vision and pattern recognition, pages 652–660, 2017. 2, 6
+[23] Guocheng Qian, Xingdi Zhang, Abdullah Hamdi, and Bernard Ghanem. Pix4point: Image pretrained transformers for 3d point cloud understanding. arXiv preprint arXiv:2208.12259, 2022. 1, 3
+[24] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In International Conference on Machine Learning, pages 8748–8763. PMLR, 2021. 1, 2
+[25] Benjamin Recht, Rebecca Roelofs, Ludwig Schmidt, and Vaishaal Shankar. Do imagenet classiﬁers generalize to imagenet? In International Conference on Machine Learning, pages 5389–5400. PMLR, 2019. 2
+
+9
+
+[26] Gernot Riegler, Ali Osman Ulusoy, and Andreas Geiger. Octnet: Learning deep 3d representations at high resolutions. In Proceedings of the IEEE conference on computer vision and pattern recognition, pages 3577–3586, 2017. 2
+[27] Hugues Thomas, Charles R Qi, Jean-Emmanuel Deschaud, Beatriz Marcotegui, Franc¸ois Goulette, and Leonidas J Guibas. Kpconv: Flexible and deformable convolution for point clouds. In Proceedings of the IEEE/CVF international conference on computer vision, pages 6411–6420, 2019. 2, 5
+[28] Oriol Vinyals, Alexander Toshev, Samy Bengio, and Dumitru Erhan. Show and tell: A neural image caption generator. In Proceedings of the IEEE conference on computer vision and pattern recognition, pages 3156–3164, 2015. 2
+[29] Hanchen Wang, Qi Liu, Xiangyu Yue, Joan Lasenby, and Matt J Kusner. Unsupervised point cloud pre-training via occlusion completion. In Proceedings of the IEEE/CVF international conference on computer vision, pages 9782–9792, 2021. 3
+[30] Yi Wang, Zhiwen Fan, Tianlong Chen, Hehe Fan, and Zhangyang Wang. Can we solve 3d vision tasks starting from a 2d vision transformer? arXiv preprint arXiv:2209.07026, 2022. 3, 5, 6
+[31] Yue Wang, Yongbin Sun, Ziwei Liu, Sanjay E Sarma, Michael M Bronstein, and Justin M Solomon. Dynamic graph cnn for learning on point clouds. Acm Transactions On Graphics (tog), 38(5):1–12, 2019. 2, 6
+[32] Ziyi Wang, Xumin Yu, Yongming Rao, Jie Zhou, and Jiwen Lu. P2p: Tuning pre-trained image models for point cloud analysis with point-to-pixel prompting. arXiv preprint arXiv:2208.02812, 2022. 3, 5, 6
+[33] Zhirong Wu, Shuran Song, Aditya Khosla, Fisher Yu, Linguang Zhang, Xiaoou Tang, and Jianxiong Xiao. 3d shapenets: A deep representation for volumetric shapes. In Proceedings of the IEEE conference on computer vision and pattern recognition, pages 1912–1920, 2015. 4
+[34] Saining Xie, Jiatao Gu, Demi Guo, Charles R Qi, Leonidas Guibas, and Or Litany. Pointcontrast: Unsupervised pretraining for 3d point cloud understanding. In European conference on computer vision, pages 574–591. Springer, 2020. 1, 3
+[35] Xumin Yu, Lulu Tang, Yongming Rao, Tiejun Huang, Jie Zhou, and Jiwen Lu. Point-bert: Pre-training 3d point cloud transformers with masked point modeling. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 19313–19322, 2022. 1, 3, 4, 5, 6
+[36] Renrui Zhang, Ziyu Guo, Wei Zhang, Kunchang Li, Xupeng Miao, Bin Cui, Yu Qiao, Peng Gao, and Hongsheng Li. Pointclip: Point cloud understanding by clip. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 8552–8562, 2022. 3, 6
+[37] Hengshuang Zhao, Li Jiang, Jiaya Jia, Philip HS Torr, and Vladlen Koltun. Point transformer. In Proceedings of the IEEE/CVF International Conference on Computer Vision, pages 16259–16268, 2021. 3, 4, 5
+10
+
+In this supplement, we report more experiments about our EPCL, including prompt learning, visual analysis and implementation details about making the Frozen CLIP work.
+
+A. More experiments
+A.1. Prompt or not?
+In our experiments, we found that our task token is similar to prompt learning [12]. We also conducted experiments to compare with prompt learning. Following the VPT [12], we added the task token to every transformer layer of Frozen CLIP. The result is shown in Table 8, which shows that our task token obtains slightly worse results in classiﬁcation but better in the real-world detection task.
+
+Method
+
+Cls. Det.
+
+Prompt
+
+93.03 42.43
+
+Ours (task token) 92.91 43.05
+
+Table 8. Prompt learning for Frozen CLIP.
+
+The reason may be that the parameter space of Frozen CLIP is optimized well by huge image-text pairs. The learned prompts on a small 3D dataset may slightly undermine the Frozen CLIP. Using the task token only at the input of transformer will keep the integrity of Frozen CLIP. Moreover, adding more tokens in the transformer layers will result in more training and inference costs. Based on the above observations and considerations, we select the task token solution in our method.
+B. Visual results
+In this section, we show some visual results to demonstrate the quality of point cloud features learned by Frozen CLIP.
+Classiﬁcation. The feature quality dominates the classiﬁcation accuracy. To visually see the feature quality, we project the CAD object features of ModelNet40 into TSNE. Figure 11 shows that the Frozen CLIP can cluster different categories into different positions. Each class can be classiﬁed at different positions.
+Feature alignment. One advantage of our EPCL is the feature alignment between 2D and 3D without paired data. Therefore, we can leverage multimodal beneﬁts without paired data. Figure 9 shows an example of 3D airplane and four other 2D modalities. The TSNE map illustrates that our EPCL can project the same category at different modalities into same position in the TSNE map. This observation demonstrates that our EPCL can align 3D and 2D at category level.
+
+Figure 9. The TSNE map of an example of 3D category (airplane) with different 2D image categories.
+
+C. More implementation details of downstream tasks
+The key settings of downstream tasks have been introduced in the main manuscript. In this section, we introduce more implementation details about optimization and hyperparameters selection during our experiments.
+Classiﬁcation. The overall classiﬁcation framework is shown in Figure 10. In our experiments, we apply dropout(0.3) before the Frozen CLIP and dropout(0.2) for the ﬁrst two layers of MLP module. Without these dropouts, the accuracy will drop about 0.5 in the classiﬁcation task.
+
+Point cloud of a {CLASS NAME}
+
+CLIP Text Encoder
+
+Point Cloud
+
+Tokenizer
+
+CLIP Visual Encoder
+Add Task Tokens
+
+Max-pooling
+...
+
+CLIP Loss
+
+Concatenate Frozen
+
+cls
+MLP Prediction
+
+Figure 10. The framework of classiﬁcation.
+
+Detection. The overall detection framework is shown in Figure 12. The ﬁnal learning rate in our experiment is 5 × 10−7. Moreover, we apply dropout(0.3) before the Frozen CLIP. We ﬁnd that the accuracy of detection will drop about 5% in the AP0.5.
+Semantic segmentation. The overall semantic segmentation framework is shown in Figure 13. Same to the other downstream tasks, we also apply dropout(0.3) before the Frozen CLIP.
+
+11
+
+Figure 11. The TSNE map of features for different categories in the ModelNet40 dataset.
+
+Point Cloud
+
+Tokenizer + PE
+
+Add Task Tokens
+CLIP Visual Encoder
+Query Embeddings
+
+Remove Task Tokens
+Transformer
+ Decoder
+...
+
+MLP
+
+Prediction
+
+Concatenate
+
+Split
+
+Frozen
+
+Figure 12. The framework of detection. P E means the position encoding. Prediction is the output of detection.
+
+Remove Task Tokens
+Add Task Tokens
+
+Point Cloud
+
+TD
+
+
+[N, 3]
+
+x2
+
+CLIP Visual Encoder
+
+TU
+ x2
+
+MLP
+
+Prediction
+ [N, 1]
+
+Concatenate
+
+Split
+
+Frozen
+
+Figure 13. The framework of semantic segmentation. T D and T U are deﬁned for transition down and transition up respectively. Prediction is the output of semantic segmentation.
+
+12
+

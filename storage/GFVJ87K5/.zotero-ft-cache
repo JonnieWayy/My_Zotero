@@ -1,0 +1,110 @@
+HuaTuo (华驼): Tuning LLaMA Model with Chinese Medical Knowledge
+Haochun Wang∗, Chi Liu∗, Nuwa Xi, Zewen Qiang, Sendong Zhao, Bing Qin and Ting Liu Research Center for Social Computing and Information Retrieval, Harbin Institute of Technology, China {hcwang,cliu,nwxi,zwqiang,sdzhao,bqin,tliu}@ir.hit.edu.cn
+
+arXiv:2304.06975v1 [cs.CL] 14 Apr 2023
+
+Abstract
+Large Language Models (LLMs), such as the LLaMA model, have demonstrated their effectiveness in various general-domain natural language processing (NLP) tasks. Nevertheless, LLMs have not yet performed optimally in biomedical domain tasks due to the need for medical expertise in the responses. In response to this challenge, we propose HuaTuo (华 驼), a LLaMA-based model that has been supervised-ﬁne-tuned with generated QA (Question-Answer) instances. The experimental results demonstrate that HuaTuo generates responses that possess more reliable medical knowledge. Our proposed HuaTuo model is accessible at https://github.com/SCIR-HI/ Huatuo-Llama-Med-Chinese.
+1 Introduction
+The advent of instruction-following large language models (LLMs), representative by ChatGPT(OpenAI, 2022), has generated signiﬁcant interest due to their exceptional performance in understanding instructions and generating human-like responses. Compared to smaller models, LLMs exhibit strong generalization across various natural language processing (NLP) tasks and unique emergent ability to solving unseen or complicated tasks. Despite ChatGPT’s non-open source status, open-source communities have provided several alternatives, such as LLaMa(Touvron et al., 2023), with relatively affordable training costs. This positions LLMs as potential solutions for real-world scenarios requiring communication and reasoning.
+However, despite their numerous merits, LLMs are not designed to cater speciﬁcally to the medical domain. Their general domain knowledge often falls short when addressing such specialized ﬁelds, where accurate and domain-speciﬁc expert knowledge is critical. This can lead to sub-optimal
+*Equal contribution.
+
+diagnostic precision, drug recommendations, and medical advice, potentially endangering patients. Few efforts have been made to address this problem, with existing approaches primarily focusing on supplying LLMs with medical information retrieved from conversations, where human errors may occur more frequently. Additionally, LLMs are typically trained in English, constraining their comprehension and response capabilities in languages that differ signiﬁcantly from English, such as Chinese, rendering their direct application in Chinese contexts less than ideal.
+In this paper, we present the HuaTuo (华驼) model, an LLM tailored for the biomedical domain, focusing on the Chinese language. By generating diverse instruction data based on medical knowledge from CMeKG, we emphasize ensuring the correctness of facts in the model’s responses, which is vital in the biomedical domain. Through this process, we collect over 8,000 instruction data for supervised ﬁne-tuning. Our model builds upon the open-source LLaMa-7B base model, integrates structured and unstructured medical knowledge from the Chinese medical knowledge graph (CMeKG), and employs knowledge-based instruction data for ﬁne-tuning.
+In summary, our contributions can be summarized as follows:
+• We introduce the HuaTuo model, the ﬁrst open-source Chinese biomedical LLM tuned with knowledge-based instruction data;
+• We integrate structured and unstructured medical knowledge from CMeKG, ensuring our model has accurate and domain-speciﬁc knowledge;
+• We proposed SUS, a novel metric for evaluating LMs in the biomedical domain considering safety, usability and smoothness.
+
+2 Related Works
+2.1 Large Language Models
+Recent advancements in large language models (LLMs) have demonstrated their superiority over previous-generation paradigms, such as pretraining and ﬁne-tuning. The signiﬁcant increase in model scale has led to qualitative changes in LLMs, commonly referred to as emergent abilities. These include in-context learning for zero-shot tasks and chains of thought that enhance the model’s performance on complex tasks.
+OpenAI’s development of ChatGPT and GPT-4 has revolutionized the perception of LLMs. Although these models exhibit remarkable performance, OpenAI has not disclosed details regarding their training strategies or weight parameters. LLaMa serves as an open-source alternative for GPT, with sizes ranging from 7 billion to 65 billion parameters. Taori et al. trained Alpaca based on LLaMa with instruction tuning.
+While comparable in performance to GPT-3.5, LLaMa’s performance on Chinese tasks is subpar due to its training data is primarily limited to English corpus. To address Chinese-speciﬁc applications, Du et al.; Zeng et al. introduced GLM, a 130 billion-parameter auto-regressive pre-trained model with multiple training objectives. ChatGLM further incorporates code training and aligns with human intentions through supervised ﬁne-tuning, offering a tailored solution for Chinese contexts.
+2.2 Pre-trained Models in Biomedical Domain
+Although large language models (LLMs) exhibit remarkable performance in general domains, their lack of domain-speciﬁc knowledge results in suboptimal performance in ﬁelds that require specialized expertise, such as biomedicine. The biomedical ﬁeld’s inherent nature necessitates models to possess comprehensive knowledge bases for relevant queries, particularly when applied to real-world situations where patients seek health and medical advice. Several efforts have been made to adapt LLMs to the biomedical domain.
+Existing approaches primarily employ ChatGPT for data assistance and train smaller models using its distilled or translated knowledge. Chatdoctor(Li et al., 2023) represents the ﬁrst attempt to adapt LLMs to the biomedical ﬁeld by ﬁne-tuning LLaMa using conversation demonstrations synthesized via ChatGPT. DoctorGLM(Xiong et al.)
+
+leverages ChatGLM-6B as the base model and ﬁnetunes it with the Chinese translation of ChatDoctor dataset, obtained through ChatGPT. Additionally, Chen et al. develops a Chinese and Medically Enhanced Language model within their collection of LLMs. Collectively, these works illustrate the potential for LLMs to be successfully applied within the biomedical domain.
+3 HuaTuo Model
+In this section, we will introduce the training process of our HuaTuo (华驼) model.
+3.1 Base Model
+LLaMA (Touvron et al., 2023) is a collection of multi-lingual base models with parameters ranging from 7 billion to 65 billion, which are open-source to the research community. Here, we adopted the LLaMA-7B model for more accessible training.
+3.2 Medical Knowledge
+There are various kinds of medical knowledge, generally including (1) structured medical knowledge like medical knowledge graphs and (2) unstructured medical knowledge like medical guidelines. We utilized a Chinese medical knowledge graph, CMeKG (Odmaa et al., 2019), which also provides retrieved medical knowledge about diseases, drugs, symptoms, etc. Table 1 shows several knowledge cases in the CMeKG knowledge base.
+3.3 Knowledge-based Instruction Data
+Instruct-tuning has proven to be effective to tune large language models (Wei et al., 2022; Ouyang et al., 2022), which helps the models perform satisfactorily under zero-shot scenarios with the cost of sufﬁcient annotated instructions. Inspired by the automatic construction of the instruction along with the instances (inputs and outputs) (Wang et al., 2022; Taori et al., 2023), we generate our instruction data based on the above medical knowledge.
+As demonstrated in Table 2, instruct-tuning involves supervised ﬁne-tuning on the training instances and an instruction that describes the tasks in natural language. However, as for a large language model for medical dialogue, inputs are mostly stated as questions and instructions are all like “Answer the following question”. Therefore, we dispose of the instructions and only preserve the inputs for our HuaTuo.
+While the generated instructions are required to be diverse enough for unseen tasks (Wang et al.,
+
+Type Disease
+Drug
+Symptom
+
+Knowledge in Chinese {"class": "百种常见病", "中心词": "肝 癌", "药物治疗": ["瑞格非尼", "对乙型 或丙型肝炎有效的抗病毒药物", "索拉 非尼"], "多发地区": ["撒哈拉以南的非 洲"], "高危因素": ["肥胖", "HBV DNA过 高", "慢性酗酒", "男性", "慢性乙型肝 炎 感 染", "肝 癌 家 族 史", "慢 性 丙 型 肝 炎 肝 硬 化", "核 心 启 动 子 突 变", "肝 硬 化", "HCV重叠感染", "老年性心瓣膜病", "乙型肝炎e抗原", "糖尿病"],"发病部位": ["肝脏"], "辅助检查": ["肝功能检查"], "病史": ["长期慢性乙肝病史"]}
+{ "class": "西药", "中心词": "二甲双胍", "性状": ["糖衣或薄膜衣片，除去包衣 后显白色"], "英文名称": ["异福片", "格 华 止"], "分 类": ["双 胍 类", "抗 结 核 病 药"], "规格": ["0.25g"], "OTC类型": ["乙 类OTC", "甲类OTC"], "适应证": ["糖尿 病", "肥胖"], "通用名": ["异福片"], "成 份": ["利福平及异烟肼", "异烟肼", "异 烟肼0.1克", "异烟肼150毫克", "本品为 复方制剂", "利福平", "利福平300毫克", "利 福 平0.15克", "盐 酸 二 甲 双 胍", "盐 酸"]
+{ "中心词": "毛发脱落", "检查": ["毛发 矿物质检查"], "相关疾病": ["斑秃", "慢 性疲劳综合症"], "相关症状": ["毛发色 淡而呈棕色", "毛发干燥易断", "皮肤变 硬"], "所属科室": ["内科", "皮肤性病", "放疗、化疗科"], "发病部位": ["头部"]
+
+Knowledge translated to English {"class": "Common Diseases", "Key Word": "Liver Cancer", "Drug Treatment": ["Regorafenib", "Antiviral drugs effective against hepatitis B or C", "Sorafenib"], "High Prevalence Regions": ["Sub-Saharan Africa"], "High Risk Factors": ["Obesity", "High HBV DNA levels", "Chronic alcoholism", "Male gender", "Chronic hepatitis B infection", "Family history of liver cancer", "Cirrhosis due to chronic hepatitis C", "Core promoter mutation", "Liver cirrhosis", "HCV co-infection", "Senile valvular heart disease", "Hepatitis B e antigen", "Diabetes"], "Affected Area": ["Liver"], "Auxiliary Examination": ["Liver function test"], "Medical History": ["Long-term history of chronic hepatitis B"]}. "Class": "Western Medicine", "Key Word": "Metformin", "Appearance": ["Sugarcoated or ﬁlm-coated tablets, white after removal of coating"], "English Names": ["Yifupian", "Gehuazhi"], "Classiﬁcation": ["Biguanide class", "Anti-tuberculosis drug"], "Speciﬁcations": ["0.25g"], "OTC Types": ["OTC Class B", "OTC Class A"], "Indications": ["Diabetes", "Obesity"], "Generic Name": ["Yifupian"], "Ingredients": ["Isoniazid and pyrazinamide", "Pyrazinamide", "0.1g pyrazinamide", "150mg pyrazinamide", "This product is a compound preparation", "Isoniazid", "300mg isoniazid", "0.15g isoniazid", "Metformin hydrochloride", "Hydrochloride"] "Key Word": "Hair Loss", "Examinations": ["Hair mineral analysis"], "Related Diseases": ["Alopecia areata", "Chronic Fatigue Syndrome"], "Related Symptoms": ["Hair color is light and brown", "Hair is dry and brittle", "Skin becomes hardened"], "Related Departments": ["Internal Medicine", "Dermatology and Venereology", "Radiation and Chemotherapy"], "Affected Area": ["Head"]
+
+Table 1: Knowledge cases in the CMeKG.
+
+Instruction: Translate the following sentence into Chinese. Input: What are the possible reasons for liver cancer? Output: 肝癌可能的原因有什么？
+Table 2: Instance with an instruction.
+2022) in the general domain, the correctness of the fact in the responses from the large language model is of more concern in the biomedical domain (Gilson et al., 2023). Thus, we ﬁrst sample knowledge instances from the knowledge graph and then generate the instances based on the speciﬁc knowledge with the OpenAI API (OpenAI, 2022). Finally, we collect over 8,000 instruction data, like examples in Table 3 as training instances for supervised ﬁne-tuning.
+4 Experiment
+4.1 Baselines
+In order to demonstrate the superior performance of HuaTuo, we conducted a comparative analysis with four baseline models.
+• LLaMA (Touvron et al., 2023) serves as the foundation model for our HuaTuo. In particular, we employed LLaMA-7B for its relative fairness in comparison to the other baselines and its ease of training.
+• Alpaca (Taori et al., 2023) is an instructedtuned version of LLaMA and boasts more than 80,000 instances generated in the general domain.
+• ChatGLM (Zeng et al., 2023) is an optimized dialogue model speciﬁcally designed for the Chinese chatting scenario. In our analysis, we compared HuaTuo’s performance with ChatGLM-6B.
+4.2 Metrics
+For the generation tasks in the general domain, evaluation metrics, such as Bleu and Rouge are utilized to determine whether a generative model can produce responses similar to the ground truth. However, as for the medical QA tasks, namely (1) safety, (2) usability, and (3) smoothness. Safety determines whether the response includes anything
+
+that can mislead the user into danger, such as wrong medicine recommendations. Usability reﬂects the medical expertise of a speciﬁc response. And, the Smoothness represents the ability as a language model.
+In the domain of natural language generation, various evaluation metrics are utilized to assess the efﬁcacy of generative models. The widely used metrics in the general domain include Bleu and Rouge, which compare generated responses with the ground truth. Additionally, for medical question-answering tasks, we introduce an evaluation metric, SUS. The SUS metric consists of three dimensions: Safety, Usability, and Smoothness. The “Safety” dimension assesses whether the generated response has the potential to mislead the user and pose a danger to their health, for example, through incorrect medication recommendations. The “Usability” dimension evaluates the extent to which the generated response reﬂects medical expertise, while the “Smoothness” dimension measures the proﬁciency of the generative model as a language model.
+4.3 Results
+In this study, we constructed a test set of potential questions in Chinese dialogue scenarios and compared the generated responses of our HuaTuo model with three other baseline models. To evaluate the model performance, we recruited ﬁve annotators with medical backgrounds who assessed the randomly mixed responses of the models using a three-point scale for each dimension of Safety, Usability, and Smoothness (SUS). The SUS scale ranges from 1 (not acceptable) to 3 (good), with 2 indicating an acceptable response. The average SUS scores are presented in Table 4. Although LLaMA achieves the highest safety score, its responses are often uninformative and rephrased the questions, resulting in a low usability score. On the other hand, our HuaTuo model signiﬁcantly improves knowledge usability without much compromising safety.
+Ethics Statement
+The HuaTuo initiative is primarily dedicated to research and is not intended to offer medical advice. The medical information utilized in this study is sourced from an open-access medical knowledge graph. It is important to note that the accuracy of responses generated by large language models cannot
+
+Question: Answer
+
+Instance (in Chinese) 患 者XXX因 头 部 及 眼 后 部 疼 痛 并 能 听 到连续不断的隆隆声来到医院，医生对 其进行了检查后诊断为偏头痛。请问， 该病有什么治疗方法？
+治疗偏头痛的方法包括药物治疗和非 药物治疗。药物治疗主要包括三大类： 急性发作期治疗、预防性治疗和混合治 疗。非药物治疗包括改变生活方式，如 减少熬夜、避免过度劳累、避免饮酒、 戒烟等；此外还包括针灸、按摩、脉 冲放电治疗等。在治疗中应该综合评估 患者的病情、临床表现、个人情况等因 素，制定个性化的治疗方案。
+
+Instances (translated to English) Patient XXX came to the hospital due to pain in the head and behind the eyes, accompanied by continuous rumbling sounds. After an examination, the doctor diagnosed the patient with a migraine. What are the treatment options for this condition? The methods for treating migraines include medication and non-pharmacological therapies. Medication therapy primarily consists of three categories: acute attack treatment, preventative treatment, and mixed treatment. Non-pharmacological therapies include lifestyle changes such as reducing staying up late, avoiding overwork, avoiding alcohol consumption, and quitting smoking; in addition, they also include treatments such as acupuncture, massage, and pulse discharge therapy. During treatment, a comprehensive assessment of the patient’s condition, clinical manifestations, personal circumstances, and other factors should be taken into account to develop a personalized treatment plan.
+
+Table 3: Example for the supervised-ﬁne-tuning training instances.
+
+LLaMA Alpaca ChatGLM HuaTuo (华驼)
+
+Safety 2.93 2.64 2.59 2.88
+
+Usability 1.21 2.05 1.93 2.12
+
+Smoothness 1.58 2.30 2.41 2.47
+
+Table 4: Experimental results of SUS score for the models.
+
+be guaranteed, and the medical knowledge utilized therein should not be construed as a substitute for professional medical advice. If one experiences any discomfort or distress, it is strongly advised to seek the guidance of a qualiﬁed medical professional.
+References
+Zhihong Chen, Junying Chen, Hongbo Zhang, Feng Jiang, Guiming Chen, Fei Yu, Tiannan Wang, Juhao Liang, Chen Zhang, Zhiyi Zhang, Jianquan Li, Xiang Wan, Haizhou Li, and Benyou Wang. 2023. Llm zoo: democratizing chatgpt. https://github. com/FreedomIntelligence/LLMZoo.
+Zhengxiao Du, Yujie Qian, Xiao Liu, Ming Ding, Jiezhong Qiu, Zhilin Yang, and Jie Tang. 2022. Glm:
+
+General language model pretraining with autoregressive blank inﬁlling. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 320– 335.
+Aidan Gilson, Conrad W Safranek, Thomas Huang, Vimig Socrates, Ling Chi, Richard Andrew Taylor, David Chartash, et al. 2023. How does chatgpt perform on the united states medical licensing examination? the implications of large language models for medical education and knowledge assessment. JMIR Medical Education, 9(1):e45312.
+Yunxiang Li, Zihan Li, Kai Zhang, Ruilong Dan, and You Zhang. 2023. Chatdoctor: A medical chat model ﬁne-tuned on llama model using medical domain knowledge.
+BYAMBASUREN Odmaa, YANG Yunfei, SUI Zhi-
+
+fang, DAI Damai, CHANG Baobao, LI Sujian, and ZAN Hongying. 2019. Preliminary study on the construction of chinese medical knowledge graph. Journal of Chinese Information Processing, 33(10):1–7.
+OpenAI. 2022. Chatgpt. https://chat.openai. com.
+Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. 2022. Training language models to follow instructions with human feedback. Advances in Neural Information Processing Systems, 35:27730–27744.
+Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy Liang, and Tatsunori B. Hashimoto. 2023. Stanford alpaca: An instruction-following llama model. https://github.com/tatsu-lab/ stanford_alpaca.
+Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. 2023. Llama: Open and efﬁcient foundation language models. arXiv preprint arXiv:2302.13971.
+Yizhong Wang, Yeganeh Kordi, Swaroop Mishra, Alisa Liu, Noah A Smith, Daniel Khashabi, and Hannaneh Hajishirzi. 2022. Self-instruct: Aligning language model with self generated instructions. arXiv preprint arXiv:2212.10560.
+Jason Wei, Maarten Bosma, Vincent Zhao, Kelvin Guu, Adams Wei Yu, Brian Lester, Nan Du, Andrew M Dai, and Quoc V Le. 2022. Finetuned language models are zero-shot learners. In International Conference on Learning Representations.
+Honglin Xiong, Sheng Wang, Yitao Zhu, Zihao Zhao, Yuxiao Liu, Qian Wang, and Dinggang Shen. Doctorglm: Fine-tuning your chinese doctor is not a herculean task.
+Aohan Zeng, Xiao Liu, Zhengxiao Du, Zihan Wang, Hanyu Lai, Ming Ding, Zhuoyi Yang, Yifan Xu, Wendi Zheng, Xiao Xia, Weng Lam Tam, Zixuan Ma, Yufei Xue, Jidong Zhai, Wenguang Chen, Zhiyuan Liu, Peng Zhang, Yuxiao Dong, and Jie Tang. 2023. GLM-130b: An open bilingual pretrained model. In The Eleventh International Conference on Learning Representations (ICLR).
+

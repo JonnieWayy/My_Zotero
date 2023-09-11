@@ -1,0 +1,81 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2303.11717
+
+Help | Advanced Search
+Search
+Computer Science > Artificial Intelligence
+(cs)
+[Submitted on 21 Mar 2023]
+Title: A Complete Survey on Generative AI (AIGC): Is ChatGPT from GPT-4 to GPT-5 All You Need?
+Authors: Chaoning Zhang , Chenshuang Zhang , Sheng Zheng , Yu Qiao , Chenghao Li , Mengchun Zhang , Sumit Kumar Dam , Chu Myaet Thwal , Ye Lin Tun , Le Luang Huy , Donguk kim , Sung-Ho Bae , Lik-Hang Lee , Yang Yang , Heng Tao Shen , In So Kweon , Choong Seon Hong
+Download a PDF of the paper titled A Complete Survey on Generative AI (AIGC): Is ChatGPT from GPT-4 to GPT-5 All You Need?, by Chaoning Zhang and 16 other authors
+Download PDF
+
+    Abstract: As ChatGPT goes viral, generative AI (AIGC, a.k.a AI-generated content) has made headlines everywhere because of its ability to analyze and create text, images, and beyond. With such overwhelming media coverage, it is almost impossible for us to miss the opportunity to glimpse AIGC from a certain angle. In the era of AI transitioning from pure analysis to creation, it is worth noting that ChatGPT, with its most recent language model GPT-4, is just a tool out of numerous AIGC tasks. Impressed by the capability of the ChatGPT, many people are wondering about its limits: can GPT-5 (or other future GPT variants) help ChatGPT unify all AIGC tasks for diversified content creation? Toward answering this question, a comprehensive review of existing AIGC tasks is needed. As such, our work comes to fill this gap promptly by offering a first look at AIGC, ranging from its techniques to applications. Modern generative AI relies on various technical foundations, ranging from model architecture and self-supervised pretraining to generative modeling methods (like GAN and diffusion models). After introducing the fundamental techniques, this work focuses on the technological development of various AIGC tasks based on their output type, including text, images, videos, 3D content, etc., which depicts the full potential of ChatGPT's future. Moreover, we summarize their significant applications in some mainstream industries, such as education and creativity content. Finally, we discuss the challenges currently faced and present an outlook on how generative AI might evolve in the near future. 
+
+Comments: 	56 pages, 548 citations
+Subjects: 	Artificial Intelligence (cs.AI) ; Computer Vision and Pattern Recognition (cs.CV); Machine Learning (cs.LG); Multimedia (cs.MM)
+Cite as: 	arXiv:2303.11717 [cs.AI]
+  	(or arXiv:2303.11717v1 [cs.AI] for this version)
+  	https://doi.org/10.48550/arXiv.2303.11717
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Chaoning Zhang [ view email ]
+[v1] Tue, 21 Mar 2023 10:09:47 UTC (9,718 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled A Complete Survey on Generative AI (AIGC): Is ChatGPT from GPT-4 to GPT-5 All You Need?, by Chaoning Zhang and 16 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.AI
+< prev   |   next >
+new | recent | 2303
+Change to browse by:
+cs
+cs.CV
+cs.LG
+cs.MM
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

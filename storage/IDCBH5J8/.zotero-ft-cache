@@ -1,0 +1,1314 @@
+Posted on 21 Nov 2022 — The copyright holder is the author/funder. All rights reserved. No reuse without permission. — https://doi.org/10.1002/essoar.10507495.1 — This a preprint and has not been peer reviewed. Data may be preliminary.
+
+Improving Precipitation Forecasts with Convolutional Neural Networks
+Anirudhan Badrinath1, Luca Delle Monache2, Negin Hayatbini3, William Eric Chapman4, Forest Cannon4, and F. Martin Ralph5 1University of California, Berkeley 2University of California San Diego 3Center for Western Weather and Water Extremes, Scripps Institution of Oceanography 4University of California, San Diego 5SIO November 21, 2022
+Abstract
+Traditional post-processing methods have relied on point-based applications that are unable to capture complex spatial precipitation error patterns. With novel ML methods using convolution to more eﬀectively identify and reduce spatial biases, we propose a modiﬁed U-Net convolutional neural network (CNN) to post-process daily accumulated precipitation over the US west coast. For training, we leverage 34 years of deterministic Western Weather Research and Forecasting (West-WRF) reforecasts. On an unseen 4-year data set, the trained CNN yields a 12.9-15.9% reduction in root mean-square error (RMSE) over West-WRF for lead times of 1-4 days. Compared to an adapted Model Output Statistics baseline, the CNN reduced RMSE by 7.4-8.9% for all events. Eﬀectively, the CNN adds more than a day of predictive skill when compared to West-WRF. The CNN outperforms the other methods also for the prediction of extreme events, highlighting a promising path forward for improving precipitation forecasts.
+1
+
+manuscript submitted to Geophysical Research Letters
+
+1 Improving Precipitation Forecasts with Convolutional
+
+2
+
+Neural Networks
+
+3
+
+Anirudhan Badrinath1, Luca Delle Monache2, Negin Hayatbini2, Will
+
+4
+
+Chapman2, Forest Cannon2, Marty Ralph2
+
+5
+
+1Department of Computer Science, University of California Berkeley, Berkeley, California, United States
+
+6
+
+2Center for Western Weather and Water Extremes, Scripps Institution of Oceanography, University of
+
+7
+
+California San Diego, La Jolla, California, United States
+
+8
+
+Key Points:
+
+9
+
+• We adapted a U-Net convolutional neural network (CNN) architecture as a post-
+
+10
+
+processing framework.
+
+11
+
+• The precipitation class imbalance was addressed by the dual ML model approach.
+
+12
+
+• The proposed method provides greater numerical accuracy over all lead times.
+
+Corresponding author: Anirudhan Badrinath, abadrinath@berkeley.edu –1–
+
+manuscript submitted to Geophysical Research Letters
+
+13 Abstract
+
+14
+
+Traditional post-processing methods have relied on point-based applications that
+
+15 are unable to capture complex spatial precipitation error patterns. With novel ML meth-
+
+16 ods using convolution to more eﬀectively identify and reduce spatial biases, we propose
+
+17 a modiﬁed U-Net convolutional neural network (CNN) to post-process daily accumulated
+
+18 precipitation over the US west coast. For training, we leverage 34 years of determinis-
+
+19 tic Western Weather Research and Forecasting (West-WRF) reforecasts.
+
+20
+
+On an unseen 4-year data set, the trained CNN yields a 12.9-15.9% reduction in
+
+21 root mean-square error (RMSE) over West-WRF for lead times of 1-4 days. Compared
+
+22 to an adapted Model Output Statistics baseline, the CNN reduced RMSE by 7.4-8.9%
+
+23 for all events. Eﬀectively, the CNN adds more than a day of predictive skill when com-
+
+24 pared to West-WRF. The CNN outperforms the other methods also for the prediction
+
+25 of extreme events, highlighting a promising path forward for improving precipitation fore-
+
+26 casts.
+
+27 Plain Language Summary
+
+28
+
+Machine learning methods are used for accurate large-scale prediction by learning
+
+29 patterns from a vast amount of data. We demonstrate the utility of a computer vision-
+
+30 based machine learning technique for improving precipitation forecasts. Extreme pre-
+
+31 cipitation events and atmospheric rivers, which contain narrow bands of water vapor trans-
+
+32 port, can cause millions in damages. We show that there is a signiﬁcant increase in pre-
+
+33 dictive accuracy for daily accumulated precipitation using these machine learning meth-
+
+34 ods, which could result in signiﬁcant societal beneﬁts.
+
+35 1 Introduction
+
+36
+
+The precipitation associated with atmospheric rivers (ARs), ”a long, narrow, and
+
+37 transient corridor of strong horizontal water vapor transport” (AMS, 2019), replenishes
+
+38 the water supply but can also result in ﬂooding over the western United States. ARs cause
+
+39 median economic losses in the tens to hundreds of millions of dollars for AR4 and AR5
+
+40 ARs based on the AR scale developed by (Ralph et al., 2019). Further, ARs have been
+
+41 identiﬁed as the primary source of hydrologic ﬂooding in the western United States (Corringham
+
+42 et al., 2019). Accurate and reliable predictions of precipitation can help in minimizing
+
+43 losses attributable to ARs or other weather phenomena (e.g., cut-oﬀ lows, narrow cold-
+
+44 frontal rainbands, etc.) and in better managing the water supply in the western United
+
+45 States (ODonnell et al., 2020).
+
+46
+
+Numerical weather prediction (NWP) are based on dynamical models that are built
+
+47 on current state-of-the-science knowledge of key atmospheric physics and numerical pro-
+
+48 cedure. However, NWP accuracy is aﬀected by initial condition errors, numerical approx-
+
+49 imations, and incomplete understanding and representation of all the relevant physical
+
+50 processes (Delle Monache et al., 2013; Vannitsem & Ghil, 2017; Collins & Allen, 2002;
+
+51 Nicolis & Nicolis, 2007).
+
+52
+
+NWP post-processing methods are designed to correct for the aforementioned de-
+
+53 ﬁciencies by learning the characteristics of NWP errors from a historical data set to then
+
+54 try to anticipate today forecast biases. These include downscaling methods, Kalman ﬁl-
+
+55 ters, model output statistics (MOS), and machine learning methods such as neural net-
+
+56 work models, decision trees, and multilinear regression models (Louka et al., 2008; Glahn
+
+57 & Lowry, 1972). Historically, post-processing methods, including machine learning meth-
+
+58 ods, have operated on a point-by-point basis (Rasp & Lerch, 2018). Recently, convolu-
+
+59 tional neural networks (CNNs) have been proposed to correct satellite retrievals (Tao
+
+60 et al., 2016). CNNs have been shown to be a powerful regression tool in the domains of
+
+–2–
+
+manuscript submitted to Geophysical Research Letters
+
+61 image analysis (Krizhevsky et al., 2012). For NWP, recent work by W. Chapman et al. 62 (2019) has highlighted the eﬃcacy of a CNN as a NWP post-processing method for the 63 prediction of integrated vapor transport (IVT). It was shown that the CNN-based pre64 diction resulted in 9-17% improvements in RMSE as compared to other methods (W. Chap65 man et al., 2019).
+
+66
+
+Traditional point-by-point approaches have been shown to be eﬀective in improv-
+
+67 ing the raw estimates of dynamical models (Glahn & Lowry, 1972), and are particularly
+
+68 valuable for certain applications, e.g., renewable energy (Alessandrini et al., 2015; Cer-
+
+69 vone et al., 2017). However, since spatial interdependence is ignored, at times non-physical
+
+70 ﬁelds with statistical anomalies are produced (Vannitsem & Ghil, 2017). Further, the
+
+71 predominantly “no rain” data points in the precipitation ﬁeld poses an issue for stan-
+
+72 dard machine learning methods which rely on balanced classes of data. To mitigate these
+
+73 issues, in this study we explore the potential of a recently developed machine learning
+
+74 method to post-process accumulated precipitation forecasts: a U-Net CNNs architecture
+
+75 (Ronneberger et al., 2015). U-Net CNNs are a form of artiﬁcial neural network , which
+
+76 have been used for both classiﬁcation and regression tasks primarily focused on spatial
+
+77 data in the ﬁeld of biomedical imaging. As such, this CNN leverages spatial interdepen-
+
+78 dence by construction. Further, we propose and test a dual ML model structure to rec-
+
+79 tify the class imbalance in the sparse precipitation data.
+
+80
+
+In Section 2 we introduce the data used in this study. Section 3 describes the method-
+
+81 ology, including evaluation strategy and skill scores. The results are presented in section
+
+82 4. Conclusions are provided in section 5, where the potential of U-Net CNN as a tool
+
+83 for weather forecasting and future research is discussed.
+
+84 2 Data and Methodology
+
+85
+
+2.1 Observational Data
+
+86
+
+The observed precipitation data used in this study is the Parameter-elevation Re-
+
+87 lationships on Independent Slopes Model (PRISM) dataset (PRISM Climate Group, 2004),
+
+88 which is constructed using data from the Cooperative Observer Program (COOP) and
+
+89 Snowpack Telemetry (SNOTEL) networks, and a variety of smaller networks (Daly et
+
+90 al., 2008). PRISM provides estimates of accumulated 24 hour precipitation data over the
+
+91 last 40 years over the contiguous United States (CONUS) at a spatial resolution of 4 km.
+
+92 Here we focus on the western United States region comprising California and Nevada.
+
+93
+
+The PRISM dataset was chosen as ground truth in this study due to its accuracy,
+
+94 comparable spatial resolution to the model reforecast data, and length of record. PRISM
+
+95 uses a comprehensive linear precipitation–elevation correction scheme that applies weights
+
+96 based on location to nearby stations, proximity to coast, topographic facets, boundary
+
+97 layer conditions, surrounding terrain height, and other terrain features (Daly et al., 2008).
+
+98 PRISM has been shown to perform well in challenging complex terrain settings when tested
+
+99 against independent station data (Daly et al., 2017). It has also been shown to produce
+
+100 reliably similar estimates of precipitation extremes when compared to other national in-
+
+101 situ based gridded datasets, while performing notably better than various reanalysis prod-
+
+102 ucts (Gibson et al., 2019).
+
+103
+
+2.2 Model Reforecast Data
+
+104
+
+The NWP reforecast data which is being post-processed, was developed at the Cen-
+
+105 ter for Western Weather and Water Extremes. As input to the U-Net CNN, we use weather
+
+106 forecasts over a 3-km domain (Figure 1) of 34 water years (1985 to 2019) of the West-
+
+107 ern Weather Research and Forecasting (West-WRF) regional model (Martin et al., 2019)
+
+108 covering the western United States, California and Nevada. The forecasts are driven by
+
+–3–
+
+manuscript submitted to Geophysical Research Letters
+
+109 initial and boundary conditions from the Global Forecasting System. The West-WRF 110 regional model has shown forecast skill with a low intensity error for IVT and reduced 111 dry and wet biases for precipitation over lead times from 1 to 7 days (see Steinhoﬀ et 112 al. (2020) for additional details on the reforecast).
+
+113
+
+To align the forecast spatially with the observation set, we regrid the forecasts with
+
+114 a nearest-neighbor approach to a 4-km resolution, to retain existing precipitation pat-
+
+115 terns and preserve global precipitation means. For temporal alignment with the obser-
+
+116 vations, and given that the forecast are initialized daily at 0000 UTC, we calculate the
+
+117 accumulated daily precipitation oﬀset by 12 hours to account for model spin-up. In other
+
+118 words, data from 12-h to 36-h after initialization of each West-WRF forecast is labelled
+
+119 as Day 1 forecast and is aligned with PRISM ground truth data.
+
+120
+
+2.3 Machine Learning Approach
+
+121
+
+The proposed CNN for forecast post-processing uses the U-Net architecture as a
+
+122 baseline, named after its distinctive U-shape model diagram (Ronneberger et al., 2015).
+
+123 Historically, this type of CNN has been used for biomedical image segmentation, but its
+
+124 application with weather forecasts is promising given its strength in rectifying spatial
+
+125 biases through image segmentation (W. Chapman et al., 2019). The model architecture
+
+126 consists of two phases. In the ﬁrst phase, the model performs data compression through
+
+127 repeated convolutional layers to learn spatial features. This is followed by an expand-
+
+128 ing phase in which the output image is reconstructed using the learned features. We mod-
+
+129 iﬁed the U-Net architecture as introduced by Ronneberger et al. (2015) in several ways
+
+130 as detailed below to adapt it to the task of improving the skill of precipitation forecasts.
+
+131 The model along with these modiﬁcations is referred to as the modiﬁed U-Net CNN from
+
+132 here onwards.
+
+133
+
+West-WRF model output variables are used as predictors in the CNN. In partic-
+
+134 ular, to generate Day 1 predictions, the normalized 24-h accumulated precipitation, and
+
+135 the 6, 12 and 18-h forecasts of 5-m speciﬁc humidity and 2-m temperature since fore-
+
+136 cast initialization are used. Similarly, for greater lead times, we use the same predictors
+
+137 oﬀset by the lead times. These predictors are used because they provide signiﬁcant in-
+
+138 sight into the ground truth precipitation (Richardson, 1922). It was determined through
+
+139 validation that as the number of input parameters was increased beyond these predic-
+
+140 tors and time granularity (e.g., hourly instead of 6 hourly), the eﬃciency and accuracy
+
+141 of the model decreased (Anelli et al., 2019).
+
+142
+
+The loss function used for the modiﬁed U-Net CNN is an asymmetric adaptation
+
+143 of the mean-square error that penalizes underprediction more than overprediction. It was
+
+144 observed through preliminary tests that the U-Net CNN tended to systematically un-
+
+145 derpredict extreme precipitation events, hence we chose to correct this bias as follows.
+
+146 We assign a hyperparameter ws > 1 that multiplicatively weights underpredicted val-
+
+147 ues as described in Equation S2 in the supplemental information. The value of ws is de-
+
+148 termined by minimizing loss on the validation data set, which is consistent with the pro-
+
+149 cedure to determine all hyperparameters.
+
+150
+
+To combat a tendency for neural networks to predict small non-zero values of pre-
+
+151 cipitation for every grid cell due to millions of additions in its numerical computations
+
+152 (for example, a ”zero” value might be predicted as 0.001), we leverage binary masking,
+
+153 during model training, for precipitation prediction (Hayatbini et al., 2019). Binary mask-
+
+154 ing is a classiﬁcation technique that generates a rain vs. no rain map for all grid points
+
+155 given the same input as the main post-processing framework. We use the same model
+
+156 architecture for training this binary mask predictor as the main post-processing model
+
+157 except the predictions (the numerical precipitation value) are replaced by indicator func-
+
+158 tions of the precipitation (i.e., rain vs. no rain). We train this completely separately from
+
+159 the main post-processing model. In other words, instead of predicting the amount of pre-
+
+–4–
+
+manuscript submitted to Geophysical Research Letters
+
+160 cipitation, we predict the probability of non-zero precipitation at that grid point. Then, 161 we use masking to remove any values in the main numerical precipitation prediction that 162 were predicted as likely having zero rain with over 50% probability by our binary mask. 163 The loss function used in this case is the cross-entropy loss, a standard loss used in this 164 kind of classiﬁcation problems (Hayatbini et al., 2019). Figure S1 summarizes the afore165 mentioned structure, located in the supplemental information.
+
+166
+
+Further, we propose a dual ML model solution to class imbalance between the oc-
+
+167 currence of extreme and moderate precipitation events. We will refer to this as the dual
+
+168 model approach. For extreme events, traditional machine learning-based baselines such
+
+169 as MOS tend to underestimate the upper tail of the distribution and overestimate the
+
+170 moderate case due to the relatively low probability of extreme values in the distribution.
+
+171 To address this issue, we create separate U-Net CNN models for the more extreme events
+
+172 as classiﬁed by mean forecast accumulated precipitation above 2.5 mm. This corresponds
+
+173 with roughly all events below the 20th percentile total accumulated precipitation, which
+
+174 was determined through validation as an eﬀective separation to mitigate the class im-
+
+175 balance issue. For the remaining events, we train a separate U-Net model to preserve
+
+176 predictive capability for the moderate case. Through this, we accomplish a tailored model
+
+177 for both extreme and moderate precipitation. While there exist deep learning techniques
+
+178 that resolve class imbalances in a more formal way such as data augmentation, they rely
+
+179 on mutating the data (e.g., stretching or cropping), which may be less desirable for post-
+
+180 processing problems with a numerical output (Perez & Wang, 2017). This is because these
+
+181 techniques produce an augmented input, but the numerical output (ground truth) then
+
+182 needs to be augmented too. Hence, we don’t perform this and instead assume that gen-
+
+183 eral mean and total precipitation over a region is roughly consistent in distribution over
+
+184 water years.
+
+185
+
+Parameter tuning for the learning rate, the number of ﬁlters per layer, and loss func-
+
+186 tion weights is accomplished through validation. The optimal hyperparameters were close
+
+187 to their default values as provided in Keras, the used machine learning library (Chollet
+
+188 et al., 2015). The values and more detailed information regarding hyperparameter tun-
+
+189 ing are provided in the supplementary information.
+
+190
+
+2.4 Testing and Evaluation
+
+191
+
+The CNN is evaluated over a chosen test set of 4 water years, which were selected
+
+192 based on categorical El Nin˜o/Southern Oscillation years. We use one El Nin˜o year (1997),
+
+193 one La Nin˜a year (2011), and two ENSO neutral years: one historically wet and one dry
+
+194 year (years 2016 and 2013, respectively). ENSO years have been shown to dramatically
+
+195 eﬀect West Coast precipitation regimes through large scale pressure patterns which sig-
+
+196 niﬁcantly alter precipitation predictability (W. E. Chapman et al., 2021; Kumar & Ho-
+
+197 erling, 1998). We also select particularly wet (2016/2017) and dry (2013/2014) years in
+
+198 which ENSO is in a neutral state, representing California drought conditions and a sur-
+
+199 plus of precipitation, respectively, without tropical SST forcing. We choose these years
+
+200 in order to test the skill of our methods in varied climate regimes and on a variety of pre-
+
+201 cipitation events. The rest serves as the training set. We use a testing process that most
+
+202 closely mimics a production system in which we train one CNN model over all possible
+
+203 years except a singular testing year and a validation year (the latter used to tune the
+
+204 hyperparameters); this is done for all years, so we train 4 dual ML models in total (8 in
+
+205 total), each of which is not trained on their corresponding test year. We refer to this as
+
+206 ”one-shot” training.
+
+207
+
+Traditional machine learning and dynamical post-processing frameworks were com-
+
+208 pared to the proposed U-Net CNN to assure its predictive accuracy and reliability over
+
+209 the chosen test set. Further, they oﬀered a baseline for the CNN’s forecasting skill. A
+
+210 prediction based on climatology was used to ensure that the CNN is consistent and re-
+
+–5–
+
+manuscript submitted to Geophysical Research Letters
+
+211 liable. It was constructed by averaging 30 days worth of observation data prior to any 212 particular testing day over all years preceding it. The second comparison was with the 213 West-WRF dynamical model, which is used as the input to the machine learning method. 214 As such, any rectiﬁcation of spatial or temporal biases over the West-WRF model would 215 be directly reﬂected in the CNN’s accuracy and errors. Further, we implemented a MOS 216 based on a L1-regularized multilinear regression (Tibshirani, 1996). The MOS presents 217 a more traditional ML framework that can be used as a baseline to the CNN. Similar 218 to many other ML frameworks, the MOS leverages point-based learning as opposed to 219 the strategy adopted in a CNN. Note that the multilinear regression is conﬁgured to use 220 the same predictors (precipitation, humidity, temperature) as the CNN and uses the same 221 “one-shot” training for consistency.
+
+222
+
+We evaluated the model using the following metrics: root-mean square error (RMSE),
+
+223 mean absolute error (MAE), model BIAS (BIAS), critical success index (CSI), and Pear-
+
+224 son correlation (PC). These metrics provide a comprehensive aggregated point-by-point
+
+225 analysis of the CNN’s performance with regards to the numerical error and the categor-
+
+226 ical accuracy. The mathematical equations for each are shown in Equation S3.
+
+227
+
+Similarly to Sperati et al. (2017), to verify the spatial consistency of the predic-
+
+228 tion generated by each of the methods, we also compare the pairwise correlation between
+
+229 all pairs of grid points for the predictions with the observations. When the pairwise cor-
+
+230 relation between a chosen model’s grid points (e.g., the CNN) more closely matches the
+
+231 pairwise correlation for the ground truth grid points, it indicates a greater degree of cor-
+
+232 respondence in terms of spatial relationships in the ground truth.
+
+233 3 Results
+
+234
+
+The U-Net CNN post-processed forecasts are compared against several methods.
+
+235 Figure 1 shows an example of a 96 h forecast of an extreme event that occurred on Febru-
+
+236 ary 10, 2014 in the test set. The multilinear regression post-processing and West-WRF
+
+237 model overpredict over the highlighted heavy precipitation areas. Comparatively, the CNN
+
+238 qualitatively more closely resembles the observation patterns of the event as estimated
+
+239 by PRISM, especially within the heavy precipitation regions. For this case, it produces
+
+240 the lowest RMSE with respect to the PRISM ground-truth ﬁeld, improving upon West-
+
+241 WRF by 33.9% and MOS by 8.1%. This is an example of CNN’s ability to correct for
+
+242 spatial biases in the forecasts.
+
+243
+
+3.1 Discussion of Evaluation Metrics
+
+244
+
+The models are compared with respect to all the error metrics deﬁned in Section
+
+245 2.4: RMSE, MAE, PC, and CSI. All of the shown metrics and improvements were boot-
+
+246 strap sampled and produced with a 95% conﬁdence interval to indicate if the results are
+
+247 statistically signiﬁcant.
+
+248
+
+The CNN’s overall RMSE aggregated over the 4 lead times (1-4 days) consistently
+
+249 outperformed climatology by 34.1-37.0%, West-WRF by 12.9-15.9%, and MOS by 7.4-
+
+250 8.9%. Similarly, the CNN outperformed both West-WRF and MOS for all 4 lead times
+
+251 with respect to Pearson correlation (PC) by 2.7-3.4% and 3.3-4.2%, respectively. Over
+
+252 the same period, the CNN improved upon West-WRF’s CSI by 0.6-1.5%, with greater
+
+253 improvements ranging from 2.7% to 5.6% for lead times of 24 to 48 h. Note that we do
+
+254 not provide a complete set of improvement statistics for CLIM apart from RMSE since
+
+255 it is consistently 40-50% improved upon with regard to every metric.
+
+256
+
+Further, we analyze the performance of the models on the top 10% most heavy pre-
+
+257 cipitation events. The CNN’s overall RMSE/MAE over these events was reduced 19.8-
+
+258 21.0/17.7-18.3% and 8.8-9.7/5.4-6.2% compared to West-WRF and MOS respectively
+
+–6–
+
+manuscript submitted to Geophysical Research Letters
+
+(a) PRISM
+
+RMSE: 7.8mm
+(b) MOS
+
+RMSE: 10.9mm
+(c) West-WRF
+
+RMSE: 7.2mm
+R(Md)SEC: 1N6.N01mm (+55.09%)
+
+Figure 1. The 24-h accumulated precipitation on February 10, 2014 (test set) for (a) PRISM, (b) MOS, (c) West-WRF, and (d) CNN. The RMSE for each method with respect to the PRISM observation (a) is (b) 7.8 mm, (c) 10.9 mm, and (d) 7.2 mm. The highlighted region in red showcases an area of strong overprediction in West-WRF.
+
+259 over all lead times of 1-4 days. Further, the CNN’s PC over these events was improved 260 by 4.9-5.5% and 4.2-4.7% compared to West-WRF and MOS.
+
+261
+
+Since the latter two metrics, PC and CSI, showcase the spatial and categorical ac-
+
+262 curacy of the methods, and RMSE summarizes the numerical accuracy, the CNN clearly
+
+263 outperformed the other post-processing and dynamical methods over all lead times with
+
+264 respect to spatial, categorical, and numerical accuracy aggregated over heavy precipi-
+
+265 tation and all events. These improvements are all shown to be statistically signiﬁcant
+
+266 over a 95% conﬁdence interval. The complete comparison for each error metric over each
+
+267 model is included in the supplemental information for all lead times.
+
+268
+
+These improvements are qualitatively consistent or better over similar dynamical
+
+269 baselines as cited in recent literature regarding machine learning-based post-processing
+
+270 methods. In Roulin and Vannitsem (2012), probabilistic techniques such as logistic re-
+
+271 gression are used to improve precipitation forecasts. Over the forecasting period, the MSE
+
+272 throughout the forecasting period is 5-15% better than the baseline dynamical method,
+
+–7–
+
+manuscript submitted to Geophysical Research Letters
+
+273 which is consistent with the multilinear regression model presented in this study that 274 is shown to be 28-31% inferior to the CNN in terms of MSE.
+
+275
+
+3.2 Temporal Evaluation of Models
+
+276
+
+We show some of the error metrics (RMSE, CRMSE, BIAS, PC) for each post-processing
+
+277 and dynamical method as a function of the lead time in Figure 2. This allows a more
+
+278 thorough examination of the propagation of error through increasing lead times.
+
+279
+
+Speciﬁcally, the RMSE is decomposed into bias, which reﬂect systematic errors, and
+
+280 CRMSE, which includes random errors and conditional biases, as indicated in Equation
+
+281 S1. Throughout the 4 lead times, the CNN consistently has the lowest CRMSE, as well
+
+282 as the highest Pearson correlation. In fact, the CNN is consistently able to add a day
+
+283 worth of predictive skill when compared to West-WRF (i.e. CNN error on day 4 is less
+
+284 than West-WRF error on day 3) in terms of RMSE, CRMSE, and PC. The BIAS ﬂuc-
+
+285 tuates for each post-processing and forecasting method, but it is signiﬁcantly lower than
+
+286 the CRMSE and contributes only marginally to the RMSE. This means that the CNN
+
+287 is able to improve the predictive ability of the dynamical model while minimally increas-
+
+288 ing the systematic errors (when compared to total RMSE).
+
+CNN West-WRF MOS
+
+CNN West-WRF MOS
+
+(a) RMSE
+CNN West-WRF MOS
+
+(b) CRMSE
+CNN West-WRF MOS
+
+(c) BIAS
+
+(d) PC
+
+Figure 2. Pearson’s correlation, CRMSE, RMSE, and BIAS for each model as a function of model lead time in days.
+–8–
+
+manuscript submitted to Geophysical Research Letters
+
+289
+
+Further, we evaluate the rate of growth of the error metrics to evaluate the CNN’s
+
+290 capabilities of producing longer-term forecasts and the scaling of the error as a function
+
+291 of lead time. A slower rate of growth of all error metrics would indicate a method that
+
+292 tracks better as a function of lead time. The average rate of growth for RMSE is signif-
+
+293 icantly higher for West-WRF between days 2-4 as compared to CNN, with a reduction
+
+294 of 17.9% from day 3 to 4. Similarly, the average rate of decay for PC is reduced by 16.6%
+
+295 for the CNN as compared to West-WRF over days 2-4. Eﬀectively, the CNN add more
+
+296 than one day of predictive skills to West-WRF, as for example is indicated by the CNN’s
+
+297 RMSE at day 4, which is between the RMSE of West-WRF at days 2 and 3.
+
+298
+
+3.3 Spatial Evaluation of Models
+
+299
+
+The spatial patterns of improvement in error metrics as compared to West-WRF,
+
+300 aggregated over lead times of Day 1 to Day 4, is shown in Figure 3. The improvement
+
+301 in RMSE and MAE are consistently above 10%, with signiﬁcant improvements of around
+
+302 30-40% in the Sierra Nevada region. Similarly, the CNN improves upon West-WRF’s Pear-
+
+303 son correlation coeﬃcient 5% or more, with signiﬁcant improvements of 10-15% in south-
+
+304 ern California. The sharp decrease in correlation in the northern region and through-
+
+305 out the California Channel Islands is likely attributed to the CNN’s documented weak-
+
+306 nesses to domain boundaries due to spatial padding for convolution (Alsallakh et al., 2020).
+
+307 The CNN’s improvements in CSI are largely mixed, with coastal California showing around
+
+308 10% improvement over West-WRF. In southern California and Nevada, the West-WRF
+
+309 model outperforms the CNN by 15%. However, it is important to note that regions in
+
+310 which the CNN more signiﬁcantly underperforms (the highlighted blue regions) account
+
+311 for only 9.2% of the total precipitation in the region (i.e., they are dry areas).
+
+312
+
+The spatial consistency of the generated precipitation ﬁeld is also examined using
+
+313 a pairwise correlation plot (Sperati et al., 2017). This is an important aspect of the fore-
+
+314 cast evaluation because it explores the ability of the CNN to capture the spatial distri-
+
+315 bution of observed precipitation.
+
+316
+
+The pairwise correlation plot is shown in Figure 4 for both the CNN and West-WRF
+
+317 methods. With a perfect forecasting or post-processing method, we expect the correla-
+
+318 tion between each of the grid cells to match with the observation set, as shown by the
+
+319 1:1 line in orange. The actual distribution of pairwise correlations between the CNN and
+
+320 West-WRF with respect to the PRISM is shown as a density plot. Qualitatively, it is
+
+321 noted that the CNN maintains the spatial attributes of the PRISM observations just as
+
+322 well as West-WRF by the fact that the spread is just as concentrated along 1:1 line. The
+
+323 higher coeﬃcient of determination (R2) of the CNN pairwise correlation plot indicates
+
+324 that the dispersion around the identity is lower than that of the West-WRF pairwise cor-
+
+325 relation plot. This indicates the CNN’s superior spatial consistency with the PRISM ground
+
+326 truth as compared to West-WRF. Note that this analysis does not factor in the obser-
+
+327 vational error.
+
+328 4 Conclusions
+
+329
+
+The U-Net Convolutional Neural Network (CNN) architecture originally proposed
+
+330 by Ronneberger et al. (2015) and adapted in this study for precipitation prediction pro-
+
+331 vides a computationally eﬃcient and consistently accurate post-processing framework
+
+332 over diﬀerent types of water years that outperforms competing machine learning and dy-
+
+333 namical models. It provides superior spatial consistency and numerical accuracy over
+
+334 all lead times as summarized by the 12.9-15.9% improvement in root-mean-square er-
+
+335 ror (RMSE) over the Western Weather Research and Forecasting model and 7.4-8.9%
+
+336 improvement over Model Output Statistics. It also displays a reduce rate of error growth
+
+337 such as RMSE and Pearson’s correlation as lead times increase, which eﬀectively results
+
+338 in more than a day of additional predictive skill with respect to a dynamical model. Ad-
+
+–9–
+
+manuscript submitted to Geophysical Research Letters
+
+(a) RMSE
+
+(b) MAE
+
+(c) PC
+
+(d) CSI
+
+Figure 3. The CNN’s improvement/degradation in RMSE, MAE, PC and CSI as compared to the West-WRF regional model aggregated over all lead times (1-4 days). Highlighted region shows an area of severe reduction in CSI for the CNN, see discussion in text.
+
+339 ditionally, the CNN outperforms the other methods for the prediction of the top 10% 340 precipitation events. This demonstrates a consistent and reliable post-processing frame341 work that improves upon spatial and temporal biases over dynamical models and other 342 post-processing methods over the western US. Future work includes examining the tem343 poral association between day-to-day forecasts using recurrent neural networks or trans344 formers along with an encoding convolutional neural network. The Convolutional Long 345 Short-Term Memory layer developed by Shi et al. (2015) provides a promising avenue 346 to explore this further. Additional methods to rectify the class imbalance can be explored, 347 such as data augmentation.
+
+348 Acknowledgments 349 This research was supported by USACE FIRO grant W912HZ1520019 and CDWR AR 350 Program grant 4600013361.
+
+351 References
+
+352 Alessandrini, S., Delle Monache, L., Sperati, S., & Nissen, J. (2015). A novel appli-
+
+353
+
+cation of an analog ensemble for short-term wind power forecasting. Renewable
+
+354
+
+Energy, 76 , 768-781.
+
+Retrieved from https://www.sciencedirect.com/
+
+355
+
+science/article/pii/S0960148114007915 doi: https://doi.org/10.1016/
+
+–10–
+
+manuscript submitted to Geophysical Research Letters
+
+R2 = 0.897
+
+R2 = 0.874
+
+(a) CNN
+
+(b) West-WRF
+
+Figure 4. The CNN’s (left) and West-WRF (right) pairwise correlation plot with the PRISM observations. The coeﬃcient of determination (R2) is shown in the upper left of both panels. The orange line denotes a perfect correspondence in observation and model pairwise correlation between grid points.
+
+356
+
+j.renene.2014.11.061
+
+357 Alsallakh, B., Kokhlikyan, N., Miglani, V., Yuan, J., & Reblitz-Richardson,
+
+358
+
+O. (2020). Mind the pad–cnns can develop blind spots. arXiv preprint
+
+359
+
+arXiv:2010.02178 .
+
+360 AMS. (2019). Glossary of meteorology. (Retrieved from http://glossary.ametsoc
+
+361
+
+.org/wiki/atmospheric river at Jun 9, 2021 2:39 PM)
+
+362 Anelli, V. W., Di Noia, T., Di Sciascio, E., Pomo, C., & Ragone, A. (2019). On
+
+363
+
+the discriminative power of hyper-parameters in cross-validation and how to
+
+364
+
+choose them.
+
+In Proceedings of the 13th acm conference on recommender
+
+365
+
+systems (pp. 447–451).
+
+366 Cervone, G., Clemente-Harding, L., Alessandrini, S., & Delle Monache, L. (2017).
+
+367
+
+Short-term photovoltaic power forecasting using artiﬁcial neural net-
+
+368
+
+works and an analog ensemble.
+
+Renewable Energy, 108 , 274-286.
+
+Re-
+
+369
+
+trieved from https://www.sciencedirect.com/science/article/pii/
+
+370
+
+S0960148117301386 doi: https://doi.org/10.1016/j.renene.2017.02.052
+
+371 Chapman, W., Subramanian, A., Delle Monache, L., Xie, S., & Ralph, F. (2019).
+
+372
+
+Improving atmospheric river forecasts with machine learning.
+
+Geophysical
+
+373
+
+Research Letters, 46 (17-18), 10627–10635.
+
+374 Chapman, W. E., Subramanian, A. C., Xie, S.-P., Sierks, M. D., Ralph, F. M., &
+
+375
+
+Kamae, Y. (2021). Monthly modulations of enso teleconnections: Implications
+
+376
+
+for potential predictability in north america. Journal of Climate, 1–71.
+
+377 Chollet, F., et al. (2015). Keras. https://github.com/fchollet/keras. GitHub.
+
+378 Collins, M., & Allen, M. R. (2002). Assessing the relative roles of initial and bound-
+
+379
+
+ary conditions in interannual to decadal climate predictability. Journal of Cli-
+
+380
+
+mate, 15 (21), 3104–3109.
+
+381 Corringham, T. W., Ralph, F. M., Gershunov, A., Cayan, D. R., & Talbot, C. A.
+
+382
+
+(2019). Atmospheric rivers drive ﬂood damages in the western united states.
+
+383
+
+Science advances, 5 (12), eaax4631.
+
+384 Daly, C., Halbleib, M., Smith, J. I., Gibson, W. P., Doggett, M. K., Taylor, G. H.,
+
+385
+
+. . . Pasteris, P. P. (2008). Physiographically sensitive mapping of climato-
+
+386
+
+logical temperature and precipitation across the conterminous united states.
+
+–11–
+
+manuscript submitted to Geophysical Research Letters
+
+387
+
+International Journal of Climatology: a Journal of the Royal Meteorological
+
+388
+
+Society, 28 (15), 2031–2064.
+
+389 Daly, C., Slater, M. E., Roberti, J. A., Laseter, S. H., & Swift Jr, L. W.
+
+(2017).
+
+390
+
+High-resolution precipitation mapping in a mountainous watershed: ground
+
+391
+
+truth for evaluating uncertainty in a national precipitation dataset. Interna-
+
+392
+
+tional Journal of Climatology, 37 , 124–137.
+
+393 Delle Monache, L., Eckel, F. A., Rife, D. L., Nagarajan, B., & Searight, K. (2013).
+
+394
+
+Probabilistic weather prediction with an analog ensemble. Monthly Weather
+
+395
+
+Review , 141 (10), 3498–3516.
+
+396 Gibson, P. B., Waliser, D. E., Lee, H., Tian, B., & Massoud, E. (2019). Climate
+
+397
+
+model evaluation in the presence of observational uncertainty: Precipitation
+
+398
+
+indices over the contiguous united states. Journal of Hydrometeorology, 20 (7),
+
+399
+
+1339–1357.
+
+400 Glahn, H. R., & Lowry, D. A. (1972). The use of model output statistics (mos) in
+
+401
+
+objective weather forecasting. Journal of Applied Meteorology and Climatology,
+
+402
+
+11 (8), 1203–1211.
+
+403 Hayatbini, N., Kong, B., Hsu, K.-l., Nguyen, P., Sorooshian, S., Stephens, G., . . .
+
+404
+
+Ganguly, S. (2019). Conditional generative adversarial networks (cgans) for
+
+405
+
+near real-time precipitation estimation from multispectral goes-16 satellite
+
+406
+
+imageries—persiann-cgan. Remote Sensing, 11 (19), 2193.
+
+407 Krizhevsky, A., Sutskever, I., & Hinton, G. E. (2012). Imagenet classiﬁcation with
+
+408
+
+deep convolutional neural networks. Advances in neural information processing
+
+409
+
+systems, 25 , 1097–1105.
+
+410 Kumar, A., & Hoerling, M. P. (1998). Annual cycle of paciﬁc–north american
+
+411
+
+seasonal predictability associated with diﬀerent phases of enso.
+
+Journal of
+
+412
+
+Climate, 11 (12), 3295–3308.
+
+413 Louka, P., Galanis, G., Siebert, N., Kariniotakis, G., Katsafados, P., Pytharoulis, I.,
+
+414
+
+& Kallos, G. (2008). Improvements in wind speed forecasts for wind power
+
+415
+
+prediction purposes using kalman ﬁltering. Journal of Wind Engineering and
+
+416
+
+Industrial Aerodynamics, 96 (12), 2348–2362.
+
+417 Martin, A. C., Ralph, F. M., Wilson, A., DeHaan, L., & Kawzenuk, B.
+
+(2019).
+
+418
+
+Rapid cyclogenesis from a mesoscale frontal wave on an atmospheric river:
+
+419
+
+Impacts on forecast skill and predictability during atmospheric river landfall.
+
+420
+
+Journal of Hydrometeorology, 20 (9), 1779–1794.
+
+421 Nicolis, C., & Nicolis, S. C. (2007). Return time statistics of extreme events in deter-
+
+422
+
+ministic dynamical systems. EPL (Europhysics Letters), 80 (4), 40003.
+
+423 ODonnell, A., Hubbard, T., Nadeau, L., Delaney, C., Hartman, R., Mendoza, J., . . .
+
+424
+
+Corringham, T. (2020). Estimating beneﬁts of forecast-informed reservoir
+
+425
+
+operations (ﬁro): Lake mendocino case-study and transferable decision support
+
+426
+
+tool. In Agu fall meeting 2020.
+
+427 Perez, L., & Wang, J. (2017). The eﬀectiveness of data augmentation in image clas-
+
+428
+
+siﬁcation using deep learning. arXiv preprint arXiv:1712.04621 .
+
+429 PRISM Climate Group, O. S. U. (2004). Prism data. (Retrieved from http://prism
+
+430
+
+.oregonstate.edu)
+
+431 Ralph, F. M., Rutz, J. J., Cordeira, J. M., Dettinger, M., Anderson, M., Reynolds,
+
+432
+
+D., . . . Smallcomb, C. (2019). A scale to characterize the strength and impacts
+
+433
+
+of atmospheric rivers. Bulletin of the American Meteorological Society, 100 (2),
+
+434
+
+269–289.
+
+435 Rasp, S., & Lerch, S. (2018). Neural networks for postprocessing ensemble weather
+
+436
+
+forecasts. Monthly Weather Review , 146 (11), 3885–3900.
+
+437 Richardson, L. F. (1922). Weather prediction by numerical process. Cambridge uni-
+
+438
+
+versity press.
+
+439 Ronneberger, O., Fischer, P., & Brox, T. (2015). U-net: Convolutional networks for
+
+440
+
+biomedical image segmentation. In International conference on medical image
+
+441
+
+computing and computer-assisted intervention (pp. 234–241).
+
+–12–
+
+manuscript submitted to Geophysical Research Letters
+
+442 Roulin, E., & Vannitsem, S. (2012). Postprocessing of ensemble precipitation predic-
+
+443
+
+tions with extended logistic regression based on hindcasts. Monthly weather re-
+
+444
+
+view , 140 (3), 874–888.
+
+445 Shi, X., Chen, Z., Wang, H., Yeung, D.-Y., Wong, W.-K., & Woo, W.-c.
+
+(2015).
+
+446
+
+Convolutional lstm network: A machine learning approach for precipitation
+
+447
+
+nowcasting. arXiv preprint arXiv:1506.04214 .
+
+448 Sperati, S., Alessandrini, S., & Delle Monache, L. (2017). Gridded probabilistic
+
+449
+
+weather forecasts with an analog ensemble. Quarterly Journal of the Royal Me-
+
+450
+
+teorological Society, 143 (708), 2874–2885.
+
+451 Steinhoﬀ, D., Kawzenuk, B., Weihs, R., Reynolds, D., DeHaan, L., Martin, A., &
+
+452
+
+Delle Monache, L. (2020). Nrt wy2020 post-season report.
+
+453 Tao, Y., Gao, X., Hsu, K., Sorooshian, S., & Ihler, A. (2016). A deep neural net-
+
+454
+
+work modeling framework to reduce bias in satellite precipitation products.
+
+455
+
+Journal of Hydrometeorology, 17 (3), 931 - 945.
+
+Retrieved from https://
+
+456
+
+journals.ametsoc.org/view/journals/hydr/17/3/jhm-d-15-0075 1.xml
+
+457
+
+doi: 10.1175/JHM-D-15-0075.1
+
+458 Tibshirani, R. (1996). Regression shrinkage and selection via the lasso. Journal of
+
+459
+
+the Royal Statistical Society: Series B (Methodological), 58 (1), 267–288.
+
+460 Vannitsem, S., & Ghil, M. (2017). Evidence of coupling in ocean-atmosphere dynam-
+
+461
+
+ics over the north atlantic. Geophysical Research Letters, 44 (4), 2016–2026.
+
+–13–
+
+fig1_final.pdf.
+
+(a) PRISM
+
+RMSE: 7.8mm
+(b) MOS
+
+RMSE: 10.9mm
+(c) West-WRF
+
+RMSE: 7.2mm
+R(Md)SEC: 1N6.N01mm (+55.09%)
+
+fig3_pdf.pdf.
+
+(a) RMSE
+
+(b) MAE
+
+(c) PC
+
+(d) CSI
+
+fig4_pdf.pdf.
+
+R2 = 0.897
+
+R2 = 0.874
+
+(a) CNN
+
+(b) West-WRF
+
+fig5.pdf.
+
+CNN Output ×
+
+Modified U-Net (Regression)
+
+Modified U-Net (Classification)
+
+normalize 𝟙(x>0)
+
+𝟙(y>0)
+normalize
+
+Regridded West-WRF Forecast Data
+(x)
+
+PRISM Ground Truth
+Data (y)
+
+(a) (b)
+
+Regridded West-WRF Forecast Data
+(x)
+
+PRISM Ground Truth
+Data (y)
+
+fig2_pdf.pdf.
+
+CNN West-WRF MOS
+
+CNN West-WRF MOS
+
+(a) RMSE
+CNN West-WRF MOS
+
+(b) CRMSE
+CNN West-WRF MOS
+
+(c) BIAS
+
+(d) PC
+

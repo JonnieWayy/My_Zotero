@@ -1,0 +1,1322 @@
+ClimateLearn: Benchmarking Machine Learning for Weather and Climate Modeling
+
+arXiv:2307.01909v1 [cs.LG] 4 Jul 2023
+
+Tung Nguyen∗ UCLA
+tungnd@cs.ucla.edu
+
+Jason Jewik∗ UCLA
+jason.jewik@ucla.edu
+
+Hritik Bansal UCLA
+hbansal@ucla.edu
+
+Prakhar Sharma UCLA
+prakhar6sharma@gmail.com
+
+Aditya Grover UCLA
+adityag@cs.ucla.edu
+
+Abstract
+Modeling weather and climate is an essential endeavor to understand the near- and long-term impacts of climate change, as well as inform technology and policymaking for adaptation and mitigation efforts. In recent years, there has been a surging interest in applying data-driven methods based on machine learning for solving core problems such as weather forecasting and climate downscaling. Despite promising results, much of this progress has been impaired due to the lack of large-scale, opensource efforts for reproducibility, resulting in the use of inconsistent or underspecified datasets, training setups, and evaluations by both domain scientists and artificial intelligence researchers. We introduce ClimateLearn, an open-source PyTorch library that vastly simplifies the training and evaluation of machine learning models for data-driven climate science. ClimateLearn consists of holistic pipelines for dataset processing (e.g., ERA5, CMIP6, PRISM), implementation of state-ofthe-art deep learning models (e.g., Transformers, ResNets), and quantitative and qualitative evaluation for standard weather and climate modeling tasks. We supplement these functionalities with extensive documentation, contribution guides, and quickstart tutorials to expand access and promote community growth. We have also performed comprehensive forecasting and downscaling experiments to showcase the capabilities and key features of our library. To our knowledge, ClimateLearn is the first large-scale, open-source effort for bridging research in weather and climate modeling with modern machine learning systems. Our library is available publicly at https://github.com/aditya-grover/climate-learn.
+1 Introduction
+The escalating extent, duration, and severity of extreme weather events such as droughts, floods, and heatwaves in recent decades are some of the most devastating outcomes of climate change. Moreover, as average surface temperature is anticipated to continue rising through the end of the century, such extreme weather events are likely to occur with even greater intensity and frequency in the future [10, 31, 41, 44, 65, 72]. Two key devices used by scientists to understand historical trends and make such predictions about future weather and climate are the general circulation model (GCM) and the numerical weather prediction (NWP) model. These models represent Earth system components including the atmosphere, land surface, ocean, and sea ice as intricate dynamical systems, and they are the prevailing paradigm for weather and climate modeling today due to their established
+∗Equal contribution.
+Preprint. Under review.
+
+reliability, well-founded design, and extensive study [3, 11, 27, 49]. However, they also suffer from notable limitations such as inadequate resolution of several subgrid processes, coarse representation of local geographical features, incapacity to utilize sources of observational data (e.g., weather stations, radar, satellites), and substantial demand for computing resources [2, 37, 38, 62]. These deficiencies combined with the expanding availability of petabyte-scale climate data [16, 17, 48] and lowering compute requirements of machine learning (ML) models in recent years have motivated researchers from both the climate science and artificial intelligence (AI) communities to investigate the application of ML-based methods in weather and climate modeling [6, 12, 33, 34, 42, 45, 57, 75, 87].
+In spite of this growing interest, the improvements have been marred by the lack of practically grounded data benchmarks, open-source model implementations, and transparency in evaluation. For example, many papers in weather forecasting [4, 7, 15, 20, 35, 52, 63, 73, 78, 84, 85, 88], climate projection [82], and climate downscaling [1, 39, 47, 66, 68, 80] choose to benchmark on different geographical regions, temporal ranges, evaluation metrics, and data augmentation strategies. These inconsistencies can confound the source of reported improvements and promotes a culture of irreproducible scientific practices [32]. Recently, there have been some leaderboard benchmarks, such as WeatherBench [61], ClimateBench [82], and FloodNet [59], that propose datasets and baselines for specific tasks in climate science, but a holistic software ecosystem that encompasses the entire data, modeling, and evaluation pipeline across several tasks is lacking.
+To bridge this gap, we propose ClimateLearn, an open-source, user-friendly PyTorch library for data-driven climate science. To the best of our knowledge, it is the first software package to provide end-to-end ML pipelines for weather and climate modeling. ClimateLearn supports data preprocessing utilities, implements popular deep learning models along with traditional baseline methods, and enables easy quantification and visualization of data and model predictions for fundamental tasks in climate science, including weather forecasting, downscaling, and climate projections. One segment of ClimateLearn’s target user demographic are weather and climate scientists, who possess expertise in the physical laws and phenomena relevant for constructing robust modeling priors, but might lack familiarity with optimal approaches for implementing, training, and evaluating machine learning models. Another segment of ClimateLearn’s target user demographic are ML researchers, who might encounter difficulties framing weather and climate modeling problems in a scientifically sound and practically useful manner, working with climate datasets—which is quite heterogeneous and often exists in bespoke file formats uncommon in mainstream ML research (e.g., NetCDF), or appropriately quantifying and visualizing their results for interpretation and deployments.
+To showcase the capabilities of ClimateLearn and establish benchmarks, we perform and report results from numerous experiments on the supported tasks with a variety of traditional methods and our own tuned implementations of deep learning models on weather and climate datasets. In addition to traditional evaluation setups, we have created novel dataset and benchmarking scenarios to test model robustness and applicability to forecasting extreme weather events. Further, the library is modular and easily extendable to include additional tasks, datasets, models, metrics, and visualizations. We have also provided extensive documentation and contribution guides for improving the ease of community adoption and accelerating open-source expansion. While our library is already public, we are releasing all our data, code, and model checkpoints for the benchmarked evaluation in this paper to aid reproducibility and broader interdisciplinary research efforts.
+2 Related work
+Recent works have proposed benchmark datasets for weather and climate modeling problems. Prominently, Rasp et al. [61] proposed WeatherBench, a dataset for weather forecasting based on ERA5, followed by an extension called WeatherBench Probability [19], which adds support for probabilistic forecasting. Mouatadid et al. [46] extend similar benchmarks to the subseasonal to seasonal timescale. For precipatation-events such as rain specifically, there are prior datasets such as RainBench [13] and IowaRain [71]. There exist datasets such as ExtremeWeather [58], FloodNet [59], EarthNet [64], DroughtED [43] and ClimateNet [54] for detection and localization of extreme weather events, and NADBenchmarks [56] for natural disasters related tasks. Cachay et al. [8] recently proposed ClimART, a benchmark dataset for emulating atmospheric radiative transfer in weather and climate models. For identifying long-term, globally-averaged trends in climate, Watson-Parris et al. [82] proposed ClimateBench, a dataset for climate model emulation.
+2
+
+Datasets & Benchmarks
+
+Various Physical Variables ✓ Fast Dataloading ✓
+Preprocessed Datasets ✓
+
+Models
+
+Baselines
+
+Deep Learning
+
+Tasks Forecasting, Projections, Downscaling
+Various Grid Resolutions ✓ Flexible Spatiotemporal Setups ✓
+Extreme Events ✓ Evaluation
+Metric Logging Visualizations
+
+End-to-End Training Pipeline ✓ PyTorch Model Implementations ✓ Easy Customization and Tuning ✓
+
+Point-wise and Summary Statistics ✓ Error and Correlation Metrics ✓ Uncertainity Quantification ✓
+
+Figure 1: Key components of ClimateLearn. We support observational, simulated, and reanalysis datasets from a variety of sources. The currently supported tasks are weather forecasting, downscaling, and climate projection. ClimateLearn also provides a suite of standard baselines and deep learning architectures, along with common metrics, visualizations, and logging support.
+
+Beyond plain datasets, libraries such as Scikit-downscale [22], CCdownscaling [53], and CMIP6Downscaling [9] provide tools for post-processing of climate model outputs via statistical, nondeep-learning downscaling, or mapping low-resolution gridded, image-like inputs to high-resolution gridded outputs. In a slightly different approach, pyESD focuses on downscaling from gridded climate data to specific weather stations [5]. Pyrocast [77] proposes an integrated ML pipeline to forecast Pyrocumulonimbus (PyroCb) Clouds. Many of these works supply only individual components of an ML pipeline but do not always have an API for loading climate data into a ML-ready format, or standard model implementations and evaluation protocols across multiple climate science tasks. As an end-to-end ML pipeline, ClimateLearn holistically bridges the gap for applying ML to challenging weather and climate modeling tasks like forecasting, downscaling, and climate projection.
+3 Key Components of ClimateLearn
+ClimateLearn is a PyTorch library that implements a range of functionalities for benchmarking of ML models for weather and climate. Broadly, our library is comprised of four components: tasks, datasets, models, and evaluations. See Figure 1 for an illustration. Sample code snippets for configuring each component is provided in Appendix E.
+3.1 Tasks
+Weather forecasting is the task of predicting the weather at a future time step t + ∆t given the weather conditions at the current step t and optionally steps preceding t. A ML model receives an input of shape C × H × W and predicts an output of shape C′ × H × W . C and C′ denote the number of input and output channels, respectively, which contain variables such as geopotential, temperature, and humidity. H and W together denote the spatial coverage and resolution of the data, which depend on the region studied and how densely we grid it. In our benchmarking, we focus on forecasting at the global scale, but ClimateLearn can be easily extended to regional forecasting.
+Downscaling Due to their high computational cost, existing climate models often use large grid cells, leading to low-resolution predictions. While useful for understanding large-scale climate trends, these do not provide sufficient detail to analyze local phenomena and design regional policies. The process of correcting biases in climate model outputs and mapping them to higher resolutions is
+3
+
+known as downscaling. ML models for downscaling are trained to map an input of shape C × H × W to a higher resolution output C′ × H′ × W ′, where H′ > H and W ′ > W . As in forecasting, in downscaling, H × W and H′ × W ′ can span either the entire globe or a specific region.
+Climate projection aims to obtain long-term predictions of the climate under different forcings, e.g., greenhouse gas emissions. We provide support to download data from ClimateBench [82], a recent benchmark designed for testing ML models for climate projections. Here, the task is to predict the annual mean distributions of 4 climate variables: surface temperature, diurnal temperature range, precipitation, and the 90th percentile of precipitation, given four anthropogenic forcing factors: carbon dioxide (CO2), sulfur dioxide (SO2), black carbon (BC), and methane (CH4).
+3.2 Datasets
+ERA5 is a commonly-used data source for training and benchmarking data-driven forecasting and downscaling methods [4, 36, 47, 50, 52, 61, 60]. It is maintained by the European Center for Medium-Range Weather Forecasting (ECMWF) [27]. ERA5 is a reanalysis dataset that provides the best guess of the state of the atmosphere and land-surface variables at any point in time by combining multiple sources of observational data with the forecasts of the current state-of-the-art forecasting model known as the Integrated Forecasting System (IFS) [83]. In its raw format, ERA5 contains hourly data from 1979 to the current time on a 0.25◦ grid of the Earth’s sphere, with different climate variables at 37 different pressure levels plus the Earth’s surface. This corresponds to nearly 400,000 data points with a resolution of 721 × 1440. As this data is too big for most deep learning models, ClimateLearn also supports downloading a smaller version of ERA5 from WeatherBench [61], which uses a subset of ERA5 climate variables and regrids the raw data to lower resolutions.
+Extreme-ERA5 is a subset of ERA5 that we have constructed to evaluate forecasting performance in extreme weather situations. Specifically, we consider “simple extreme” events [81], i.e., weather events that have individual climate variables exceeding critical values locally. Heat waves and cold spells are examples of extreme events that can be quantitatively captured by extreme localized surfacelevel temperatures over prolonged days. To mimic real-world scenarios, we calculate thresholds for each pixel of the grid using the 5th and 95th percentile of the 7-day localized mean surface temperature over the training period (1979-2015). We then select a subset of pixels from all the available pixels in the testing set (2017-18) that had a 7-day localized mean surface temperature beyond these thresholds. We refer to Appendix B.2.2 for more details.
+CMIP6 is a collection of simulated data from the Coupled Model Intercomparison Project Phase 6 (CMIP6) [17], an international effort across different climate modeling groups to compare and evaluate their global climate models. While the main goal of CMIP6 is to improve the understanding of Earth’s climate systems, the data from their experimental runs is freely accessible online. CMIP6 data covers a wide range of climate variables, including temperature and precipitation, from hundreds of climate models, providing a rich source of data. For our forecasting experiments, we specifically use the ouputs of CMIP6’s MPI-ESM1.2-HR model, as it contains similar climate variables to those represented in ERA5 and was also considered in previous works for pretraining deep learning models [60]. MPI-ESM1.2-HR provides data from 1850 to 2015 with a temporal resolution of 6 hours and spatial resolution of 1◦. Since this again corresponds to a grid that is too big for most deep learning models, we provide lower resolution versions of this dataset for training and evaluation. Besides, we also perform experiments with ClimateBench, which contains data on a range of future emissions scenarios based on simulations by the Norwegian Earth System Model [69], another member of CMIP6. We refer to Appendix B.2.3 for time ranges and more details of the experiments.
+PRISM is a dataset of various observed atmospheric variables like precipitation and temperature over the conterminous United States at varying spatial and temporal resolutions from 1895 to present day. It is maintained by the PRISM Climate Group at Oregon State University [55]. At the highest publicly available resolution, PRISM contains daily data on a grid of 4 km by 4 km cells (approximately 0.03◦), which corresponds to a matrix of shape 621 × 1405. For the same reason we regrid ERA5 and CMIP6, we also provide a regridded version of raw PRISM data to 0.75◦ resolution.
+3.3 Models
+Traditional baselines ClimateLearn provides the following traditional baseline methods for forecasting: climatology, persistence, and linear regression. The climatology method uses historical
+4
+
+average values of the predictands as the forecast. In ClimateLearn, we consider the climatology of a particular variable to be its average value over the entire training set. The persistence method uses the last observed values of the predictands as the forecast. For downscaling, ClimateLearn provides nearest and bilinear interpolation. Nearest interpolation estimates the value of an unknown pixel to be the value of the nearest known pixel. Bilinear interpolation estimates the value at an unknown pixel by taking the weighted average of neighboring pixels.
+Deep learning models The data for gridded weather and climate variables is represented as a 3D matrix, where latitude, longitude, and the variables form the height, width, and channels, respectively. Hence, convolutional neural networks (CNNs) are commonly used for forecasting and downscaling, which can be viewed as instances of the image-to-image translation problem [15, 28, 47, 60, 66, 70, 73, 78, 79, 84, 85]. ClimateLearn supports ResNet [25] and U-Net [67]—two prominent variants of the commonly used CNN architectures. Additionally, ClimateLearn supports Vision Transformer (ViT) [4, 18, 50], a class of models that represent images as a sequence of pixel patches. ClimateLearn also supports loading benchmark models from the literature such as Rasp and Thuerey [60] in a single line of code and is built so that custom models can be added easily.
+3.4 Evaluations
+Forecasting metrics For deterministic forecasting, ClimateLearn provides metrics such as root mean square error (RMSE) and anomaly correlation coefficient (ACC), which measures how well model forecasts match ground truth anomalies. For probabilistic forecasting, ClimateLearn provides spread-skill ratio and continuous ranked probability score, as defined by Garg et al. [19]. ClimateLearn also provides latitude-weighted version of these metrics, which lends extra weight to pixels near the equator. This is needed because the curvature of the Earth means that grid cells at low latitudes cover less area than grid cells at high latitudes. We refer to Appendix B.4 for additional details, including equations.
+Downscaling metrics For downscaling, ClimateLearn uses RMSE, mean bias, and Pearson’s correlation coefficient, in which mean bias is the difference between the spatial mean of ground-truth values and the spatial mean of predictions. We refer to Appendix B.4 for additional details.
+Climate projection metrics In addition to the standard RMSE metric, we provide two metrics suggested by ClimateBench: Normalized spatial root mean square error (NRMSEs) and Normalized global root mean square error (NRMSEg). We refer to Appendix B.4 for more details.
+Visualization Besides these quantitative evaluation procedures, ClimateLearn also provides ways for users to inspect model performance qualitatively through visualizations of data and model predictions. For instance, in a single line of code, users can visually inspect their forecasting model’s per-pixel mean bias, or the expected values of forecast errors, over the testing period. Such a visualization can be useful for pinpointing the regions on which the model’s predictions consistently deviate from the ground truth in a certain direction. For probabilistic forecasts, ClimateLearn can generate the corresponding rank histogram, which indicates the reliability and sharpness of the model. Sample visualizations of deterministic and probabilistic predictions are provided in Appendix D.
+4 Benchmark Evaluation via ClimateLearn
+In this section, we evaluate the performance of different deep learning methods supported by ClimateLearn on weather forecasting and climate downscaling. We refer to Appendix C.1 for experiments on the climate projection task. We conduct extensive experiments and analyses with different settings to showcase the features and flexibility of our library.
+4.1 Weather forecasting
+We first benchmark on weather forecasting. In addition, we compare different approaches for training forecast models in Section 4.1.1, and investigate the robustness of these models to extreme weather events and data distribution shift in Section 4.1.2 and 4.1.3, respectively.
+Task We consider the task of forecasting the geopotential at 500hPa (Z500), temperature at 850hPa (T850), and temperature at 2 meters from the ground (T2m) at five different lead times: 6 hours, and
+5
+
+RMSE
+
+Z500 [m2/s2] 6
+1000
+
+750
+
+4
+
+lower is better
+
+500
+
+250
+
+2
+
+0
+
+1.0
+
+1.0
+
+0.8
+
+0.9
+
+T2m [K]
+
+higher is better
+
+0.6 13
+ResNet
+
+57 UNet
+
+0.8
+
+10
+
+1357
+
+Leadtime [days]
+
+ViT
+
+IFS
+
+T850 [K]
+5 4 3 2 1
+
+1.0 0.9 0.8 0.7 10 0.6 1 3 5 7 10
+
+Persistence
+
+Climatology
+
+ACC
+
+Figure 2: Performance on forecasting three variables at different lead times. Solid lines are deep learning methods, dashed lines are simple baselines, and the dotted line is the physics-based model. Lower RMSE and higher ACC indicate better performance.
+
+{1, 3, 5, 10} days. Z500 and T850 are often used for benchmarking in previous works [4, 36, 50, 52, 60, 61], while the surface variable T2m is relevant to human activities.
+Baselines We consider ResNet [25], U-Net [67], and ViT [14] which are three common deep learning architectures in computer vision. We provide the architectural details of these networks in Appendix B.1. We perform direct forecasting, where we train one neural network for each lead time. In addition, we compare the deep learning methods with climatology, persistence, and IFS [83].
+Data We use ERA5 [27] at 5.625◦ for training and evaluation, which is equivalent to having a 32 × 64 grid for each climate variable. The input variables to the deep learning models include geopotential, temperature, zonal and meridional wind, relative humidity, and specific humidity at 7 pressure levels (50, 250, 500, 600, 700, 850, 925)hPa, 2-meter temperature, 10-meter zonal and meridional wind, incoming solar radiation, and finally 3 constant fields: the land-sea mask, orography, and the latitude, which together constitute 49 input variables. For non-constant variables, we use data at 3 timesteps t, t − 6h, and t − 12h to predict the weather at t + ∆t, resulting in 46 × 3 + 3 = 141 input channels. Each channel is standardized to have 0 mean and 1 standard deviation. The training period is from 1979 to 2015, validation in 2016, and test in 2017 and 2018.
+Training and evaluation We use latitude-weighted mean squared error as the loss function. We use AdamW optimizer [40] with a learning rate of 5 × 10−4 and weight decay of 1 × 10−5, a linear warmup schedule for 5 epochs, followed by cosine-annealing for 45 epochs. We train for 50 epochs with 128 batch size, and use early stopping with a patience of 5 epochs. We use latitude-weighted root mean squared error (RMSE) and anomaly correlation coefficient (ACC) as the test metrics.
+Benchmark results Figure 2 shows the performance of different baselines. As expected, the forecast quality in terms of both RMSE and ACC of all baselines worsens with increasing lead times. The deep learning methods significantly outperform climatology and persistence but underperform IFS. ResNet is the best-performing deep learning model on most tasks in both metrics. We hypothesize that while being more powerful than ResNet in general, U-Net tends to perform better when trained on high-resolution data [67], and ViT often suffers from overfitting when trained from scratch [26, 50]. Our reported performance of ResNet closely matches that of previous works [60].
+4.1.1 Should we perform direct, continuous, or iterative forecasting?
+In direct forecasting, we train a separate model for each lead time. This can be computationally expensive as the training cost scales linearly with the number of lead times. In this section, we
+6
+
+RMSE
+
+Z500 [m2/s2] 6
+1000
+
+750
+
+4
+
+lower is better
+
+500
+
+250
+
+2
+
+0
+
+T2m [K]
+
+T850 [K]
+5 4 3 2 1
+
+1.0
+
+1.0
+
+1.0
+
+higher is better
+
+0.8
+
+0.9
+
+0.9 0.8
+
+0.6
+
+0.8
+
+0.7
+
+1 3 5 7 10
+
+1 3 5 7 10 0.6 1 3 5 7 10
+
+Leadtime [days]
+
+ResNet-direct
+
+ResNet-cont
+
+ResNet-iter
+
+ACC
+
+Figure 3: Comparison of direct, continuous, and iterative forecasting with ResNet architecture.
+
+consider two alternative approaches, namely, continuous forecasting and iterative forecasting, and investigate the trade-off between computation and performance. In continuous forecasting, a model conditions on lead time information to make corresponding predictions, which allows the same trained model to make forecasts at any lead times. We refer to Appendix B.3.1 for details on how to do this. In iterative forecasting, we train the model to forecast at a short lead time, i.e., 6 hours, and roll out the predictions during evaluation to make forecasts at longer horizons. We note that in order to roll out more than one step, the model must predict all variables in the input. This provides the benefit of training a single model that can predict at any lead time that is a multiplication of 6.
+We compare the performance of direct, continuous, and iterative forecasting using the same ResNet architecture with training and evaluation settings identical to Section 4.1. Figure 3 shows that ResNetcont slightly underperforms the direct model at 6-hour and 1-day lead times, but performs similarly or even better at 3-day and 5-day forecasting. We hypothesize that for difficult tasks, training with randomized lead times enlarges the training data and thus improves the generalization of the model. A similar result was observed by Rasp et al. [61]. However, the continuous model does not generalize well to unseen lead times, which explains the poor performance when evaluated at 10-day forecasting. ResNet-iter performs the worst in the three approaches, which achieves a reasonable performance at 6-hour lead time, but the prediction error accumulates exponentially at longer horizons. This was also observed in previous works [50, 61]. We believe this issue can be mitigated by multi-step training [52], which we leave as future work.
+
+4.1.2 Extreme weather prediction
+
+Despite the surface-level temperature being an out- Table 1: Latitude-weighted RMSE on the nor-
+
+lier, Table 1 shows that deep learning and persistence mal and extreme test splits of ERA5.
+
+perform better on Extreme-ERA5 than ERA5 for all different lead times. Climatology performs worse on Extreme-ERA5, which is expected since predicting
+
+T2M
+
+6 Hours
+
+1 Day
+
+3 Days
+
+Climatology 5.87 / 6.51 5.87 / 6.53 5.87 / 6.58 Persistence 2.76 / 2.99 2.13 / 1.78 2.99 / 2.42
+
+the mean of the target distribution is not a good strategy for outlier data. The persistence performance indicates that the variation between the input and out-
+
+ResNet U-Net ViT
+
+0.72 / 0.72 0.94 / 0.91 1.50 / 1.33 0.76 / 0.77 1.04 / 0.99 1.65 / 1.43 0.78 / 0.80 1.09 / 1.05 1.71 / 1.55
+
+put values is comparatively less for extreme weather
+
+conditions. We hypothesize that, although the marginal distribution p(y) of the subset data is extreme,
+
+the conditional distribution p(y|x) which we are trying to model is not extreme. Thus, we are not
+
+experiencing any drop in performance on such a subset. While from a ML standpoint, it might seem
+
+necessary to evaluate the models for cases where the conditional distribution is extreme for any input
+
+variable, such a dataset might not qualify under the well-known categories of extreme events. Future
+
+7
+
+studies for constructing extreme datasets could try targeting extreme events such as floods, which are usually caused by high amounts of precipitation under a short period of time [74].
+
+4.1.3 Data robustness of deep learning models
+
+We study the impact of data distribution shifts on forecast- Table 2: Performance of ResNet trained
+
+ing performance. We consider CMIP6 and ERA5 as two on one dataset (columns) and evaluated different data sources. The input variables are similar to on another (rows).
+
+the standard setting, except that we remove relative humidity, 10-meter zonal and meridional wind, incoming solar radiation, and the 3 constant fields due to their unavailability in CMIP6. To account for differences in the temporal resolution and data coverage, we set the temporal resolu-
+
+ERA5
+
+Z500 T850 T2m
+
+ERA5
+ACC RMSE
+0.95 322.86 0.93 1.90 0.95 1.62
+
+CMIP6
+ACC RMSE
+0.93 345.00 0.90 2.21 0.93 1.94
+
+tion to 6 hours and set 1979-2010, 2011-12, and 2013-14
+
+Z500 0.95 357.66 0.96 306.86
+
+as training, validation, and testing years respectively.
+
+CMIP6 T850 0.91 2.11 0.94 1.70 T2m 0.93 1.91 0.96 1.53
+
+Table 2 shows that all methods achieve better evaluation
+
+scores if the training and testing splits come from the same dataset, but cross-dataset performance
+
+is not far behind, highlighting the robustness of the models across distributional shifts. We see a
+
+similar trend for different models across different lead times, which we refer to Appendix C.3 for
+
+more details. We also conducted an experiment where the years 1850-1978 are included in training
+
+for CMIP6. The results show that for all models across almost all lead times, training on CMIP6
+
+leads to even better performance on ERA5 than training on ERA5. For exact numbers and setup refer
+
+to Appendix C.3.
+
+4.2 Downscaling
+Task and data We consider two settings for downscaling. In the first setting, we downscale 5.625◦ ERA5 data to 2.8125◦ ERA5, both at a global scale and hourly intervals. The input and target variables are the same as used in Section 4.1. In the second setting, we consider downscaling 2.8125◦ ERA5 data over the conterminous United States to 0.75◦ PRISM data over the same region at daily intervals. This is equivalent to downscaling a reanalysis/simulated dataset to an observational dataset, similar to previous papers [23, 66, 76]. The cropped ERA5 data has shape 9 × 21 while the regridded PRISM data is padded with zeros to the shape 32 × 64. The only input and output variable is daily max T2m, which is normalized to have 0 mean and 1 standard deviation. The training period is from 1981 to 2015, validation is in 2016, and the testing period is from 2017 to 2018.
+Baselines We compare ResNet, U-Net, and ViT with two baselines: nearest and bilinear interpolation.
+Training and evaluation We use MSE as the loss function with the same optimizer and learning rate scheduler as in Section 4.1, with an initial learning rate of 1 × 10−5. A separate model is trained for each output variable, and all models post-process the results of bilinear interpolation. We use RMSE, Pearson’s correlation coefficient, and mean bias as the test metrics. All metrics are masked properly since PRISM does not have data over the oceans. See Appendix B.4 for further details.
+Benchmark results Table 3 shows the performance of different baselines in both settings. As expected for the first setting, all methods achieve relatively low errors. The deep learning models outperformed both interpolation methods significantly on RMSE, but tend to overestimate the target variables, leading to negative mean bias. In the second setting—where the input and output come
+
+Table 3: Downscaling experiments on ERA5 (5.6◦) to ERA5 (2.8◦) and ERA5 (2.8◦) to PRISM (0.75◦). For ERA5 (5.6◦) to ERA5 (2.8◦), Pearson’s correlation coefficient was 1.0 for all models.
+
+Nearest Bilinear ResNet Unet ViT
+
+Z500 (m2 s−2)
+
+RMSE Mean bias
+
+269.67 134.07 54.20 43.84 85.32
+
+0.04 0.04 −6.41 −6.55 −35.98
+
+ERA5 to ERA5
+
+T850 (K)
+
+RMSE Mean bias
+
+1.99
+
+0.00
+
+1.50
+
+0.00
+
+0.39 −0.05
+
+0.94 −0.06
+
+1.03 −0.01
+
+T2m (K)
+
+RMSE Mean bias
+
+3.11
+
+0.00
+
+2.46
+
+0.00
+
+1.10 −0.22
+
+1.10 −0.12
+
+1.25 −0.20
+
+ERA5 to PRISM
+
+Daily Max T2m (K)
+
+RMSE Mean bias Pearson
+
+2.91
+
+-0.05
+
+0.89
+
+2.64
+
+0.12
+
+0.91
+
+1.86
+
+−0.11
+
+0.95
+
+1.57 −0.14
+
+0.97
+
+2.18
+
+−0.26
+
+0.94
+
+8
+
+from two different datasets—the performance of all baselines drops. Nonetheless, the deep learning models again outperform the baseline methods on RMSE and exhibit negative mean bias, but also achieve higher Pearson’s correlation coefficients.
+5 Conclusion
+We presented ClimateLearn, a user-friendly and open-source PyTorch library for data-driven weather and climate modeling. Given the pressing nature of climate change, we believe our contribution is timely and of potential use to both the ML and climate science communities. Our objective is to provide a standardized benchmarking platform for evaluating ML innovations in climate science, which currently suffer from challenges in standardization, accessibility, and reproducibility. ClimateLearn provides users access to all essential components of end-to-end ML pipeline, including data pre-processing utilities, ML model implementations, and rigorous evaluations via metrics and visualizations. We use the flexible and modular design of ClimateLearn to design and perform diverse experiments comparing deep learning methods with relevant baselines on our supported tasks. Limitations and Future Work In this work, we highlighted key features of the ClimateLearn library, encompassing datasets, tasks, models, and evaluations. However, we acknowledge that there are numerous avenues to enhance the comprehensiveness of our library in each of these dimensions. One such avenue involves integrating regional datasets and expanding the catalog of available data sources. On the modeling side, we plan to develop efficient implementations for training ensembles in service of critical uncertainty quantification efforts. In future iterations of our library, we will also integrate a hub of large-scale pretrained neural networks specifically designed for weather and climate applications [4, 36, 50, 52]. Once integrated, these pretrained models will be further customizable through fine-tuning, enabling straightforward adaptation to downstream tasks. Furthermore, we plan to incorporate support for physics-informed neural networks and other hybrid baselines that amalgamate physical models with machine learning methods, which will allow users to leverage the strengths of both paradigms. Ultimately, our overarching objective is to establish ClimateLearn as a trustworthy AI development tool for weather and climate applications.
+Acknowledgments and Disclosure of Funding
+We thank Shashank Goel, Jingchen Tang, Seongbin Park, Siddharth Nandy, and Sri Keerthi Bolli for their contributions to ClimateLearn. Aditya Grover was supported in part by a research gift from Google. Hritik Bansal was supported in part by AFOSR MURI grant FA9550-22-1-0380.
+9
+
+References
+
+[1] J. Baño Medina, R. Manzanas, and J. M. Gutiérrez. Configuration and intercomparison of deep learning neural models for statistical downscaling. Geoscientific Model Development, 13(4): 2109–2124, 2020. doi: 10.5194/gmd-13-2109-2020. URL https://gmd.copernicus.org/ articles/13/2109/2020/.
+
+[2] V. Balaji, E. Maisonnave, N. Zadeh, B. N. Lawrence, J. Biercamp, U. Fladrich, G. Aloisio, R. Benson, A. Caubel, J. Durachta, M.-A. Foujols, G. Lister, S. Mocavero, S. Underwood, and G. Wright. CPMIP: measurements of real computational performance of Earth system models in CMIP6. Geoscientific Model Development, 10(1):19–34, 2017. doi: 10.5194/gmd-10-19-2017. URL https://gmd.copernicus.org/articles/10/19/2017/.
+
+[3] Peter Bauer, Alan Thorpe, and Gilbert Brunet. The quiet revolution of numerical weather prediction. Nature, 525(7567):47–55, Sep 2015. ISSN 1476-4687. doi: 10.1038/nature14956. URL https://doi.org/10.1038/nature14956.
+
+[4] Kaifeng Bi, Lingxi Xie, Hengheng Zhang, Xin Chen, Xiaotao Gu, and Qi Tian. Pangu-weather: A 3d high-resolution model for fast and accurate global weather forecast. arXiv preprint arXiv:2211.02556, 2022.
+
+[5] D. Boateng and S. G. Mutz. pyESDv1.0.1: An open-source Python framework for empiricalstatistical downscaling of climate information. Geoscientific Model Development Discussions, 2023:1–58, 2023. doi: 10.5194/gmd-2023-67. URL https://gmd.copernicus.org/ preprints/gmd-2023-67/.
+
+[6] Bogdan Bochenek and Zbigniew Ustrnul. Machine Learning in Weather Prediction and Climate Analyses—Applications and Perspectives. Atmosphere, 13(2), 2022. ISSN 2073-4433. doi: 10.3390/atmos13020180. URL https://www.mdpi.com/2073-4433/13/2/180.
+
+[7] Colin Brust, John S. Kimball, Marco P. Maneta, Kelsey Jencso, and Rolf H. Reichle. DroughtCast: A Machine Learning Forecast of the United States Drought Monitor. Frontiers in Big Data, 4, 2021. ISSN 2624-909X. doi: 10.3389/fdata.2021.773478. URL https://www.frontiersin.org/articles/10.3389/fdata.2021.773478.
+
+[8] Salva Rühling Cachay, Venkatesh Ramesh, Jason NS Cole, Howard Barker, and David Rolnick. Climart: A benchmark dataset for emulating atmospheric radiative transfer in weather and climate models. arXiv preprint arXiv:2111.14671, 2021.
+
+[9] CarbonPlan.
+
+CMIP6-Downscaling.
+
+cmip6-downscaling, 2022.
+
+https://github.com/carbonplan/
+
+[10] Erin Coughlan de Perez, Hamsa Ganapathi, Gibbon I. T. Masukwedza, Timothy Griffin, and Timo Kelder. Potential for surprising heat and drought events in wheat-producing regions of USA and China. npj Climate and Atmospheric Science, 6(1):56, Jun 2023. ISSN 2397-3722. doi: 10.1038/s41612-023-00361-y. URL https://doi.org/10.1038/s41612-023-00361-y.
+
+[11] G. Danabasoglu, J.-F. Lamarque, J. Bacmeister, D. A. Bailey, A. K. DuVivier, J. Edwards, L. K. Emmons, J. Fasullo, R. Garcia, A. Gettelman, C. Hannay, M. M. Holland, W. G. Large, P. H. Lauritzen, D. M. Lawrence, J. T. M. Lenaerts, K. Lindsay, W. H. Lipscomb, M. J. Mills, R. Neale, K. W. Oleson, B. Otto-Bliesner, A. S. Phillips, W. Sacks, S. Tilmes, L. van Kampenhout, M. Vertenstein, A. Bertini, J. Dennis, C. Deser, C. Fischer, B. Fox-Kemper, J. E. Kay, D. Kinnison, P. J. Kushner, V. E. Larson, M. C. Long, S. Mickelson, J. K. Moore, E. Nienhouse, L. Polvani, P. J. Rasch, and W. G. Strand. The Community Earth System Model Version 2 (CESM2). Journal of Advances in Modeling Earth Systems, 12(2):e2019MS001916, 2020. doi: https://doi.org/10.1029/2019MS001916. URL https://agupubs.onlinelibrary.wiley. com/doi/abs/10.1029/2019MS001916. e2019MS001916 2019MS001916.
+
+[12] C. O. de Burgh-Day and T. Leeuwenburg. Machine Learning for numerical weather and climate modelling: a review. EGUsphere, 2023:1–48, 2023. doi: 10.5194/egusphere-2023-350. URL https://egusphere.copernicus.org/preprints/2023/egusphere-2023-350/.
+
+10
+
+[13] Christian Schroeder de Witt, Catherine Tong, Valentina Zantedeschi, Daniele De Martini, Alfredo Kalaitzis, Matthew Chantry, Duncan Watson-Parris, and Piotr Bilinski. Rainbench: Enabling data-driven precipitation forecasting on a global scale. Technical report, Copernicus Meetings, 2021.
+[14] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An image is worth 16x16 words: Transformers for image recognition at scale. In International Conference on Learning Representations.
+[15] Lasse Espeholt, Shreya Agrawal, Casper Sønderby, Manoj Kumar, Jonathan Heek, Carla Bromberg, Cenk Gazen, Rob Carver, Marcin Andrychowicz, Jason Hickey, Aaron Bell, and Nal Kalchbrenner. Deep learning for twelve hour precipitation forecasts. Nature Communications, 13(1):5145, Sep 2022. ISSN 2041-1723. doi: 10.1038/s41467-022-32483-x. URL https: //doi.org/10.1038/s41467-022-32483-x.
+[16] European Commission. About Copernicus. URL https://www.copernicus.eu/en/ about-copernicus. Accessed 2023-06-04.
+[17] V. Eyring, S. Bony, G. A. Meehl, C. A. Senior, B. Stevens, R. J. Stouffer, and K. E. Taylor. Overview of the Coupled Model Intercomparison Project Phase 6 (CMIP6) experimental design and organization. Geoscientific Model Development, 9(5):1937–1958, 2016. doi: 10.5194/ gmd-9-1937-2016. URL https://gmd.copernicus.org/articles/9/1937/2016/.
+[18] Zhihan Gao, Xingjian Shi, Hao Wang, Yi Zhu, Yuyang Bernie Wang, Mu Li, and Dit-Yan Yeung. Earthformer: Exploring space-time transformers for earth system forecasting. Advances in Neural Information Processing Systems, 35:25390–25403, 2022.
+[19] Sagar Garg, Stephan Rasp, and Nils Thuerey. Weatherbench probability: A benchmark dataset for probabilistic medium-range weather forecasting along with deep learning baseline models. arXiv preprint arXiv:2205.00865, 2022.
+[20] Aditya Grover, Ashish Kapoor, and Eric Horvitz. A Deep Hybrid Model for Weather Forecasting. In Proceedings of the 21th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, KDD ’15, page 379–386, New York, NY, USA, 2015. Association for Computing Machinery. ISBN 9781450336642. doi: 10.1145/2783258.2783275. URL https: //doi.org/10.1145/2783258.2783275.
+[21] Jayesh K Gupta and Johannes Brandstetter. Towards multi-spatiotemporal-scale generalized pde modeling. arXiv preprint arXiv:2209.15616, 2022.
+[22] Joseph Hamman and Julia Kent. Scikit-downscale: an open source python package for scalable climate downscaling. In 2020 EarthCube Annual Meeting, 2020.
+[23] I Hanssen-Bauer, C Achberger, RE Benestad, D Chen, and EJ Førland. Statistical downscaling of climate scenarios over Scandinavia. Climate Research, 29(3):255–268, 2005.
+[24] Charles R. Harris, K. Jarrod Millman, Stéfan J. van der Walt, Ralf Gommers, Pauli Virtanen, David Cournapeau, Eric Wieser, Julian Taylor, Sebastian Berg, Nathaniel J. Smith, Robert Kern, Matti Picus, Stephan Hoyer, Marten H. van Kerkwijk, Matthew Brett, Allan Haldane, Jaime Fernández del Río, Mark Wiebe, Pearu Peterson, Pierre Gérard-Marchant, Kevin Sheppard, Tyler Reddy, Warren Weckesser, Hameer Abbasi, Christoph Gohlke, and Travis E. Oliphant. Array programming with NumPy. Nature, 585(7825):357–362, September 2020. doi: 10.1038/s41586-020-2649-2. URL https://doi.org/10.1038/s41586-020-2649-2.
+[25] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer vision and pattern recognition, pages 770–778, 2016.
+[26] Kaiming He, Xinlei Chen, Saining Xie, Yanghao Li, Piotr Dollár, and Ross Girshick. Masked autoencoders are scalable vision learners. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 16000–16009, 2022.
+11
+
+[27] Hans Hersbach, Bill Bell, Paul Berrisford, Shoji Hirahara, András Horányi, Joaquín MuñozSabater, Julien Nicolas, Carole Peubey, Raluca Radu, Dinand Schepers, Adrian Simmons, Cornel Soci, Saleh Abdalla, Xavier Abellan, Gianpaolo Balsamo, Peter Bechtold, Gionata Biavati, Jean Bidlot, Massimo Bonavita, Giovanna De Chiara, Per Dahlgren, Dick Dee, Michail Diamantakis, Rossana Dragani, Johannes Flemming, Richard Forbes, Manuel Fuentes, Alan Geer, Leo Haimberger, Sean Healy, Robin J. Hogan, Elías Hólm, Marta Janisková, Sarah Keeley, Patrick Laloyaux, Philippe Lopez, Cristina Lupu, Gabor Radnoti, Patricia de Rosnay, Iryna Rozum, Freja Vamborg, Sebastien Villaume, and Jean-Noël Thépaut. The ERA5 global reanalysis. Quarterly Journal of the Royal Meteorological Society, 146(730):1999–2049, 2020. doi: https://doi.org/10.1002/qj.3803. URL https://rmets.onlinelibrary.wiley.com/ doi/abs/10.1002/qj.3803.
+[28] Philipp Hess and Niklas Boers. Deep Learning for Improving Numerical Weather Prediction of Heavy Rainfall. Journal of Advances in Modeling Earth Systems, 14(3):e2021MS002765, 2022. doi: https://doi.org/10.1029/2021MS002765. URL https://agupubs.onlinelibrary. wiley.com/doi/abs/10.1029/2021MS002765. e2021MS002765 2021MS002765.
+[29] Stephan Hoyer and Joe Hamman. xarray: N-d labeled arrays and datasets in python. Journal of Open Research Software, 5(1):10, April 2017. doi: 10.5334/jors.148.
+[30] Gao Huang, Yu Sun, Zhuang Liu, Daniel Sedra, and Kilian Q Weinberger. Deep networks with stochastic depth. In European conference on computer vision, pages 646–661. Springer, 2016.
+[31] IPCC. Summary for Policymakers. In V. Masson-Delmotte, P. Zhai, A. Pirani, S. L. Connors, C. Péan, S. Berger, N. Caud, Y. Chen, L. Goldfarb, M. I. Gomis, M. Huang, K. Leitzell, E. Lonnoy, J. B. R. Matthews, T. K. Maycock, T. Waterfield, O. Yelekçi, R. Yu, and B. Zhou, editors, Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report of the Intergovernmental Panel on Climate Change. Cambridge University Press, Cambridge, UK and New York, NY, USA, 2021. doi: 10.1017/9781009157896.001. URL https://www.ipcc.ch/report/ar6/wg1/ downloads/report/IPCC_AR6_WGI_SPM.pdf.
+[32] Sayash Kapoor and Arvind Narayanan. Leakage and the reproducibility crisis in ML-based science. arXiv preprint arXiv:2207.07048, 2022.
+[33] Anuj Karpatne, Imme Ebert-Uphoff, Sai Ravela, Hassan Ali Babaie, and Vipin Kumar. Machine Learning for the Geosciences: Challenges and Opportunities. IEEE Transactions on Knowledge and Data Engineering, 31(8):1544–1554, 2019. doi: 10.1109/TKDE.2018.2861006.
+[34] Karthik Kashinath, M Mustafa, Adrian Albert, JL Wu, C Jiang, Soheil Esmaeilzadeh, Kamyar Azizzadenesheli, R Wang, A Chattopadhyay, A Singh, et al. Physics-informed machine learning: case studies for weather and climate modelling. Philosophical Transactions of the Royal Society A, 379(2194):20200093, 2021.
+[35] Ryan Keisler. Forecasting global weather with graph neural networks. arXiv preprint arXiv:2202.07575, 2022.
+[36] Remi Lam, Alvaro Sanchez-Gonzalez, Matthew Willson, Peter Wirnsberger, Meire Fortunato, Alexander Pritzel, Suman Ravuri, Timo Ewalds, Ferran Alet, Zach Eaton-Rosen, et al. Graphcast: Learning skillful medium-range global weather forecasting. arXiv preprint arXiv:2212.12794, 2022.
+[37] David A. Lavers, Adrian Simmons, Freja Vamborg, and Mark J. Rodwell. An evaluation of ERA5 precipitation for climate monitoring. Quarterly Journal of the Royal Meteorological Society, 148(748):3152–3165, 2022. doi: https://doi.org/10.1002/qj.4351. URL https:// rmets.onlinelibrary.wiley.com/doi/abs/10.1002/qj.4351.
+[38] L. Ruby Leung, Linda O. Mearns, Filippo Giorgi, and Robert L. Wilby. REGIONAL CLIMATE RESEARCH: Needs and Opportunities. Bulletin of the American Meteorological Society, 84(1):89–95, 2003. ISSN 00030007, 15200477. URL http://www.jstor.org/stable/ 26215433.
+12
+
+[39] Yumin Liu, Auroop R. Ganguly, and Jennifer Dy. Climate Downscaling Using YNet: A Deep Convolutional Network with Skip Connections and Fusion. In Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, KDD ’20, page 3145–3153, New York, NY, USA, 2020. Association for Computing Machinery. ISBN 9781450379984. doi: 10.1145/3394486.3403366. URL https://doi.org/10.1145/ 3394486.3403366.
+[40] Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101, 2017.
+[41] Jeremy Martinich and Allison Crimmins. Climate damages and adaptation potential across diverse sectors of the United States. Nature Climate Change, 9(5):397–404, May 2019. ISSN 1758-6798. doi: 10.1038/s41558-019-0444-6. URL https://doi.org/10.1038/ s41558-019-0444-6.
+[42] Amy McGovern, Kimberly L Elmore, David John Gagne, Sue Ellen Haupt, Christopher D Karstens, Ryan Lagerquist, Travis Smith, and John K Williams. Using artificial intelligence to improve real-time decision-making for high-impact weather. Bulletin of the American Meteorological Society, 98(10):2073–2090, 2017.
+[43] Christoph Minixhofer, Mark Swan, Calum McMeekin, and Pavlos Andreadis. Droughted: A dataset and methodology for drought forecasting spanning multiple climate zones. In ICML 2021 Workshop on Tackling Climate Change with Machine Learning, 2021.
+[44] Tae Hoon Moon, Yeora Chae, Dong-Sung Lee, Dong-Hwan Kim, and Hyun-gyu Kim. Analyzing climate change impacts on health, energy, water resources, and biodiversity sectors for effective climate change policy in South Korea. Scientific Reports, 11(1):18512, Sep 2021. ISSN 2045-2322. doi: 10.1038/s41598-021-97108-7. URL https://doi.org/10.1038/ s41598-021-97108-7.
+[45] Amir Mosavi, Pinar Ozturk, and Kwok-wing Chau. Flood Prediction Using Machine Learning Models: Literature Review. Water, 10(11), 2018. ISSN 2073-4441. doi: 10.3390/w10111536. URL https://www.mdpi.com/2073-4441/10/11/1536.
+[46] Soukayna Mouatadid, Paulo Orenstein, Genevieve Flaspohler, Miruna Oprescu, Judah Cohen, Franklyn Wang, Sean Knight, Maria Geogdzhayeva, Sam Levang, Ernest Fraenkel, et al. Learned benchmarks for subseasonal forecasting. arXiv preprint arXiv:2109.10399, 2021.
+[47] Takeyoshi Nagasato, Kei Ishida, Ali Ercan, Tongbi Tu, Masato Kiyama, Motoki Amagasaki, and Kazuki Yokoo. Extension of convolutional neural network along temporal and vertical directions for precipitation downscaling. arXiv preprint arXiv:2112.06571, 2021.
+[48] NASA. NASA Earthdata: Open Access for Open Science. URL https://www.earthdata. nasa.gov/. Accessed 2023-06-04.
+[49] J. David Neelin. Climate Change and Climate Modeling. Cambridge University Press, 2010. doi: 10.1017/CBO9780511780363.
+[50] Tung Nguyen, Johannes Brandstetter, Ashish Kapoor, Jayesh K Gupta, and Aditya Grover. Climax: A foundation model for weather and climate. In International Conference on Machine Learning, 2023.
+[51] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas Kopf, Edward Yang, Zachary DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chintala. Pytorch: An imperative style, high-performance deep learning library. In Advances in Neural Information Processing Systems (NeurIPS), pages 8024–8035. Curran Associates, Inc., 2019.
+[52] Jaideep Pathak, Shashank Subramanian, Peter Harrington, Sanjeev Raja, Ashesh Chattopadhyay, Morteza Mardani, Thorsten Kurth, David Hall, Zongyi Li, Kamyar Azizzadenesheli, et al. Fourcastnet: A global data-driven high-resolution weather model using adaptive fourier neural operators. arXiv preprint arXiv:2202.11214, 2022.
+13
+
+[53] Andrew D Polasky, Jenni L Evans, and Jose D Fuentes. Ccdownscaling: A python package for multivariable statistical climate model downscaling. Environmental Modelling & Software, 165: 105712, 2023.
+[54] Prabhat, K. Kashinath, M. Mudigonda, S. Kim, L. Kapp-Schwoerer, A. Graubner, E. Karaismailoglu, L. von Kleist, T. Kurth, A. Greiner, A. Mahesh, K. Yang, C. Lewis, J. Chen, A. Lou, S. Chandran, B. Toms, W. Chapman, K. Dagon, C. A. Shields, T. O’Brien, M. Wehner, and W. Collins. ClimateNet: an expert-labeled open dataset and deep learning architecture for enabling high-precision analyses of extreme weather. Geoscientific Model Development, 14 (1):107–124, 2021. doi: 10.5194/gmd-14-107-2021. URL https://gmd.copernicus.org/ articles/14/107/2021/.
+[55] PRISM Climate Group, Oregon State University, Jun 2023. URL https://prism. oregonstate.edu. Accessed 2023-06-04.
+[56] Adiba Mahbub Proma, Md Saiful Islam, Stela Ciko, Raiyan Abdul Baten, and Ehsan Hoque. Nadbenchmarks–a compilation of benchmark datasets for machine learning tasks related to natural disasters. arXiv preprint arXiv:2212.10735, 2022.
+[57] Rachel Prudden, Samantha Adams, Dmitry Kangin, Niall Robinson, Suman Ravuri, Shakir Mohamed, and Alberto Arribas. A review of radar-based nowcasting of precipitation and applicable machine learning techniques. arXiv preprint arXiv:2005.04988, 2020.
+[58] Evan Racah, Christopher Beckham, Tegan Maharaj, Samira Ebrahimi Kahou, Mr. Prabhat, and Chris Pal. ExtremeWeather: A large-scale climate dataset for semi-supervised detection, localization, and understanding of extreme weather events. In I. Guyon, U. Von Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems, volume 30. Curran Associates, Inc., 2017. URL https://proceedings.neurips.cc/paper_files/paper/2017/file/ 519c84155964659375821f7ca576f095-Paper.pdf.
+[59] Maryam Rahnemoonfar, Tashnim Chowdhury, Argho Sarkar, Debvrat Varshney, Masoud Yari, and Robin Roberson Murphy. Floodnet: A high resolution aerial imagery dataset for post flood scene understanding. IEEE Access, 9:89644–89654, 2021.
+[60] Stephan Rasp and Nils Thuerey. Data-Driven Medium-Range Weather Prediction With a Resnet Pretrained on Climate Simulations: A New Model for WeatherBench. Journal of Advances in Modeling Earth Systems, 13(2), Feb 2021. doi: 10.1029/2020ms002405. URL https://doi.org/10.1029%2F2020ms002405.
+[61] Stephan Rasp, Peter D. Dueben, Sebastian Scher, Jonathan A. Weyn, Soukayna Mouatadid, and Nils Thuerey. WeatherBench: A Benchmark Data Set for Data-Driven Weather Forecasting. Journal of Advances in Modeling Earth Systems, 12(11), Nov 2020. doi: 10.1029/2020ms002203. URL https://doi.org/10.1029%2F2020ms002203.
+[62] Sara A. Rauscher, Erika Coppola, Claudio Piani, and Filippo Giorgi. Resolution effects on regional climate model simulations of seasonal precipitation over Europe. Climate Dynamics, 35(4):685–711, Sep 2010. ISSN 1432-0894. doi: 10.1007/s00382-009-0607-7. URL https: //doi.org/10.1007/s00382-009-0607-7.
+[63] Suman Ravuri, Karel Lenc, Matthew Willson, Dmitry Kangin, Remi Lam, Piotr Mirowski, Megan Fitzsimons, Maria Athanassiadou, Sheleem Kashem, Sam Madge, Rachel Prudden, Amol Mandhane, Aidan Clark, Andrew Brock, Karen Simonyan, Raia Hadsell, Niall Robinson, Ellen Clancy, Alberto Arribas, and Shakir Mohamed. Skilful precipitation nowcasting using deep generative models of radar. Nature, 597(7878):672–677, Sep 2021. ISSN 1476-4687. doi: 10.1038/s41586-021-03854-z. URL https://doi.org/10.1038/s41586-021-03854-z.
+[64] Christian Requena-Mesa, Vitus Benson, Markus Reichstein, Jakob Runge, and Joachim Denzler. Earthnet2021: A large-scale dataset and challenge for earth surface forecasting as a guided video prediction task. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 1132–1142, 2021.
+14
+
+[65] Matthew Rodell and Bailing Li. Changing intensity of hydroclimatic extreme events revealed by GRACE and GRACE-FO. Nature Water, pages 1–8, 2023.
+[66] Eduardo Rocha Rodrigues, Igor Oliveira, Renato Cunha, and Marco Netto. Deepdownscale: A deep learning strategy for high-resolution weather forecast. In 2018 IEEE 14th International Conference on e-Science (e-Science), pages 415–422. IEEE, 2018.
+[67] Olaf Ronneberger, Philipp Fischer, and Thomas Brox. U-net: Convolutional networks for biomedical image segmentation. In Medical Image Computing and Computer-Assisted Intervention–MICCAI 2015: 18th International Conference, Munich, Germany, October 5-9, 2015, Proceedings, Part III 18, pages 234–241. Springer, 2015.
+[68] DA Sachindra, Khandakar Ahmed, Md Mamunur Rashid, S Shahid, and BJC Perera. Statistical downscaling of precipitation using machine learning techniques. Atmospheric research, 212: 240–258, 2018.
+[69] Øyvind Seland, Mats Bentsen, Dirk Jan Leo Oliviè, Thomas Toniazzo, Ada Gjermundsen, Lise Seland Graff, Jens Boldingh Debernard, Alok Kumar Gupta, Yan-Chun He, Alf Kirkevåg, et al. Overview of the norwegian earth system model (noresm2) and key climate response of cmip6 deck, historical, and scenario simulations. 2020.
+[70] Manmeet Singh, Bipin Kumar, Suryachandra Rao, Sukhpal Singh Gill, Rajib Chattopadhyay, Ravi S Nanjundiah, and Dev Niyogi. Deep learning for improved global precipitation in numerical weather prediction systems. arXiv preprint arXiv:2106.12045, 2021.
+[71] Muhammed Sit, Bong-Chul Seo, and Ibrahim Demir. Iowarain: A statewide rain event dataset based on weather radars and quantitative precipitation estimation. arXiv preprint arXiv:2107.03432, 2021.
+[72] Adam B. Smith. 2010-2019: A landmark decade of U.S. billion-dollar weather and climate disasters, Jan 2020. URL https://www.climate.gov/news-features/blogs/beyond-data/ 2010-2019-landmark-decade-us-billion-dollar-weather-and-climate. Accessed 2023-06-04.
+[73] Casper Kaae Sønderby, Lasse Espeholt, Jonathan Heek, Mostafa Dehghani, Avital Oliver, Tim Salimans, Shreya Agrawal, Jason Hickey, and Nal Kalchbrenner. Metnet: A neural weather model for precipitation forecasting. arXiv preprint arXiv:2003.12140, 2020.
+[74] David B Stephenson, HF Diaz, and RJ Murnane. Definition, diagnosis, and origin of extreme weather and climate events. Climate extremes and society, 340:11–23, 2008.
+[75] Karpagam Sundararajan, Lalit Garg, Kathiravan Srinivasan, Ali Kashif Bashir, Jayakumar Kaliappan, Ganapathy Pattukandan Ganapathy, Senthil Kumaran Selvaraj, and T Meena. A contemporary review on drought modeling using machine learning approaches. CMES-Computer Modeling in Engineering and Sciences, 128(2):447–487, 2021.
+[76] Guoqiang Tang, Ali Behrangi, Ziqiang Ma, Di Long, and Yang Hong. Downscaling of ERAinterim temperature in the contiguous United States and its implications for rain–snow partitioning. Journal of Hydrometeorology, 19(7):1215–1233, 2018.
+[77] Kenza Tazi, Emiliano Diaz Salas-Porras, Ashwin Braude, Daniel Okoh, Kara D Lamb, Duncan Watson-Parris, Paula Harder, and Nis Meinert. Pyrocast: a machine learning pipeline to forecast pyrocumulonimbus (pyrocb) clouds. arXiv preprint arXiv:2211.13052, 2022.
+[78] Selim Furkan Tekin, Oguzhan Karaahmetoglu, Fatih Ilhan, Ismail Balaban, and Suleyman Serdar Kozat. Spatio-temporal weather forecasting and attention mechanism on convolutional lstms. arXiv preprint arXiv:2102.00696, 2021.
+[79] Thomas Vandal, Evan Kodra, Sangram Ganguly, Andrew Michaelis, Ramakrishna Nemani, and Auroop R Ganguly. Deepsd: Generating high resolution climate change projections through single image super-resolution. In Proceedings of the 23rd acm sigkdd international conference on knowledge discovery and data mining, pages 1663–1672, 2017.
+15
+
+[80] Thomas Vandal, Evan Kodra, and Auroop R Ganguly. Intercomparison of machine learning methods for statistical downscaling: the case of daily and extreme precipitation. Theoretical and Applied Climatology, 137:557–570, 2019.
+
+[81] Robert T Watson and Daniel Lee Albritton. Climate change 2001: Synthesis report: Third assessment report of the Intergovernmental Panel on Climate Change. Cambridge University Press, 2001.
+
+[82] D. Watson-Parris, Y. Rao, D. Olivié, Ø. Seland, P. Nowack, G. Camps-Valls, P. Stier, S. Bouabid, M. Dewey, E. Fons, J. Gonzalez, P. Harder, K. Jeggle, J. Lenhardt, P. Manshausen, M. Novitasari, L. Ricard, and C. Roesch. ClimateBench v1.0: A Benchmark for Data-Driven Climate Projections. Journal of Advances in Modeling Earth Systems, 14(10):e2021MS002954, 2022. doi: https://doi.org/10.1029/2021MS002954. URL https://agupubs.onlinelibrary.wiley. com/doi/abs/10.1029/2021MS002954. e2021MS002954 2021MS002954.
+
+[83] NP Wedi, P Bauer, W Denoninck, M Diamantakis, M Hamrud, C Kuhnlein, S Malardel, K Mogensen, G Mozdzynski, and PK Smolarkiewicz. The modelling infrastructure of the Integrated Forecasting System: Recent advances and future challenges. European Centre for Medium-Range Weather Forecasts, 2015.
+
+[84] Jonathan A. Weyn, Dale R. Durran, and Rich Caruana. Can Machines Learn to Predict Weather? Using Deep Learning to Predict Gridded 500-hPa Geopotential Height From Historical Weather Data. Journal of Advances in Modeling Earth Systems, 11(8):2680–2693, 2019. doi: https://doi.org/10.1029/2019MS001705. URL https://agupubs.onlinelibrary.wiley. com/doi/abs/10.1029/2019MS001705.
+
+[85] Jonathan A. Weyn, Dale R. Durran, and Rich Caruana. Improving Data-Driven Global Weather Prediction Using Deep Convolutional Neural Networks on a Cubed Sphere. Journal of Advances in Modeling Earth Systems, 12(9):e2020MS002109, 2020. doi: https: //doi.org/10.1029/2020MS002109. URL https://agupubs.onlinelibrary.wiley.com/ doi/abs/10.1029/2020MS002109. e2020MS002109 10.1029/2020MS002109.
+
+[86] Ross Wightman. Pytorch image models. pytorch-image-models, 2019.
+
+https://github.com/rwightman/
+
+[87] Jared Willard, Xiaowei Jia, Shaoming Xu, Michael Steinbach, and Vipin Kumar. Integrating physics-based modeling with machine learning: A survey. arXiv preprint arXiv:2003.04919, 1 (1):1–34, 2020.
+
+[88] Rong Zhang, Zhao-Yue Chen, Li-Jun Xu, and Chun-Quan Ou. Meteorological drought forecasting based on a statistical model with machine learning techniques in Shaanxi province, China. Science of The Total Environment, 665:338–346, 2019. ISSN 0048-9697. doi: https://doi.org/10.1016/j.scitotenv.2019.01.431. URL https://www.sciencedirect.com/ science/article/pii/S0048969719302281.
+
+16
+
+A Licenses and Terms of Use
+ClimateLearn is a software package that can be installed from the Python Package Index as follows.
+pip install climate-learn
+The source code is available online under the MIT License at https://github.com/ aditya-grover/climate-learn, and the accompanying documentation website is at https: //climatelearn.readthedocs.io/. The Extreme-ERA5 dataset does not exist as a distinct entity, but can be produced by running code provided in our library. The Machine Intelligence Group at UCLA is the maintainer of ClimateLearn.
+The sources for datasets provided by ClimateLearn are WeatherBench, ClimateBench, the Earth System Grid Federation (ESGF), the Copernicus Climate Data Store (CDS), and PRISM. The WeatherBench dataset (https://mediatum.ub.tum.de/1524895), ClimateBench dataset (https: //zenodo.org/record/7064308), and MPI-ESM1.2-HR outputs from ESGF (https://pcmdi. llnl.gov/CMIP6/TermsOfUse/TermsOfUse6-2.html) are available under the CC BY 4.0 license. Neither Copernicus (https://cds.climate.copernicus.eu/api/v2/terms/static/ licence-to-use-copernicus-products.pdf) nor PRISM (https://prism.oregonstate. edu/terms/) use a Creative Commons License. Instead, they each set forth their own terms of use, both of which permit reproduction and distribution for non-commercial purposes.
+
+B Experiment details
+
+B.1 Network architectures
+B.1.1 ResNet
+Our ResNet architecture is similar to that of WeatherBench [61, 60], in which each residual block consists of two identical convolutional modules: 2D convolution → LeakyReLU with α = 0.3 → Batch Normalization → Dropout.
+Table 4: Default hyperparameters of ResNet
+
+Hyperparameter
+Padding size Kernel size Stride Hidden dimension Residual blocks Dropout
+
+Meaning
+Padding size of each convolution layer Kernel size of each convolution layer Stride of each convolution layer Number of output channels of each residual block Number of residual blocks Dropout rate
+
+Value
+1 3 1 128 28 0.1
+
+Table 4 shows the hyperparameters for ResNet in all of our experiments. We use a convolutional layer with a kernel size of 7 at the beginning of the network. All paddings are periodic in the longitude direction and zeros in the latitude direction.
+B.1.2 UNet
+We borrow our UNet implementation from PDEArena [21]. Table 5 shows the hyperparameters for UNet in all of our experiments. Similar to ResNet, we use a convolutional layer with a kernel size of 7 at the beginning of the network, and all paddings are periodic in the longitude direction and zeros in the latitude direction.
+
+17
+
+Table 5: Default hyperparameters of UNet
+
+Hyperparameter
+Padding size Kernel size Stride Hidden dimension
+Channel multiplications
+Blocks Use attention Dropout
+
+Meaning
+Padding size of each convolution layer Kernel size of each convolution layer Stride of each convolution layer Base number of output channels Determine the number of output channels for Down and Up blocks Number of blocks If use attention in Down and Up blocks Dropout rate
+
+Value
+1 3 1 64
+[1, 2, 2]
+2 False 0.1
+
+B.1.3 ViT
+We use the standard Vision Transformer architecture [14] with minor modifications. We remove the class token and add a 1-hidden MLP prediction head which is applied to the tokens after the last attention layer to predict the outputs. Tabel 6 shows the hyperparameters for ViT in all of our experiments.
+
+Table 6: Default hyperparameters of ViT
+
+Hyperparameter
+p D Depth # heads
+MLP ratio
+Prediction depth Hidden dimension Drop path Dropout
+
+Meaning
+Patch size Embedding dimension Number of ViT blocks Number of attention heads Determine the hidden dimension of the MLP layer in a ViT block Number of layers of the prediction head Hidden dimension of the prediction head For stochastic depth [30] Dropout rate
+
+Value
+2 128 8 4
+4
+2 128 0.1 0.1
+
+B.2 Datasets
+B.2.1 ERA5
+We refer to https://confluence.ecmwf.int/display/CKB/ERA5%3A+data+documentation for more details of the raw ERA5 data. We use the preprocessed version of ERA5 at 5.625◦ from WeatherBench [61] for our experiments. Table 7 summarizes the variables we use for our experiments.
+B.2.2 Extreme-ERA5
+Calculating thresholds We use the surface temperature (T2m) data corresponding to the years 1979 − 2015 from ERA5 at a resolution of 5.625◦ to calculate the thresholds. The thresholds are localized i.e. they are calculated for every pixel on the grid. For a given timestamp and pixel, we first calculate a 7 day mean till that timestamp. Now, to account for neighboring regions/pixels, we set the localized mean as 0.44 * current pixel’s mean + 0.11 * sum of means of pixels sharing an edge + 0.027 * sum of means of pixels sharing a vertex but not an edge. Note, that there is no need of padding while accounting for neighboring pixels, since earth is a globe, the neighbors of leftmost pixels include the rightmost pixels and vice-versa. Finally, the 5th and 95th percentile values of this new mean data corresponding to every pixel is set as threshold. Building masks As the purpose of Extreme-ERA5 is evaluation of forecasting models under extreme weather conditions, we build it for test years i.e. 2017 − 2018 only. We first create a 2-D mask of
+18
+
+Table 7: ERA5 variables used in our experiments. Constant represents constant variables, Single represents surface variables, and Atmospheric represents atmospheric properties at the chosen altitudes.
+
+Type
+Static Static Static Single Single Single Single
+Atmospheric Atmospheric Atmospheric Atmospheric Atmospheric Atmospheric
+
+Variable name
+Land-sea mask Orography Latitude Toa incident solar radiation 2 metre temperature 10 metre U wind component 10 metre V wind component
+Geopotential U wind component V wind component Temperature Specific humidity Relative humidity
+
+Abbrev.
+LSM
+Tisr T2m U10 V10
+Z U V T Q R
+
+Levels
+50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925
+
+size, latitude x longitude, filled with zeros for every available timestamp in the test years. Similar to the calculating thresholds, we compute the mean of each pixel at every timestamp for T2m’s test data. We then, set the value for a given pixel in the mask as 1, if the mean value is outside the bounds set by the thresholds. Finally, during evaluation time, we use these masks to select subset of data.
+
+B.2.3 CMIP6
+MPI-ESM1.2-HR We use MPI-ESM1.2-HR, a dataset in the CMIP6 data repository for our experiments in Section 4.1.3. Table 8 summarizes the variables we use for our experiments.
+
+Table 8: MPI-ESM1.2-HR variables used in our experiments. Single represents surface variables and Atmospheric represents atmospheric properties at the chosen altitudes.
+
+Type
+Single Single Single
+Atmospheric Atmospheric Atmospheric Atmospheric Atmospheric
+
+Variable name
+2 metre temperature 10 metre U wind component 10 metre V wind component
+Geopotential U wind component V wind component Temperature Specific humidity
+
+Abbrev.
+T2m U10 V10
+Z U V T Q
+
+Levels
+50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925 50, 250, 500, 600, 700, 850, 925
+
+ClimateBench We adopt data from ClimateBench [82] for our climate projection experiment. ClimateBench contains simulated data from experimental runs by the Norwegian Earth System Model [69], a member of CMIP6, on different emission scenarios. Specifically, ClimateBench includes 7 esmission scenarios: historical, ssp126, ssp370, ssp585, hist-aer, hist-GHG, and ssp245. We refer to the original ClimateBench paper for the exact temporal coverage and more details of these scenarios.
+B.3 Training details
+B.3.1 Continuous training
+Continuous models additionally condition on lead times to make predictions. To do this, we add the lead time value in hours divided by 100 to the input channels to make the model aware of the lead time it is forecasting at. During training, we randomize the lead time from 6 hours to 5 days
+19
+
+∆t ∼ U[6, 120], and during evaluation, we fix the lead time to a certain value to evaluate the model’s performance at a certain lead time. This setting was commonly used in previous works [50, 61].
+
+B.3.2 Software and hardware stack
+We use PyTorch [51], numpy [24] and xarray [29] to manage our data and model training. We also use timm [86] for our ViT implementation. All training is done on 10 AMD EPYC 7313 CPU cores and one NVIDIA RTX A5000 GPU. We leverage fp16 floating point precision in our experiments.
+
+B.4 Metrics
+
+We use the following definitions in our metric formulations
+
+• N is the number of data points • H is the number of latitude coordinates. • W is the number of longitude coordinates. • X and X˜ are the ground-truth and prediction, respectively.
+
+The latitude weighting function is given by
+
+L(i) =
+1 H
+
+cos(Hi)
+
+H i=1
+
+cos(Hi)
+
+(1)
+
+B.4.1 Deterministic weather forecasting metrics
+
+Root mean square error (RMSE)
+
+1N RMSE =
+N
+
+1 H ×W
+
+H
+
+W
+L(i)(X˜k,i,j − Xk,i,j )2.
+
+(2)
+
+k=1
+
+i=1 j=1
+
+Anomaly correlation coefficient (ACC) is the spatial correlation between prediction anomalies X˜ ′
+′
+relative to climatology and ground truth anomalies X relative to climatology:
+
+ACC =
+
+k,i,j
+
+L(i)X˜k′ ,i,j
+
+′
+Xk,i,j
+
+,
+
+(3)
+
+k,i,j L(i)X˜k′2,i,j k,i,j L(i)Xk′2,i,j
+
+X˜ ′
+
+=
+
+X˜ ′
+
+−
+
+′
+C, X
+
+=
+
+′
+X
+
+−
+
+C,
+
+(4)
+
+in which climatology C is the temporal mean of the ground truth data over the entire test set
+
+C
+
+=
+
+1 N
+
+k X.
+
+B.4.2 Probabilistic weather forecasting metrics
+
+Spread-skill ratio (Spread by RMSE) measures a probabilistic forecast’s reliability. Let N be the number of forecasts produced either by ensembling or drawing samples from a parametric prediction. Spread is given by
+
+1N Spread =
+N
+
+1 H ×W
+
+H
+
+W
+L(i)var(X˜i,j )
+
+(5)
+
+k
+
+i=1 j=1
+
+Continuous ranked probability score measures a probabilistic forecast’s calibration and sharpness. Let F denote the CDF of the forecast distribution. For a Gaussian distribution parameterized by mean µ and standard deviation σ, the closed-form, differentiable solution is
+
+X −µ
+
+X −µ
+
+X −µ
+
+1
+
+CRPS(Fµ,σ, X) = σ
+
+2Φ σ
+
+σ
+
+− 1 + 2ϕ
+
+σ
+
+−√ π
+
+(6)
+
+where Φ and ϕ are the CDF and PDF of the standard normal distribution, respectively.
+
+20
+
+B.4.3 Climate downscaling metrics
+
+Root mean square error (RMSE) This is the same as Equation (2).
+
+Mean bias measures the difference between the spatial mean of the prediction and the spatial mean of the ground truth. A positive mean bias shows an overestimation, while a negative mean bias shows an underestimation of the mean value.
+
+1 Mean bias =
+
+N HW
+X˜ −
+
+1
+
+N HW
+X
+
+(7)
+
+N ×H×W
+
+N ×H×W
+
+k=1 i=1 j=1
+
+k=1 i=1 j=1
+
+Pearson coefficient measures the correlation between the prediction and the ground truth. We first flatten the prediction and ground truth, and compute the metric as follows:
+
+cov(X˜ , X)
+
+ρX˜ ,X = σX˜ σX
+
+(8)
+
+Masking for PRISM Since PRISM does not record data over the oceans, we mask out those values for evaluation. Concretely, we set NaN values in the ground truth data to 0. Then, we multiply the model’s predictions by a binary mask that is 0 wherever the ground truth data is originally NaN and is 1 everywhere else.
+
+B.4.4 Climate projection metrics
+
+Normalized spatial root mean square error (NRMSEs) measures the spatial discrepancy between the temporal mean of the prediction and the temporal mean of the ground truth:
+
+NRMSEs =
+
+1
+
+N X˜ − 1
+
+N
+X
+
+2
+
+N
+
+N
+
+1N ⟨X⟩ ,
+N
+
+(9)
+
+k=1
+
+k=1
+
+k=1
+
+in which ⟨A⟩ is the global mean of A:
+
+1
+
+HW
+
+⟨A⟩ = H ×W
+
+L(i)Ai,j
+
+(10)
+
+i=1 j=1
+
+Normalized global root mean square error (NRMSEg) measures the discrepancy between the global mean of the prediction and the global mean of the ground truth:
+
+NRMSEg =
+
+1N
+
+2
+⟨X˜ ⟩ − ⟨X⟩
+
+1N ⟨X⟩ .
+
+N
+
+N
+
+(11)
+
+k=1
+
+k=1
+
+Total normalized root mean square error (Total) is the weighted sum of NRMSEs and NRMSEg:
+
+Total = NRMSEs + α · NRMSEg,
+
+(12)
+
+where α is chosen to be 5 as suggested by Watson-Parris et al. [82].
+
+C Additional experiments
+C.1 Climate projection
+Task We consider the task of predicting the annual mean distributions of 4 target variables in ClimateBench [82]: surface temperature, diurnal temperature range, precipitation, and the 90th percentile of precipitation.
+Baselines We compare ResNet, UNet, and ViT, three deep learning models supported by ClimateLearn with CNN-LSTM, the deep learning baseline in ClimateBench. The network architectures of the three models are identical to Appendix B.1.
+
+21
+
+Data We regrid the original ClimateBench data to 5.625◦ for easy training and evaluation. The input variables include 4 forcing factors: carbon dioxide (CO2), sulfur dioxide (SO2), black carbon (BC), and methane (CH4). Similar to the deep learning baseline in ClimateBench, we stack 10 consecutive years to predict the target variables of the current year. We standardize the input channels to have 0 mean and 1 standard deviation, but do not standardize the output variables. Training and validation data includes the historical data, ssp126, ssp370, ssp585, and the historical data with aerosol (hist-aer) and greenhouse gas (hist-GHG) forcings, and test data includes ssp245. We split train/validation data with a ratio of 0.9/0.1.
+Training and evaluation We train one network for each target variable. We use the same optimizer and scheduler as in Section 4.1. We train for 50 epochs with 16 batch size, and use early stopping with a patience of 5 epochs. We use mean-squared error as the loss function and evaluation metric. We report normalized spatial root mean square error (NRMSEs), normalized global root mean square error (NRMSEg), and Total = NRMSEs + 5×NRMSEg as test metrics.
+Results Table 9 shows the performance of different baselines on ClimateBench. CNN-LSTM and UNet are the best-performing methods, with each achieving the best performance in 5/12 metrics, followed by ResNet which performs best on 2/12 metrics. ViT achieves a reasonable performance but underperforms the CNN-based methods.
+
+Table 9: Performance of different deep learning baselines on ClimateBench. CNN-LSTM result is taken from ClimateBench.
+
+CNN-LSTM ResNet UNet ViT
+
+Surface temperature
+
+NRMSEs NRMSEg Total
+
+0.107 0.182 0.097 0.191
+
+0.044 0.042 0.046 0.092
+
+0.327 0.395 0.328 0.650
+
+Diurnal temperature range
+
+NRMSEs NRMSEg Total
+
+9.917 9.128 6.300 7.725
+
+1.372 0.737 0.946 0.746
+
+16.778 12.810 11.030 11.460
+
+Precipitation
+
+NRMSEs NRMSEg
+
+2.128 2.930 2.483 2.909
+
+0.209 0.180 0.141 0.327
+
+Total
+3.175 3.828 3.187 4.545
+
+90th percentile precipitation
+
+NRMSEs NRMSEg Total
+
+2.610 3.413 3.122 3.615
+
+0.346 0.286 0.282 0.418
+
+4.339 4.845 4.532 5.704
+
+C.2 Extreme weather prediction
+Table 10 shows the performance of different models across various different lead times on the default test split and Extreme-ERA5. As discussed in Section 4.1.2, the performance of all models except Climatology is better on the extreme split than on the default split.
+
+C.3 Dataset robustness
+
+Table 11 shows the comparison of the performance for different models when trained on ERA5 and evaluated on CMIP6 and vice versa at 3 and 5 days of lead time. For the CMIP6 evaluation purposes, the models trained on ERA5 were slightly worse than the moodels trained on CMIP6. Surprisingly, for evaluating on ERA5, models trained on CMIP6 were comparable, if not slightly better to the ones trained on ERA5. These results are in line with results of [50], thus highlighting the dataset usefulness of CMIP6 over ERA5. Note that the data’s raw size is roughly similar for both the datasets as despite the ERA5’s temporal training range being 1979-2010 in this setup, it’s data availability frequency is 1 hour compared to 6 hour in CMIP6.
+To find out whether this superiority of CMIP6 over ERA5 is just a result of differences in temporal range, we conducted the similar study but with same dataset temporal characteristics (i.e. setting training years as 1979-2010 and subsampling the data at 6 hours). This time the results just for ResNet at 3 day lead time is shown in Table 2 and for all models at different lead times, is shown in Table 12. These results show that the performance is slightly worse for both the cases now. Thus Table 10: Latitude-weighted RMSE on the normal and extreme test splits of ERA5 for different lead times.
+
+T2M
+Climatology Persistence ResNet U-Net ViT
+
+6 Hours
+5.87 / 6.51 2.76 / 2.99 0.72 / 0.72 0.76 / 0.77 0.78 / 0.80
+
+1 Day
+5.87 / 6.53 2.13 / 1.78 0.94 / 0.91 1.04 / 0.99 1.09 / 1.05
+
+3 Days
+5.87 / 6.58 2.99 / 2.42 1.50 / 1.33 1.65 / 1.43 1.71 / 1.55
+
+5 Days
+5.88 / 6.65 3.26 / 2.61 2.20 / 1.86 2.26 / 1.88 2.38 / 2.04
+
+10 Days
+5.89 / 6.76 3.59 / 2.89 2.78 / 2.39 2.76 / 2.44 2.78 / 2.30
+
+22
+
+Table 11: Performance of different models trained on one dataset (columns) and evaluated on another (rows). Training data for CMIP6 is available from the years 1850 − 2010, at a 6 hour frequency. Training data for ERA5 is available from years 1979 − 2010, at an one hour frequency.
+
+ERA5 CMIP6
+
+ResNet U-Net ViT ResNet U-Net ViT
+
+Z500 T850 T2m
+Z500 T850 T2m
+Z500 T850 T2m
+Z500 T850 T2m
+Z500 T850 T2m
+Z500 T850 T2m
+
+3 Days
+
+ERA5
+
+CMIP6
+
+ACC RMSE ACC RMSE
+
+0.95 315.07 0.96 302.08 0.93 1.84 0.91 2.08 0.95 1.56 0.94 1.85
+
+0.92 388.17 0.94 337.34 0.91 2.09 0.90 2.17 0.95 1.72 0.93 1.89
+
+0.93 380.22 0.93 373.57 0.91 2.08 0.89 2.31 0.94 1.73 0.92 2.10
+
+0.95 351.48 0.98 240.37 0.92 2.09 0.96 1.43 0.94 1.88 0.97 1.32
+
+0.92 425.23 0.96 300.19 0.90 2.30 0.95 1.67 0.93 2.00 0.96 1.46
+
+0.93 413.76 0.95 341.58 0.90 2.25 0.94 1.83 0.92 2.15 0.95 1.59
+
+5 Days
+
+ERA5
+
+CMIP6
+
+ACC RMSE ACC RMSE
+
+0.77 646.57 0.86 531.47 0.80 3.00 0.83 2.77 0.89 2.35 0.90 2.29
+
+0.74 686.90 0.82 590.80 0.78 3.10 0.81 2.93 0.89 2.38 0.89 2.37
+
+0.68 749.82 0.82 592.36 0.75 3.27 0.80 2.97 0.88 2.54 0.88 2.52
+
+0.77 701.20 0.89 496.04 0.79 3.19 0.89 2.33 0.88 2.54 0.94 1.87
+
+0.75 732.39 0.85 575.38 0.78 3.29 0.87 2.57 0.88 2.57 0.93 1.99
+
+0.68 820.65 0.85 577.24 0.75 3.48 0.86 2.60 0.85 2.88 0.92 2.03
+
+Table 12: Performance of different models trained on one dataset (columns) and evaluated on another (rows). The training years and data availability frequency is same for both the datasets.
+
+ERA5 CMIP6
+
+ResNet U-Net ViT ResNet U-Net ViT
+
+Z500 T850 T2m
+Z500 T850 T2m
+Z500 T850 T2m
+Z500 T850 T2m
+Z500 T850 T2m
+Z500 T850 T2m
+
+3 Days
+
+ERA5
+
+CMIP6
+
+ACC RMSE ACC RMSE
+
+0.95 322.86 0.94 345.00 0.93 1.90 0.90 2.21 0.95 1.62 0.93 1.94
+
+0.92 401.08 0.91 422.77 0.90 2.17 0.88 2.42 0.94 1.81 0.91 2.19
+
+0.91 426.70 0.90 444.14 0.89 2.27 0.87 2.51 0.94 1.88 0.91 2.19
+
+0.95 357.66 0.96 306.86 0.91 2.11 0.94 1.70 0.93 1.91 0.96 1.53
+
+0.92 440.82 0.93 401.89 0.89 2.37 0.92 2.05 0.91 2.23 0.94 1.74
+
+0.91 460.14 0.92 430.63 0.89 2.40 0.91 2.15 0.91 2.15 0.94 1.82
+
+5 Days
+
+ERA5
+
+CMIP6
+
+ACC RMSE ACC RMSE
+
+0.79 624.20 0.78 0.81 2.91 0.79 0.90 2.33 0.88
+
+646.48 3.11 2.55
+
+0.74 685.75 0.73 0.78 3.10 0.76 0.89 2.44 0.86
+
+712.62 3.29 2.73
+
+0.72 698.08 0.72 0.78 3.12 0.76 0.89 2.43 0.87
+
+720.15 3.31 2.69
+
+0.79 682.76 0.81 637.85 0.81 3.09 0.84 2.82 0.88 2.51 0.91 2.24
+
+0.74 739.94 0.76 712.67 0.78 3.27 0.81 3.04 0.86 2.73 0.90 2.31
+
+0.73 753.18 0.75 727.88 0.77 3.29 0.80 3.06 0.87 2.68 0.90 2.32
+
+showing that the performance improvement of training over CMIP6 than ERA5 is likely just the bigger temporal range.
+D Visualizations
+ClimateLearn provides visualization functionality to help with an intuitive understanding of model performance. Below is an example figure generated by ClimateLearn for visualizing the quality of a model’s forecast. Each row represents a distinct time in the test set. The leftmost column shows weather conditions at the time the model is making a prediction from. The next column shows the
+23
+
+ground truth conditions at the forecast horizon. The next column shows the model’s predictions. The last column shows the model’s bias, and its per-pixel forecast error.
+Figure 4: Example visualization of deterministic forecasting. Additionally, ClimateLearn can generate the rank histogram for probabilistic forecasts. A rank histogram that resembles a uniform distribution means that the ground truth value is indistinguishable from any member of the forecast ensemble. A rank histogram that is skew right occurs when the ground truth is consistently lower than the ensemble prediction. A rank histogram that appears U-shaped is indicative of both low biases and high biases. An example figure generated by ClimateLearn for visualizing the rank histogram is shown below.
+
+Figure 5: Example visualization of the rank histogram for probabilistic forecasting. We show an example of how to generate another visualization called “mean-bias” in the next section.
+
+E Code snippets
+ClimateLearn can be used to download heterogeneous climate data from a variety of sources in a single function call. Here, we provide an example for downloading ERA5 2-meter temperature data at 5.625◦ resolution from WeatherBench.
+
+1 from climate_learn.data import download
+
+2 download(
+
+3
+
+root="./weatherbench-data",
+
+4
+
+source="weatherbench",
+
+5
+
+dataset="era5",
+
+6
+
+resolution="5.625",
+
+7
+
+variable="2m_temperature"
+
+8)
+
+24
+
+Further, ClimateLearn can process downloaded data into a form that is loadable into PyTorch. In fewer than 30 lines, the following code loads raw ERA5 data; normalizes it; splits it into train, validation, testing sets; and prepares batches for the forecasting task.
+
+1 # For flexibility with loading datasets and implementing new ones 2 # in the future, ClimateLearn's data processing pipeline is made 3 # up of three parts: the climate dataset (e.g., ERA5), the task 4 # (e.g., forecasting), and the PyTorch dataset (e.g., Map). These 5 # are all combined into a Pytorch Lightning DataModule.
+
+6 from climate_learn.data.climate_dataset.args import ERA5Args
+
+7 from climate_learn.data.task.args import ForecastingArgs
+
+8 from climate_learn.data.dataset import MapDatasetArgs
+
+9 from climate_learn.data import DataModule
+
+10
+11 # Next, we define the arguments: the location of the data, the 12 # variables we will use as input/target, and the data splits
+
+13 root
+
+= "./weatherbench-data"
+
+14 variables = ["2m_temperature"]
+
+15 train_years = range(1979, 2016)
+
+16 val_years = range(2016, 2017)
+
+17 test_years = range(2017, 2019)
+
+18
+19 # Next, we construct the arguments for the three parts of the data 20 # processing pipeline to build the training dataset.
+
+21 climate_dataset_args = ERA5Args(root, variables, train_years)
+
+22 task_args = ForecastingArgs(
+
+23
+
+[f"era5:{var}" for var in variables], # format - dataset:var
+
+24
+
+[f"era5:{var}" for var in variables], # format - dataset:var
+
+25
+
+pred_range=72,
+
+# hours ahead to predict
+
+26
+
+history=3,
+
+# past time steps
+
+27
+
+subsample=6
+
+# hours per time step
+
+28 )
+
+29 train_data_args = MapDatasetArgs(climate_dataset_args, task_args)
+
+30
+31 # The validation and test datasets can be constructed easily by 32 # copying arguments from the train dataset which are the same and 33 # modifying only what is needed.
+
+34 val_data_args = train_data_args.create_copy({
+
+35
+
+"climate_dataset_args": {"years": val_years}
+
+36 })
+
+37 test_data_args = val_data_args.create_copy({
+
+38
+
+"climate_dataset_args": {"years": test_years}
+
+39 })
+
+40
+41 # Finally, we can unify all parts of the data pipeline to get a 42 # single PyTorch Lightning data module.
+
+43 dm = DataModule(train_data_args, val_data_args, test_data_args)
+
+With the loaded data, ClimateLearn can be used to build, train, and evaluate a model in fewer than 20 lines of code.
+1 import climate_learn as cl 2 from climate_learn.training import Trainer
+25
+
+3
+
+4 model_kwargs = {
+
+5
+
+"in_channels": 1, # predicting 2m_temperature
+
+6
+
+"history": 3,
+
+# matching 'ForecastingArgs'
+
+7
+
+"n_blocks": 4
+
+# number of residual blocks to use
+
+8} 9 optim_kwargs = {}
+
+# use the default settings
+
+10 mm = cl.load_forecasting_module(
+
+11
+
+data_module=dm,
+
+12
+
+model="resnet",
+
+13
+
+model_kwargs=model_kwargs,
+
+14
+
+optim_kwargs=optim_kwargs
+
+15 )
+
+16
+
+17 trainer = Trainer()
+
+18 trainer.fit(mm, dm)
+
+19 trainer.test(mm, dm)
+
+20
+
+ClimateLearn can also be used to load pre-defined models (e.g., persistence, Rasp and Thuerey [60]) as follows.
+
+1 persistence = cl.load_forecasting_module(
+
+2
+
+data_module=dm,
+
+3
+
+preset="persistence"
+
+4)
+
+5 rasp_theurey_2020 = cl.load_forecasting_module(
+
+6
+
+data_module=dm,
+
+7
+
+preset="rasp-theurey-2020"
+
+8)
+
+ClimateLearn can use the trained forecasting models to produce visualizations in a single line of code. For example, one visualization of interest is the mean bias, which shows the expected error of the model’s forecast, per pixel, over the evaluation period.
+1 from climate_learn.utils.visualize import visualize_mean_bias 2 visualize_mean_bias(persistence, dm)
+
+This graphic shows that, on average, persistence has little bias below the equator. Over the northern part of North America, persistence achieves negative mean bias, which means it generally underpredicts 2-meter temperature in that region. Meanwhile, in the northern part of Europe, persistence achieves positives mean bias, indicating overprediction.
+
+26
+
+Figure 6: Visualization of the mean bias of temperature 27
+

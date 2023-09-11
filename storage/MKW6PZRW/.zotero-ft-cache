@@ -1,0 +1,1006 @@
+Posted on 4 Aug 2023 — The copyright holder is the author/funder. All rights reserved. No reuse without permission. — https://doi.org/10.22541/essoar.169111361.10601606/v1 — This a preprint and has not been peer reviewed. Data may be preliminary.
+
+Can artiﬁcial intelligence-based weather prediction models simulate the butterﬂy eﬀect?
+Tobias Selz1 and George C. Craig2 1Deutsches Zentrum fu¨r Luft- und Raumfahrt 2Institute of Meteorology - University of Munich August 6, 2023
+Abstract
+We investigate error growth from small-amplitude initial condition perturbations, simulated with a recent artiﬁcial intelligencebased weather prediction model. From past simulations with standard physically-based numerical models as well as from theoretical considerations it is expected that such small-amplitude initial condition perturbations would grow very fast initially. This fast growth then sets a ﬁxed and fundamental limit to the predictability of weather, a phenomenon known as the butterﬂy eﬀect. We ﬁnd however, that the AI-based model completely fails to reproduce the rapid initial growth and hence would suggest an inﬁnite predictability of the atmosphere. In contrast, if the initial perturbations are large and comparable to current uncertainties in the estimation of the initial state, the AI-based model basically agrees with physically-based simulations, although some deﬁcits are still present.
+1
+
+manuscript submitted to Geophysical Research Letters
+
+1
+
+Can artiﬁcial intelligence-based weather prediction
+
+2
+
+models simulate the butterﬂy eﬀect?
+
+3
+
+T. Selz1, G. C. Craig1,2
+
+4
+
+1Deutsches Zentrum fu¨r Luft- und Raumfahrt, Oberpfaﬀenhofen
+
+5
+
+2Ludwig-Maximilians-Universita¨t, Mu¨nchen
+
+6
+
+Key Points:
+
+7
+
+• Current AI-based models cannot simulate the butterﬂy eﬀect and suggest inﬁnite
+
+8
+
+atmospheric predictability
+
+9
+
+• Their error growth rate and structure remain similar to synoptic-scale error growth
+
+10
+
+regardless of the amplitude of the initial perturbation
+
+Corresponding author: Tobias Selz, tobias.selz@lmu.de –1–
+
+manuscript submitted to Geophysical Research Letters
+
+11 Abstract 12 We investigate error growth from small-amplitude initial condition perturbations, sim13 ulated with a recent artiﬁcial intelligence-based weather prediction model. From past 14 simulations with standard physically-based numerical models as well as from theoret15 ical considerations it is expected that such small-amplitude initial condition perturba16 tions would grow very fast initially. This fast growth then sets a ﬁxed and fundamen17 tal limit to the predictability of weather, a phenomenon known as the butterﬂy eﬀect. 18 We ﬁnd however, that the AI-based model completely fails to reproduce the rapid ini19 tial growth and hence would suggest an inﬁnite predictability of the atmosphere. In con20 trast, if the initial perturbations are large and comparable to current uncertainties in the 21 estimation of the initial state, the AI-based model basically agrees with physically-based 22 simulations, although some deﬁcits are still present.
+
+23 Plain Language Summary
+
+24
+
+Even if perfect observations and models were available, the time interval for which
+
+25 weather forecasts can be accurate is limited. This limit is related to fundamental phys-
+
+26 ical characteristics of the earth’s atmosphere, which make small errors grow very fast and
+
+27 spread out, a feature know as the butterﬂy eﬀect. In this article, we test if an artiﬁcial-
+
+28 intelligence weather prediction model is able to reproduce this butterﬂy eﬀect. There-
+
+29 fore, we computed several weather forecasts with the model that diﬀered only very slightly
+
+30 in their starting conditions. We ﬁnd, that in contrast to standard weather forecasting
+
+31 models, the initial diﬀerence grow only slowly and there is no indication of a butterﬂy
+
+32 eﬀect at all. This provides an example of how machine learning models can fail to re-
+
+33 produce a fundamental physical principle, even though it can accurately mimic many ob-
+
+34 served behaviors.
+
+35 1 Introduction
+
+36
+
+The “butterﬂy” eﬀect refers to a well-known and unfortunate basic property of the
+
+37 atmospheric circulation. Tiny uncertainties or errors in the initial conditions are rapidly
+
+38 ampliﬁed, creating a fundamental, intrinsic predictability limit for weather forecasting
+
+39 that cannot be overcome. This limit was ﬁrst identiﬁed by Lorenz (1969), and has since
+
+40 been studied in detail using various methods, including complex numerical weather pre-
+
+41 diction models at very high resolutions or stochastic parameterizations (Judt, 2018; Zhang
+
+42 et al., 2019; Selz et al., 2022). The fundamental reason for the existence of this limit is
+
+43 scale interactions (Lorenz, 1969; Palmer et al., 2014), especially originating from the con-
+
+44 vective scale, where highly nonlinear dynamics, enforced by latent heat release can lead
+
+45 to very rapid error growth (Zhang et al., 2007; Selz & Craig, 2015b).
+
+46
+
+If the amplitude of the initial perturbations is suﬃciently small, its spatial struc-
+
+47 ture (i.e., the scale of the “butterﬂy”) is no longer important and tiny errors on any scale
+
+48 will lead to rapid growth, saturation of small-scale errors and subsequent upscale error
+
+49 growth (Durran & Gingrich, 2014; Sun & Zhang, 2016). However, larger-amplitude un-
+
+50 certainties on synoptic and planetary scales grow by a diﬀerent mechanism, sometimes
+
+51 called up-amplitude growth, where errors grow exponentially in time at the same rate
+
+52 for all scales until saturation (Rotunno & Snyder, 2008; Durran & Gingrich, 2014). On
+
+53 average, the initial uncertainty that is present in current operational weather prediction
+
+54 systems is large enough that this latter mechanism dominates (Selz et al., 2022). How-
+
+55 ever, the transition to former process would occur already if the initial uncertainty was
+
+56 reduced to 10%-20% of its current level. This raises the possibility that for some weather
+
+57 situations, the butterﬂy eﬀect may already limit forecast skill which is a topic of active
+
+58 research (e.g., Craig et al., 2021).
+
+–2–
+
+manuscript submitted to Geophysical Research Letters
+
+59
+
+In current practice, weather forecasts are computed based on a set of partial dif-
+
+60 ferential equations (PDEs), which are mathematical formulations of the laws of physics.
+
+61 Those PDEs are then discretized, approximated and optimized using various numerical
+
+62 methods and usually solved on massive-parallel computer architectures. Recently, a novel
+
+63 approach is been pursued, where weather forecasts are computed with artiﬁcial-intelligence
+
+64 (AI) based, data-driven methods. Those methods apply deep neural networks, that have
+
+65 been trained on a series of historical atmospheric states (Weyn et al., 2019; Pathak et
+
+66 al., 2022; Lam et al., 2022; Bi et al., 2023), usually obtained from reanalysis data sets
+
+67 like ERA5 (Hersbach et al., 2020). Neural networks estimate the future atmospheric state
+
+68 from extrapolating and combining developments that happened in the past without any
+
+69 direct knowledge of physical laws or constraints. Recent results have shown forecast skill
+
+70 comparable, or even superior to conventional forecast models (e.g., Lam et al., 2022; Bi
+
+71 et al., 2023), with the AI models having the huge advantage that, once trained, they re-
+
+72 quire much less computational eﬀort to compute a weather forecast. This could help to
+
+73 reduce cost and energy consumption in weather forecasting and/or free resources to ex-
+
+74 tend ensemble sizes or data assimilation.
+
+75
+
+In this paper, we investigate the ability of a state-of-the-art AI-based model (Pangu)
+
+76 to simulate the butterﬂy eﬀect, i.e. very fast error growth from very small-amplitude ini-
+
+77 tial condition perturbations. We compare these results to simulations with a state-of-
+
+78 the-art numerical prediction model based on PDE discretizations (ICON), including a
+
+79 simulation with very high resolution. We also investigate whether the AI model is able
+
+80 to accurately simulate error growth from current estimates of the initial condition un-
+
+81 certainty.
+
+82 2 Experiments
+
+83
+
+2.1 The AI-based model Pangu
+
+84
+
+As a representative of the class of data-driven AI-based models, we apply “Pangu-
+
+85 Weather” (Bi et al., 2023), which has very recently been published and is free to use for
+
+86 research purposes. It has been shown to produce slightly better deterministic forecasts
+
+87 than the leading operational weather prediction model (IFS), evaluated with standard
+
+88 metrics like root-mean-square error or anomaly correlation with respect to the ERA5 re-
+
+89 analysis. Pangu consists of a 3D deep neural network that has been trained with 39 years
+
+90 of ERA5 data. The model state of Pangu consists of 13 pressure levels (from 1000 hPa
+
+91 to 50 hPa) with 5 upper-air variables (horizontal wind, temperature, geopotential and
+
+92 speciﬁc moisture), which are complemented by 4 surface variables (10-m horizontal wind,
+
+93 2-m temperature and mean sea-level pressure). Additional variables like precipitation
+
+94 are not computed. All variables are deﬁned on a regular 0.25◦-latlon grid. These vari-
+
+95 ables are propagated forward in time, where 4 diﬀerent networks are provided for 4 dif-
+
+96 ferent time steps (1 h, 3 h, 6 h, 24 h). Longer time steps produce better forecasts, hence
+
+97 a “hierarchical temporal aggregation” technique is used, where ﬁrst the longest time step
+
+98 (24 h) is applied consecutively, followed by the next shorter time step and so on, until
+
+99 the desired time resolution is reached. For example, to produce a set of hourly forecasts
+
+100 out to three days, the 24-h network is used to produce forecasts at 24 h, 48 h and 72 h,
+
+101 the 6-h time step network is then used to ﬁll in times 6 h, 12 h, 18 h, 30 h, 36 h, etc.,
+
+102 followed by application of the 3 h and then the 1-h time step networks so that a fore-
+
+103 cast is available for every hour.
+
+104
+
+2.2 The numerical weather prediction model ICON
+
+105
+
+The Pangu simulations will be compared to simulations with ICON (ICOsahedral
+
+106 Non-hydrostatic model; Z¨angl et al., 2015), which is a complex PDE-based numerical weather
+
+107 prediction model, hence it solves a discretized and approximated version of mathemat-
+
+108 ical equations that describe the atmosphere. ICON consists of a non-hydrostatic dynam-
+
+–3–
+
+manuscript submitted to Geophysical Research Letters
+
+109 ical core and operates on an icosaheadral grid with terrain-following height levels. Pro-
+
+110 cesses, that are not properly resolved with the grid resolution or that are not part of the
+
+111 ﬂuid equations are parameterized, which means estimated with simpliﬁed and approx-
+
+112 imated methods. Such processes include convection, as well as cloud microphysics, ra-
+
+113 diative interactions, turbulence, gravity wave drag and interactions with the surface bound-
+
+114
+
+ary.
+
+115
+
+2.3 Initial conditions
+
+116
+
+For the experiments in this paper, we focus on simulations initialized at 26 June
+
+117 2021, 00 UT. This case was originally selected because it showed signiﬁcant amounts of
+
+118 continental summertime convection over North America during the following days, which
+
+119 could lead to rapid error growth from small uncertainties. However, since the simula-
+
+120 tions are global, the atmosphere at that time also contains maritime and wintertime con-
+
+121 ditions, and the global diagnostics applied here will be averages over many diﬀerent weather
+
+122 systems. We use the operational analysis from ECMWF to initialize ICON and the ERA5
+
+123 reanalysis to initialize Pangu.
+
+124
+
+To provide an estimate of the initial condition uncertainty in current weather pre-
+
+125 diction systems, initial perturbations are retrieved from the ensemble data assimilation
+
+126 (EDA) system at ECMWF (Isaksen et al., 2010). The EDA system uses perturbed ob-
+
+127 servations and a model uncertainty representation scheme to estimate the initial condi-
+
+128 tion uncertainty, sampled with a 50 member ensemble. Those perturbations where in-
+
+129 terpolated to the Pangu and ICON grids and added to the analysis state to create an
+
+130 ensemble of initial conditions.
+
+131
+
+2.4 Experiments
+
+132
+
+For this paper, we conducted ﬁve diﬀerent experiments, which will be labeled as
+
+133 Pangu-100%, Pangu-0.1%, ICON-LR-100%, ICON-LR-0.1% and ICON-HR-0.1%. The
+
+134 ﬁrst term describes the model that has been used (Pangu or ICON). While the spatial
+
+135 resolution of Pangu is ﬁxed, with ICON we simulate two diﬀerent resolutions: LR (low
+
+136 resolution, R2B7 or about 20 km grid spacing), which is a horizontal resolution similar
+
+137 to that of Pangu, and HR (high resolution, R2B10 or about 2.5 km grid spacing), which
+
+138 allows a convection-permitting simulation. Hence, we turned oﬀ the parameterization
+
+139 scheme for deep convection. This latter experiment is believed to provide the best es-
+
+140 timate of convective-scale error growth and the butterﬂy eﬀect currently available, since
+
+141 it explicitly resolves the convective motions. It therefore does not any more rely on a con-
+
+142 vection parameterization, which has been shown to slow down error growth (Selz & Craig,
+
+143
+
+2015a).
+
+144
+
+The percentage factor (100% or 0.1%) indicates a rescaling of the initial condition
+
+145 perturbations derived from the EDA system. 100% means we took them as they are with-
+
+146 out any changes and they represent the current level of initial condition uncertainty. 0.1%
+
+147 means we reduced their amplitude by a factor of 1000, which leads to a very small un-
+
+148 certainty in the initial condition ensemble. These experiments will represent “butterﬂy”-
+
+149 like perturbations and provide estimates of the intrinsic limit. They are also sometimes
+
+150 called “identical twin” experiments. Note, that the initial perturbations do not include
+
+151 singular vectors and the models do not contain any stochastic parameterization or rep-
+
+152 resentation of model uncertainty. These experiments are therefore suited to estimate ba-
+
+153 sic atmospheric error-growth properties in a perfect-model context and not designed to
+
+154 produce reliable probabilistic forecasts.
+
+155
+
+While running Pangu is very cheap and running ICON at the low resolution is pretty
+
+156 aﬀordable, the high resolution ICON simulations at global convection-permitting reso-
+
+157 lution are very expensive. As a result, we only could simulate 5 ensemble members out
+
+–4–
+
+manuscript submitted to Geophysical Research Letters
+
+158 of 50 and with three days of integration time. We also abstained from producing a high159 resolution ICON simulation for the 100% initial perturbations, since previous studies sug160 gest that the small-scale processes that the HR simulation would represent more accu161 rately are not crucially relevant there (Selz et al., 2022). All experiments were computed 162 on GPU, the ICON experiments on the Atos computer at ECMWF. The computational 163 costs were 16 core hours for each Pangu experiment, 2,900 core hours for each ICON164 LR experiment and 1,300,000 core hours for the ICON-HR experiment.
+
+165
+
+The setup of the HR simulations is further complicated by the fact that the anal-
+
+166 yses from ECMWF or from ERA5 do not contain convective-scale motions, because their
+
+167 resolution is similar to that of Pangu or ICON-LR. Therefore, the ICON-HR experiment
+
+168 needs to spin up those small scales ﬁrst and starting this experiment just from the per-
+
+169 turbed analysis would not produce the correct perturbation growth. To allow the small
+
+170 scales to spin up, we started one simulation of ICON-HR one day earlier (from the 25
+
+171 June 2021, 00 UT analysis) and ran it for 24 hours. The complete model state was then
+
+172 written to disk, the rescaled EDA perturbations were added and the 5-member ensem-
+
+173 ble was run for three days lead time. We consider the slight diﬀerence in the initial state
+
+174 at the 26 June 2021, 00 UT much less signiﬁcant than investigating error growth in a
+
+175 HR simulation where the small-scales are not present in the initial conditions.
+
+176
+
+2.5 Diagnostics
+
+177
+
+In this study we focus on diﬀerence kinetic energy (DKE) on 300 hPa as our main
+
+178 diagnostic. For an ensemble, DKE is deﬁned as
+
+DKE = var(u) + var(v),
+
+(1)
+
+179 with the horizontal wind components u and v and the variance taken over the ensem180 ble dimension. DKE has been frequently used to study error growth and intrinsic pre181 dictability. Note, that DKE is a metric to diagnose error growth in the sense of spread 182 or variance growth in the ensemble and not errors with respect to observations or anal183 yses. DKE is calculated based on wind data on a regular 0.25◦ grid and with an hourly 184 time step. While Pangu directly outputs this data, it is interpolated from the ICON grids 185 using conservative remapping.
+
+186
+
+In addition, we calculated a spectral representation of DKE, since this is directly
+
+187 related to the kinetic energy (KE) spectrum of the atmosphere or the model and pro-
+
+188 vides additional insights. To do so, we computed spherical harmonics expansions of di-
+
+189 vergence and vorticity from the gridded horizontal wind, which had to be interpolated
+
+190 to a Gaussian grid (N360) ﬁrst. Further details of how to compute KE and DKE from
+
+191 there can be found in Augier and Lindborg (2013) and Selz et al. (2022).
+
+192 3 Results
+
+193
+
+First, we looked at the errors in the ensemble mean of the simulations with respect
+
+194 to the ERA5 reanalysis. This is only been done to check that all models are implemented
+
+195 correctly, since forecast accuracy is not a focus of this paper. The root-mean-squared er-
+
+196 ror (RMSE) of the ensemble-mean zonal wind at 72 h forecast lead time is similar for
+
+197 all experiments and lies between 2.6 m s−1 and 2.9 m s−1, with Pangu being slightly bet-
+
+198 ter. This is comparable to what is shown in Bi et al. (2023) for the zonal wind on 500 hPa
+
+199 and indicates that all models used here are able to produce similar forecast quality with
+
+200 respect to upper-level winds.
+
+201
+
+3.1 Time series of DKE
+
+202
+
+To study error growth, we start with investigating the 72 h time series of globally
+
+203 integrated DKE for the diﬀerent experiments, which is shown in Fig 1. The y-axis is log-
+
+–5–
+
+manuscript submitted to Geophysical Research Letters
+
+Figure 1. Globally integrated diﬀerence kinetic energy (DKE) as deﬁned by (1) on 300 hPa over time for the diﬀerent experiments.
+
+204 scaled, so exponential growth can be identiﬁed with a straight line. Consistent with ear205 lier studies (Selz et al., 2022), we see exponential growth right from the start for the 100% 206 ICON experiment with a growth rate of about 1.7 day−1, which is characteristic of the 207 synoptic-scale dynamics of the atmosphere. The 100% Pangu experiment shows a sim208 ilar growth rate, starting from 24-h lead time (2.2 day−1). Two anomalies are apparent 209 in the Pangu curve: In the ﬁrst day, there is a decrease in the ensemble spread, which 210 in the end also leads to a 1.9 times lower DKE at 72 h compared to ICON. Also, Pangu 211 shows discontinuities when switching to a model with a diﬀerent time step. The 24-h net212 work in particular shows a larger initial decrease in DKE and slower DKE growth than 213 the shorter time-step networks.
+
+214
+
+At the intrinsic limit (0.1% experiments), the two ICON experiments show the ex-
+
+215 pected very large initial growth rates of ≈ 1020 day−1 (ﬁrst 3 h). This leads to a very
+
+216 fast saturation of the errors at small scales (see Section 3.3), which quickly slows down
+
+217 the error growth, until also here a typical synoptic-scale growth rate is reached after about
+
+218 48-h lead time. A further reduction of the initial condition uncertainty would lead to even
+
+219 larger growth rates, keeping predictability ﬁnite. As anticipated, the lower resolution model
+
+220 appears to underestimate the error growth from small perturbations. This underestima-
+
+221 tion leads to about a factor 4 reduction in DKE at 72 h. Nevertheless, both ICON ex-
+
+222 periments show the fast initial growth characteristic of the butterﬂy eﬀect and clearly
+
+223 indicate the limited intrinsic predictability of the atmosphere.
+
+224
+
+In contrast, the 0.1% Pangu experiment essentially reproduces the error growth prop-
+
+225 erties of the 100% experiment, with only a very slight increase of the growth rate. In-
+
+226 deed, the two Pangu lines are very similar and just shifted vertically by 10002, the squared
+
+227 rescale factor of the initial perturbations (since DKE is a squared quantity). The increase
+
+228 in DKE after 72 h compared to the initial conditions is still only a factor of 5.6 (0.1%
+
+229 experiment), similar to 5.0 for the 100% experiment. Over the three days, this leads to
+
+230 an underestimation of the DKE by ﬁve orders of magnitude compared to ICON. The con-
+
+231 stant error growth rate in the simulations with Pangu would indicate an inﬁnite predictabil-
+
+232 ity of the atmosphere and no presence of a butterﬂy eﬀect.
+
+–6–
+
+manuscript submitted to Geophysical Research Letters
+
+Figure 2. Global maps of normalized DKE on 300 hPa after 72-h lead time. The thin black lines show the 300 hPa geopotential of the ensemble mean for reference (linespacing 1500 m2 s−2).
+
+233
+
+3.2 Spatial structures of DKE
+
+234
+
+Next, we want to investigate the spatial patterns of DKE that have evolved from
+
+235 the initial condition uncertainty after 72 hours (Fig. 2). For the plot, the DKE is nor-
+
+236 malized so that the area-weighted mean equals one for a better comparison of the struc-
+
+237 tures (the corresponding amplitudes have been shown in Fig. 1). Consistent with the sim-
+
+238 ilar growth rates, Pangu-100% and Pangu-0.1% also generate almost identical DKE struc-
+
+239 tures, regardless of the amplitude of the initial condition uncertainty. The DKE maps
+
+240 of Fig. 2 are visually diﬃcult to diﬀerentiate and their spatial correlation coeﬃcient equals
+
+241 0.79. In contrast, there is much less structural agreement between the 100% and 0.1%
+
+242 experiments simulated with ICON: Although some common “hotspots” are visible, the
+
+243 diﬀerent processes that drive the error growth in the two experiments (Selz et al., 2022)
+
+244 lead to largely disjunct structures after 72 hours. ICON-LR-100% is only correlated by
+
+245 0.21 to ICON-LR-0.1% and by 0.14 to ICON-HR-0.1%.
+
+246
+
+For the 100% initial perturbations, ICON and Pangu show a reasonable level of agree-
+
+247 ment between the DKE structures after 72 hours (correlation 0.54). This is noteworthy,
+
+248 since recently Rodwell and Wernli (2023) pointed out that even among state-of-the-art
+
+–7–
+
+manuscript submitted to Geophysical Research Letters
+
+249 operational models there is a lot of discrepancy in ensemble spread growth. In contrast, 250 for the butterﬂy-like perturbation, Pangu-0.1% does not show any agreement with the 251 structures computed with ICON (correlation 0.08 to ICON-LR-0.1% and 0.05 to ICON252 HR-0.1%), again indicating the inability of Pangu to simulate the butterﬂy eﬀect.
+
+253
+
+3.3 Spectra of DKE
+
+254
+
+As ﬁnal diagnostic we consider spectra of 300 hPa kinetic energy and diﬀerence ki-
+
+255 netic energy (Fig. 3). Black lines show the background KE spectra of the simulations
+
+256 (ensemble mean), taken at 72 hours lead time. The initial condition perturbation has
+
+257 very little inﬂuence on that, since the simulations still display the same basic state and,
+
+258 in general, the background spectrum is largely determined by the climatology of the at-
+
+259 mosphere or rather the model. Hence, we see diﬀerences between Pangu and ICON and
+
+260 also between the two ICON resolutions: Pangu looses a signiﬁcant amount of energy on
+
+261 scales below about 500 km, where it is not able to maintain the expected -3 slope of the
+
+262 spectrum. Consequently, the eﬀective resolution of Pangu is only about 20∆x. This loss
+
+263 of energy at small scales is generated mainly by the 24-h network, which produces a sig-
+
+264 niﬁcant smoothing of the state. For ICON-LR, the smoothing happens at about the 200-
+
+265 km scale, which indicates an eﬀective resolution of about 10∆x. To determine the eﬀec-
+
+266 tive resolution of the ICON-HR simulations, a higher output resolution would have been
+
+267 required, but it likely also equals about 10∆x or 25 km.
+
+268
+
+The DKE spectrum of the initial condition perturbation is shown in gray and is
+
+269 basically identical for all the simulations, except of course for the rescale factor of 10002
+
+270 and some very minor diﬀerences due to interpolation to the ICON model grid and back.
+
+271 This energy distribution is given by the EDA system of ECMWF and peaks at around
+
+272 500 km. Scales below about 200 km are already saturated (see ICON-LR-100%), mean-
+
+273 ing there is no information about those scales from the data assimilation system. Start-
+
+274 ing from the initial uncertainty, we see a clear signature of synoptic-scale exponential er-
+
+275 ror growth (equidistant lines) in the ICON-LR-100% experiment, with the energy max-
+
+276 imum slowly moving to larger scales as more and more small scales saturate. The Pangu-
+
+277 100% experiment shows a somewhat similar behavior, except that in the ﬁrst 24 hours
+
+278 (mostly through the ﬁrst call of the 24-h network), energy is removed from scales below
+
+279 500 km and error growth stagnates even at large scales. After that and for scales larger
+
+280 than around 1000 km, growth rates and spectral characteristics are very similar to ICON.
+
+281
+
+As seen previously in the spatial patterns, Pangu-0.1% shows similar behavior to
+
+282 Pangu-100%, with the diﬀerence kinetic energy reduced by the rescale factor 10002. This
+
+283 leads to a huge gap compared to the background spectrum after 72 hours and no indi-
+
+284 cation of a butterﬂy eﬀect. In contrast, ICON-LR-0.1% and more pronounced ICON-
+
+285 HR-0.1% not only show extremely large initial growth rates (as already discussed in Fig. 1),
+
+286 but also an initial downscale propagation of the energy peak to smaller scales, another
+
+287 classical feature of the butterﬂy eﬀect (Durran & Gingrich, 2014; Selz et al., 2022). This
+
+288 originates from decorrelation of small-scale structures by small diﬀerences in the large-
+
+289 scale advection and also by fast and highly non-linear error growth in regions of moist
+
+290 convection. After that initial downscale propagation, the errors grow slowly back upscale,
+
+291 ﬁnally transitioning to the synoptic-scale growth regime with similar growth rates as in
+
+292 the 100% experiments.
+
+293 4 Discussion
+
+294
+
+The main advantage of AI-based models over PDE-based models is their very low
+
+295 computational cost, and it is frequently stated that this opens up the opportunity to cre-
+
+296 ate many more ensemble members (e.g., Bi et al., 2023). Indeed, large ensembles would
+
+297 greatly reduce sampling uncertainty and could provide much more reliable forecasts of
+
+298 extreme event probabilities (Tempest et al., 2023). Such big ensembles will however only
+
+–8–
+
+manuscript submitted to Geophysical Research Letters
+Figure 3. Spectra of 300 hPa kinetic energy (black line, evaluated at 72 h lead time) and different kinetic energy (colored lines). The DKE spectra are multiplied by 0.5 so that they match the background spectrum at saturation.
+–9–
+
+manuscript submitted to Geophysical Research Letters
+
+299 make sense, if the error growth properties of the model are realistic. Here, the AI-based 300 Pangu-Weather model that we tested is able to reproduce basic error growth properties 301 when started from 100% initial condition perturbations, although some signiﬁcant short302 comings were also observed. However, it fails completely when the initial condition un303 certainty is small and is not able to simulate any indication of the butterﬂy eﬀect or any 304 indication of accelerated growth rates and limited predictability.
+
+305
+
+This failure of simulating the butterﬂy eﬀect with AI-based models is perhaps not
+
+306 surprising: Although the intrinsic predictability limit is a basic physical property of the
+
+307 earth’s atmosphere, it cannot be measured or observed. In principle, an exact copy of
+
+308 the earth and the solar system would have to be created, then a small perturbation ap-
+
+309 plied to the copy, and the future consequences observed. In studies like this paper, we
+
+310 are trying to estimate the intrinsic limit by simulating such quasi-identical copies, pre-
+
+311 tending that we know the initial atmospheric state exactly and assuming that the model
+
+312 is a suﬃciently accurate approximation of the atmosphere (perfect model assumption).
+
+313 Reanalyses like ERA5 (or indeed any other analysis) however never come close enough
+
+314 to the true state, since our current observational and assimilation system still has very
+
+315 signiﬁcant errors. Hence, the neural network during its training can only learn an ap-
+
+316 proximated development of the atmosphere within the range of our current assimilation
+
+317 uncertainties. The magnitudes of these uncertainties are represented by the 100% per-
+
+318 turbations in the initial condition ensemble and therefore the AI-based models can only
+
+319 infer how such uncertainties would grow.
+
+320
+
+Because of these limitations, we consider it very unlikely that other currently avail-
+
+321 able AI-based models like FourCastNet (Pathak et al., 2022) or GraphCast (Lam et al.,
+
+322 2022), trained with similar data would produce signiﬁcantly diﬀerent results than the
+
+323 Pangu model tested here. It is outside of our expertise to speculate about what changes
+
+324 or additions to those models would be needed to provide a better representation of the
+
+325 butterﬂy eﬀect and the intrinsic predictability limit. Furthermore, as discussed in the
+
+326 introduction, it is unclear to what extent this ability would be relevant for day-to-day
+
+327 weather forecasting at the current level of initial condition uncertainty. Our previous study
+
+328 showed that upscale error growth processes from convection are currently unimportant
+
+329 on average, since they are overpowered by growth on synoptic scales from the relatively
+
+330 large initial uncertainties there (Selz et al., 2022). However, this picture only represents
+
+331 the average midlatitude conditions and might change occasionally in speciﬁc meteoro-
+
+332 logical situations, as for example described by Rodwell et al. (2013). It might also be dif-
+
+333 ferent in the tropics, where convective processes are much stronger and more prominent,
+
+334 while large-scale processes are relatively weak and linear (Judt, 2020).
+
+335 Open Research Section
+
+336
+
+The “Pangu Weather” model is available on github (https://github.com/198808xc/
+
+337 Pangu-Weather). The ICON model code is restricted software and cannot be publicly
+
+338 shared. The output data from Pangu and ICON that has been evaluated in this paper
+
+339 can be downloaded from https://opendata.physik.lmu.de/1XrS42I3askTgWI/. Once
+
+340 the paper is accepted, we will provide the ﬁnal data set in agreement with the FAIR-principles.
+
+341 Acknowledgments 342 The research leading to this paper was carried out as part of the Collaborative Research 343 Center SFB/TRR 165 “Waves to Weather” within project A1: “Upscale impact of di344 abatic processes from convective to near-hemispheric scale” funded by the German Re345 search Foundation (DFG). The use of ECMWF’s computing and archive facilities is grate346 fully acknowledged.
+
+–10–
+
+manuscript submitted to Geophysical Research Letters
+
+347 References
+
+348 Augier, P., & Lindborg, E. (2013). A new formulation of the spectral energy budget
+
+349
+
+of the atmosphere, with application to two high-resolution general circulation
+
+350
+
+models. Journal of the atmospheric sciences, 70 (7), 2293–2308.
+
+351 Bi, K., Xie, L., Zhang, H., Chen, X., Gu, X., & Tian, Q. (2023). Accurate medium-
+
+352
+
+range global weather forecasting with 3d neural networks. Nature, 1–6.
+
+353 Craig, G. C., Fink, A. H., Hoose, C., Janji´c, T., Knippertz, P., Laurian, A., . . . oth-
+
+354
+
+ers (2021). Waves to weather: Exploring the limits of predictability of weather.
+
+355
+
+Bulletin of the American Meteorological Society, 102 (11), E2151–E2164.
+
+356 Durran, D. R., & Gingrich, M. (2014). Atmospheric predictability: Why butterﬂies
+
+357
+
+are not of practical importance. Journal of Atmospheric Sciences, 71 (7), 2476–
+
+358
+
+2488.
+
+359 Hersbach, H., Bell, B., Berrisford, P., Hirahara, S., Hor´anyi, A., Mun˜oz-Sabater, J.,
+
+360
+
+. . . others (2020). The era5 global reanalysis. Quarterly Journal of the Royal
+
+361
+
+Meteorological Society, 146 (730), 1999–2049.
+
+362 Isaksen, L., Bonavita, M., Buizza, R., Fisher, M., Haseler, J., Leutbecher, M., &
+
+363
+
+Raynaud, L. (2010). Ensemble of data assimilations at ecmwf.
+
+364 Judt, F. (2018). Insights into atmospheric predictability through global convection-
+
+365
+
+permitting model simulations. Journal of the Atmospheric Sciences, 75 (5),
+
+366
+
+1477–1497.
+
+367 Judt, F. (2020). Atmospheric predictability of the tropics, middle latitudes, and po-
+
+368
+
+lar regions explored through global storm-resolving simulations. Journal of At-
+
+369
+
+mospheric Sciences, 77 (1), 257–276.
+
+370 Lam, R., Sanchez-Gonzalez, A., Willson, M., Wirnsberger, P., Fortunato, M.,
+
+371
+
+Pritzel, A., . . . others (2022). Graphcast: Learning skillful medium-range
+
+372
+
+global weather forecasting. arXiv preprint arXiv:2212.12794 .
+
+373 Lorenz, E. N. (1969). The predictability of a ﬂow which possesses many scales of
+
+374
+
+motion. Tellus, 21 (3), 289–307.
+
+375 Palmer, T., D¨oring, A., & Seregin, G. (2014). The real butterﬂy eﬀect. Nonlinearity,
+
+376
+
+27 (9), R123.
+
+377 Pathak, J., Subramanian, S., Harrington, P., Raja, S., Chattopadhyay, A., Mardani,
+
+378
+
+M., . . . others (2022). Fourcastnet: A global data-driven high-resolution
+
+379
+
+weather model using adaptive fourier neural operators.
+
+arXiv preprint
+
+380
+
+arXiv:2202.11214 .
+
+381 Rodwell, M. J., Magnusson, L., Bauer, P., Bechtold, P., Bonavita, M., Cardinali, C.,
+
+382
+
+. . . others (2013). Characteristics of occasional poor medium-range weather
+
+383
+
+forecasts for europe. Bulletin of the American Meteorological Society, 94 (9),
+
+384
+
+1393–1405.
+
+385 Rodwell, M. J., & Wernli, H. (2023). Uncertainty growth and forecast reliability
+
+386
+
+during extratropical cyclogenesis. Weather and Climate Dynamics, 4 (3), 591–
+
+387
+
+615.
+
+388 Rotunno, R., & Snyder, C. (2008). A generalization of Lorenz’s model for the pre-
+
+389
+
+dictability of ﬂows with many scales of motion. Journal of the Atmospheric
+
+390
+
+Sciences, 65 (3), 1063–1076.
+
+391 Selz, T., & Craig, G. C. (2015a). Simulation of upscale error growth with a stochas-
+
+392
+
+tic convection scheme. Geophysical Research Letters, 42 (8), 3056–3062.
+
+393 Selz, T., & Craig, G. C. (2015b). Upscale error growth in a high-resolution simu-
+
+394
+
+lation of a summertime weather event over europe. Monthly Weather Review ,
+
+395
+
+143 (3), 813–827.
+
+396 Selz, T., Riemer, M., & Craig, G. C. (2022). The transition from practical to intrin-
+
+397
+
+sic predictability of midlatitude weather. Journal of the Atmospheric Sciences,
+
+398
+
+79 (8), 2013–2030.
+
+399 Sun, Y. Q., & Zhang, F. (2016). Intrinsic versus practical limits of atmospheric
+
+400
+
+predictability and the signiﬁcance of the butterﬂy eﬀect. Journal of the Atmo-
+
+401
+
+spheric Sciences, 73 (3), 1419–1438.
+
+–11–
+
+manuscript submitted to Geophysical Research Letters
+
+402 Tempest, K. I., Craig, G. C., & Brehmer, J. R. (2023). Convergence of forecast dis-
+
+403
+
+tributions in a 100,000-member idealised convective-scale ensemble. Quarterly
+
+404
+
+Journal of the Royal Meteorological Society, 149 (752), 677–702.
+
+405 Weyn, J. A., Durran, D. R., & Caruana, R. (2019). Can machines learn to predict
+
+406
+
+weather? using deep learning to predict gridded 500-hpa geopotential height
+
+407
+
+from historical weather data. Journal of Advances in Modeling Earth Systems,
+
+408
+
+11 (8), 2680–2693.
+
+409 Z¨angl, G., Reinert, D., R´ıpodas, P., & Baldauf, M. (2015). The icon (icosahedral
+
+410
+
+non-hydrostatic) modelling framework of dwd and mpi-m: Description of the
+
+411
+
+non-hydrostatic dynamical core. Quarterly Journal of the Royal Meteorological
+
+412
+
+Society, 141 (687), 563–579.
+
+413 Zhang, F., Bei, N., Rotunno, R., Snyder, C., & Epifanio, C. C. (2007). Mesoscale
+
+414
+
+predictability of moist baroclinic waves: Convection-permitting experiments
+
+415
+
+and multistage error growth dynamics. Journal of the Atmospheric Sciences,
+
+416
+
+64 (10), 3579–3594.
+
+417 Zhang, F., Sun, Y. Q., Magnusson, L., Buizza, R., Lin, S.-J., Chen, J.-H., &
+
+418
+
+Emanuel, K. (2019). What is the predictability limit of midlatitude weather?
+
+419
+
+Journal of the Atmospheric Sciences, 76 (4), 1077–1091.
+
+–12–
+

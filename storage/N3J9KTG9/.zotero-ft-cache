@@ -1,0 +1,842 @@
+Look Before You Leap: Improving Text-based Person Retrieval by Learning A Consistent Cross-modal Common Manifold
+
+Zijie Wang
+Nanjing Tech University Nanjing, China
+zijiewang9928@gmail.com
+
+Aichun Zhu∗
+Nanjing Tech University Nanjing, China
+aichun.zhu@njtech.edu.cn
+
+Jingyi Xue
+Nanjing Tech University Nanjing, China
+jyx981218@163.com
+
+Xili Wan
+Nanjing Tech University Nanjing, China
+xiliwan@njtech.edu.cn
+
+Chao Liu
+Jinling Institute of Technology Nanjing, China
+liuchao@jit.edu.cn
+
+Tian Wang
+Beihang University Beijing, China
+wangtian@buaa.edu.cn
+
+Yifeng Li
+Nanjing Tech University Nanjing, China
+lyffz4637@163.com
+
+ABSTRACT
+The core problem of text-based person retrieval is how to bridge the heterogeneous gap between multi-modal data. Many previous approaches contrive to learning a latent common manifold mapping paradigm following a cross-modal distribution consensus prediction (CDCP) manner. When mapping features from distribution of one certain modality into the common manifold, feature distribution of the opposite modality is completely invisible. That is to say, how to achieve a cross-modal distribution consensus so as to embed and align the multi-modal features in a constructed cross-modal common manifold all depends on the experience of the model itself, instead of the actual situation. With such methods, it is inevitable that the multi-modal data can not be well aligned in the common manifold, which finally leads to a sub-optimal retrieval performance. To overcome this CDCP dilemma, we propose a novel algorithm termed LBUL to learn a Consistent Cross-modal Common Manifold (C3M) for text-based person retrieval. The core idea of our method, just as a Chinese saying goes, is to ‘san si er hou xing’, namely, to Look Before yoU Leap (LBUL). The common manifold mapping mechanism of LBUL contains a looking step and a leaping step. Compared to CDCP-based methods, LBUL considers distribution characteristics of both the visual and textual modalities before embedding data from one certain modality into C3M to achieve a more solid cross-modal distribution consensus, and hence achieve a superior retrieval accuracy. We evaluate our proposed method on two text-based person retrieval datasets CUHK-PEDES
+∗Corresponding author.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than ACM must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org. MM ’22, October 10–14, 2022, Lisboa, Portugal © 2022 Association for Computing Machinery. ACM ISBN 978-1-4503-9203-7/22/10. . . $15.00 https://doi.org/10.1145/3503161.3548166
+
+and RSTPReid. Experimental results demonstrate that the proposed LBUL outperforms previous methods and achieves the state-of-theart performance.
+CCS CONCEPTS
+• Information systems → Image search; • Computing methodologies → Object identification.
+KEYWORDS
+person retrieval, text-based person re-identification, cross-modal retrieval
+ACM Reference Format: Zijie Wang, Aichun Zhu, Jingyi Xue, Xili Wan, Chao Liu, Tian Wang, and Yifeng Li. 2022. Look Before You Leap: Improving Text-based Person Retrieval by Learning A Consistent Cross-modal Common Manifold. In Proceedings of the 30th ACM International Conference on Multimedia (MM ’22), October 10–14, 2022, Lisboa, Portugal. ACM, New York, NY, USA, 10 pages. https://doi.org/10.1145/3503161.3548166
+1 INTRODUCTION
+Given a textual description query, text-based person retrieval aims to identify images of the corresponding pedestrian from a largescale image database. Compared to the currently active research topic image-based person retrieval (aka. person re-identification)[8, 33, 34] which utilizes image-based queries, text-based queries are much easier to access in the realistic application scenarios. Due to its effectiveness and applicability, text-based person retrieval [10, 12, 13, 16, 18, 21, 29–31] has drawn more and more attention. However, the study of this task is still in its infancy and there is still plenty of room for further research.
+The core problem of text-based person retrieval is how to bridge the heterogeneous gap between multi-modal data. As different modalities are diverse and inconsistent in data form and distribution, it is not so easy to directly measure the cross-modal affinity. Many of the previous approaches contrive to learning a common
+
+1984
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+Zijie Wang et al.
+
+XProj
+
+LASM
+
+(a)
+
+(b)
+
+Figure 1: (a) For CDCP-based paradigms, when mapping features from distribution of one certain modality into the common manifold, feature distribution of the opposite modality is completely invisible. That is to say, how to achieve the cross-modal distribution consensus all depends on the experience of the model itself, instead of the actual situation. Consequently, there may exist multiple vague cross-modal common manifolds, which are adjacent to each other but not exactly identical. (b) For either a visual or textual sample, LBUL embeds it into C3M after considering the distribution characteristics of both modalities to achieve a more solid cross-modal distribution consensus, instead of blindly predicting.
+
+manifold mapping paradigm, either implicitly with separate submodels and extra constrains (e.g. attention mechanism), or explicitly with shared mapping blocks. These methods aim to transform heterogeneous multi-modal data into homogeneous feature representations, between which the cross-modal similarity can be calculated. However, most existing paradigms are proposed following a cross-modal distribution consensus prediction (CDCP) manner, which have their limitations. Specifically, as the multimodal data are from specific distribution of each modality, the process of the common manifold mapping can be deemed as trying to achieve a distribution consensus between the visual and textual modalities, so as to embed and align the multi-modal features in a constructed cross-modal common manifold. Nevertheless, when mapping features from distribution of one certain modality into the common manifold, feature distribution of the opposite modality is completely invisible. That is to say, how to achieve the cross-modal distribution consensus all depends on the experience of the model itself, instead of the actual situation. Consequently, as shown in Fig. 1 (a), there may exist multiple vague cross-modal common manifolds, which are adjacent to each other but not exactly identical. With such methods, it is inevitable that the multi-modal data will not be perfected aligned and matched with each other in a proper common manifold, which finally leads to a sub-optimal retrieval performance. This situation can be called a CDCP dilemma.
+To overcome this CDCP dilemma, we consider to come up with a more effective common manifold mapping paradigm. In this paper, we propose a novel algorithm to learn a Consistent Cross-modal Common Manifold (C3M) for text-based person retrieval. As illustrated in Fig. 1 (b), for either a visual or textual sample, our proposed method embeds it from one certain modality into C3M after considering the distribution characteristics of both the visual and textual modalities to achieve a more solid cross-modal distribution consensus, instead of blindly predicting. The core idea of our method, just
+
+as a Chinese saying goes, is ‘san si er hou xing’, namely, to Look Before yoU Leap. So we name our proposed method LBUL, of which the common manifold mapping paradigm includes two steps, namely, a looking step and a leaping step. Compared with CDCPbased paradigms, LBUL is capable of achieving a more precise crossmodal distribution consensus. As a result, the multi-modal data can be embedded and aligned in a consistent common manifold with less information loss and higher accuracy, and hence achieve a superior retrieval performance. Specifically, with a proposed Uni-modal Sub-manifold Embedding Module (USEM), multi-granular features extracted from each modality are first distilled as a unified feature, which is embedded in a corresponding uni-modal sub-manifold (visual or textual). Then at the looking step of LBUL, in order to see distributions of both modalities before mapping data from one certain modality into C3M, the uni-modal feature is projected into the opposite sub-manifold to give the distribution characteristics of the other modality by means of a Cross-modal Projection (XProj) module. In XProj, a Distribution Shifting (DS) mechanism plays a key role in the statistical transformation of the feature according to the target modality, and thus enabling a proper feature projection. After the projection, for data from one certain modality, there exists two feature representations embedded in both the visual and textual modalities. Then at the leaping step, these two representations are processed together by a Leaping After Seeing Module (LASM), which conducts the common manifold mapping operation after seeing the distribution characteristics of both modalities. Through LASM, a consistent common representation can be obtained in C3M for each sample, so that the cross-modal similarity can be properly measured. We evaluate our proposed method on two text-based person retrieval datasets including CUHK-PEDES [13] and RSTPReid [40]. Experimental results demonstrate that LBUL outperforms previous methods and achieves the state-of-the-art performance.
+
+1985
+
+Look Before You Leap: Improving Text-based Person Retrieval by Learning A Consistent Cross-modal Common Manifold
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+The main contributions of this paper can be summarized as threefold:
+• A novel LBUL method is proposed to learn a Consistent Cross-modal Common Manifold (C3M) for text-based person retrieval, which embeds data from one certain modality into C3M after considering the distribution characteristics of both the visual and textual modalities to achieve a more solid cross-modal distribution consensus, instead of blindly predicting.
+• A two-step common manifold mapping mechanism which includes a looking step and a leaping step is proposed. By conducting the common manifold mapping operation after seeing the distribution characteristics of both modalities, LBUL is capable of learning consistent common representations with less information loss and higher retrieval accuracy.
+• Extensive experimental analysis is carried out on CUHKPEDES [13] and RSTPReid [40] to evaluate the proposed LBUL method for text-based person retrieval. Experimental results demonstrate that LBUL significantly outperforms existing methods and achieves the state-of-the-art performance.
+2 RELATED WORKS
+2.1 Person Re-identification
+Person re-identification has drawn increasing attention in both academical and industrial fields. This technology addresses the problem of matching pedestrian images across disjoint cameras. The key challenges lie in the large intra-class and small inter-class variation caused by different views, poses, illuminations, and occlusions. Existing methods can be grouped into handed-crafted descriptors, metric learning methods and deep learning methods. With the development of deep learning [19, 22, 27, 37], deep learning methods are in general playing a major role in current state-of-the-art works. Yi et al. [34] firstly proposed deep learning methods to match people with the same identification. To boost the ReID model training efficiency in multi-label classification, Wang et al. [26] further proposed the memory-based multi-label classification loss (MMCL). MMCL works with memory-based non-parametric classifier and integrates multi-label classification and single-label classification in an unified framework. Jin et al. [9] introduce a global distancedistributions separation (GDS) constraint over two distributions to encourage the clear separation of positive and negative samples from a global view. Yuan et al. [35] propose a Gabor convolution module for deep neural networks based on Gabor function, which has a good texture representation ability and is effective when it is embedded in the low layers of a network. Taking advantage of the hinge function, they also design a new regularizer loss function to make the proposed Gabor Convolution module meaningful. A model that has joint weak saliency and attention aware is presented by Ning et al. [17], which can obtain more complete global features by weakening saliency features. In recent years, methods for unsupervised person re-identification have gradually emerged. Unsupervised person re-identification means that the target data set is unlabeled but the auxiliary source data set is not necessarily unlabeled [5]. Existing unsupervised person ReID works can be concluded into three categories. The first category utilizes hand-craft
+
+features [14]. But the features made by hand can not be robust and discriminative. To solve this problem, second category [6] adopts clustering to estimate pseudo labels to train the CNN. However, these methods require good trained model. Recently, the third category is proposed, which improves unsupervised person ReID by using transfer learning. Some works [15, 28] utilize transfer learning and minimize the attribute-level discrepancy by using extra attribute annotations.
+2.2 Text-based Person Retrieval
+Text-based person retrieval aims to search for the corresponding pedestrian image according to a given text query. This task is first introduced by Li et al. [13] and a GNA-RNN model is employed to handle the multi-modal data. Later, an efficient patch-word matching model [3] is proposed to capture the local similarity between image and text. Jing et al. [10] utilize pose information as soft attention to localize the discriminative regions. Niu et al. [18] adopt a Multi-granularity Image-text Alignments (MIA) model exploit the combination of multiple granularities. Nikolaos et al. [21] design a Text-Image Modality Adversarial Matching approach (TIMAM) to learn modality-invariant feature representation by means of adversarial and cross-modal matching objectives. Liu et al. [16] generate fine-grained structured representations from images and texts of pedestrians with an A-GANet model to exploit semantic scene graphs. CMAAM is introduced by Aggarwal et al. [1] which learns an attribute-driven space along with a class-information driven space by introducing extra attribute annotation and prediction. Zheng et al. [38] propose a Gumbel attention module to alleviate the matching redundancy problem and a hierarchical adaptive matching model is employed to learn subtle feature representations from three different granularities. Zhu et al. [40] proposed a Deep Surroundings-person Separation Learning (DSSL) model to effectively extract and match person information. Besides, they construct a Real Scenarios Text-based Person Re-identification (RSTPReid) dataset based on MSMT17 [32] to benefit future research on textbased person retrieval. Most of the above mentioned approaches are proposed following a cross-modal distribution consensus prediction (CDCP) manner. By means of the LBUL mechanism, a more solid cross-modal distribution consensus can be achieved and hence a more consistent cross-modal common manifold can be constructed.
+3 METHODOLOGY
+3.1 Problem Formulation
+The goal of the proposed framework (shown in Fig. 2) is to measure the similarity between multi-modal data, namely, a given textual description query and a gallery person image. Formally, let 𝐷 = {𝑝𝑖, 𝑞𝑖 }𝑖𝑁=1 denotes a dataset consists of 𝑁 image-text pairs. Each pair contains a pedestrian image 𝑝𝑖 captured by one certain surveillance camera and its corresponding textual description query 𝑞𝑖 . The IDs of the 𝑄 pedestrians in the dataset are denoted as 𝑌 = {𝑦𝑖 }𝑄𝑖=1. Given a textual description, the aim is to identify images of the most relevant pedestrian from a large scale person image gallery.
+
+1986
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+Zijie Wang et al.
+
+ResNet50
+
+Ș
+
+USEM
+
+V = {vg,vl1,Ă,vlk}
+
+XProj
+
+LASM
+
+The man is wearing black shoes with baggy grey pants. He has on a black belt and a longsleeved white shirt with a collar.
+
+Bi-GRU
+
+Ș
+
+USEM
+
+T = {tg,tl1,Ă,tln}
+
+Feature Representation Preparation
+
+Looking Step
+
+Leaping Step
+
+Figure 2: The overall framework of the proposed LBUL model.
+
+3.2 Feature Representation Preparation
+3.2.1 Representation Extraction.
+
+Visual Representation Extraction. To extract multi-granular
+
+visual representations from a given image 𝐼 , a pretrained ResNet-
+
+50 [7] backbone is utilized. To obtain the global representation 𝑣𝑔 ∈ R𝑝 , the feature map before the last pooling layer of ResNet-50
+
+is down-scaled to 1 × 1 × 2048 with an average pooling layer and
+
+converted into a 2048-dim vector. Then it is passed through a group
+
+normalization (GN) layer followed by a fully-connected (FC) layer
+
+and transformed to 𝑝-dim. In the local branch, the same feature
+
+map is first horizontally 𝑘-partitioned by pooling it to 𝑘 × 1 × 2048,
+
+and then the local strips are separately passed through a GN and
+
+two FCs with an ELU layer between them to form 𝑘 𝑝-dim vectors
+
+𝑉𝑙 = other
+
+{𝑣𝑙1, 𝑣𝑙2, · · · , along with
+
+𝑣𝑣𝑔𝑘𝑙
+
+}, which are finally concatenated with each to obtained the visual representation matrix
+
+𝑉 = {𝑣𝑔, 𝑣𝑙1, 𝑣𝑙2, · · · , 𝑣𝑘𝑙 } ∈ R𝑝× (𝑘+1) .
+
+Textual Representation Extraction. For textual representation
+
+extraction, a whole sentence along with 𝑛 phrases extracted from it
+
+is taken as textual materials, which is processed by a bi-directional
+
+Gated Recurrent Unit (bi-GRU). The last hidden states of the for-
+
+ward and backward GRUs are concatenated to give global/local
+
+2𝑝-dim feature vectors. And then the 2𝑝-dim vector got from the
+
+whole sentence is passed through a GN followed by an FC to form the global textual representation 𝑡𝑔 ∈ R𝑝 . With each certain input
+
+phrase, the corresponding output 𝑝-dim vector is handled consecu-
+
+tively by a GN and two FCs with an ELU layer between them. The
+
+wobitthaineaecdhloocthael rveaclotonrgsw𝑇i𝑙th=𝑡{𝑔𝑡1𝑙to, 𝑡2f𝑙o, ·rm· ·
+
+, 𝑡𝑛𝑙 } are the final
+
+then concatenated textual representa-
+
+tion matrix 𝑇 = {𝑡𝑔, 𝑡1𝑙 , 𝑡2𝑙 , · · · , 𝑡𝑛𝑙 } ∈ R𝑝× (𝑛+1) .
+
+3.2.2 Uni-modal Sub-manifold Learning. After the raw visual and textual representation matrices 𝑉 and 𝑇 are obtained, we adopt a Uni-modal Sub-manifold Embedding Module (USEM) based on the
+
+self-attention mechanism [23] to distill both global and fine-grained local discriminative information into a unified feature, which can be formulated as
+
+𝑘
+𝑣𝑢 = 𝑈 𝑆𝐸𝑀 (𝑉 ) =
+𝑖 =1
+
+𝑒𝑥
+𝑘 𝑗 =1
+
+𝑝 (𝑣𝑔𝑣𝑖𝑙 ) 𝑒𝑥𝑝 (𝑣𝑔𝑣𝑙𝑗
+
+)
+
+𝑣𝑖𝑙
+
++
+
+𝑣𝑔,
+
+(1)
+
+𝑛
+𝑡𝑢 = 𝑈 𝑆𝐸𝑀 (𝑇 ) =
+𝑖 =1
+
+𝑒𝑥𝑝 (𝑡𝑔𝑡𝑖𝑙 )
+
+𝑛 𝑗 =1
+
+𝑒𝑥
+
+𝑝
+
+(𝑡𝑔𝑡
+
+𝑙 𝑗
+
+)
+
+𝑡𝑖𝑙
+
++
+
+𝑡𝑔,
+
+(2)
+
+where 𝑣𝑢 or 𝑡𝑢 is the distilled unified visual/textual feature and
+
+is embedded into the corresponding visual/textual sub-manifold,
+
+respectively.
+
+3.3 Look Before You Leap
+Now that the uni-modal representations are obtained and each uni-modal sub-manifold which reveals the latent distribution characteristics of the corresponding modality is constructed, a two-step common manifold mapping mechanism including a looking step and a leaping step is proposed, which aims to embed the multimodal data into the consistent cross-modal common manifold C3M with less information loss and higher accuracy.
+
+3.3.1 Looking Step: Cross-modal Projection Module. At the looking step, the prime target is to see distributions of both modalities before mapping data from one certain modality into C3M. To achieve this goal, a Cross-modal Projection (XProj) module is proposed to project one certain uni-modal representation into the opposite sub-manifold, which can be generally formulated as
+
+𝑠𝑝 = 𝑋 𝑃𝑟𝑜 𝑗 (𝑠𝑢, 𝑟𝑢 ),
+
+(3)
+
+where 𝑠𝑢 or 𝑟𝑢 denotes the input source or target modal representation, respectively. 𝑠𝑝 is the projected representation, which is
+embedded into the target sub-manifold.
+
+1987
+
+Look Before You Leap: Improving Text-based Person Retrieval by Learning A Consistent Cross-modal Common Manifold
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+Specifically, a Distribution Shifting (DS) mechanism is first
+
+adopted to conduct the statistical transformation of the source
+
+modal representation according to the target modality:
+
+𝑠𝑑𝑠
+
+=
+
+DS (𝑠𝑢, 𝑟𝑢 )
+
+=
+
+𝜎
+
+(𝑟𝑢
+
+)
+
+(
+
+𝑠𝑢
+
+− 𝜇 (𝑠𝑢 𝜎 (𝑠𝑢 )
+
+)
+
+)
+
++
+
+𝜇 (𝑟𝑢 ),
+
+(4)
+
+where 𝑠𝑑𝑠 is the shifted feature. 𝜇 (·) and 𝜎 (·) denote the calculation
+of mean and variance, respectively. Then a multi-layer perceptron (MLP) with a tanh activation layer is employed to embed 𝑠𝑑𝑠 into
+the target sub-manifold:
+
+𝑠𝑝 = MLP (𝑠𝑑𝑠 ).
+
+(5)
+
+With XProj, representation lying in one certain uni-modal submanifold can be properly projected into the opposite sub-manifold:
+
+𝑣𝑝 = 𝑋 𝑃𝑟𝑜 𝑗 (𝑣𝑢, 𝑡𝑢 ), 𝑡𝑝 = 𝑋 𝑃𝑟𝑜 𝑗 (𝑡𝑢, 𝑣𝑢 ).
+
+(6)
+
+3.3.2 Leaping Step: Leaping After Seeing Module. After the
+
+looking step, for data from one certain modality, there exists two fea-
+
+ture representations embedded in both the visual and textual modal-
+
+ities, which give the distribution characteristics of both modalities.
+
+Then at the leaping step, the two representations can be utilized
+
+by LBUL with a proposed Leaping After Seeing Module (LASM)
+
+to conduct the common manifold mapping operation after seeing
+
+distributions of both modalities. The mechanism of LASM can be
+
+formulated as
+
+𝑥𝑐 = 𝐿𝐴𝑆𝑀 (𝑥𝑢, 𝑥𝑝 ),
+
+(7)
+
+where 𝑥𝑢 and 𝑥𝑝 are visual/textual representations before and after processed by XProj, respectively, while 𝑥𝑐 is the visual/textual
+consistent common manifold representation embedded in C3M.
+
+To be specific, the two input representations are first utilized to estimate a fusion gate 𝑔 ∈ R𝑝 :
+
+𝑔 = 𝜎 (𝑊2𝐸𝐿𝑈 (𝑊1 (𝑥𝑢 ⊕ 𝑥𝑝 ))),
+
+(8)
+
+where ⊕ is the feature concatenation operation and can be imple-
+mented as several other methods (e.g. addition or concatenation),
+which will be further discussed along with some substitution variants of LASM in Sec. 4.2.3. Here, 𝑊1 ∈ R2𝑝×2𝑝 and 𝑊2 ∈ R2𝑝×𝑝 denote linear transformations without bias while 𝜎 (·) stands for the sigmoid activation function. Then 𝑥𝑐 is obtained through the weighted summation of 𝑥𝑢 and 𝑥𝑝 according to 𝑔:
+
+𝑥𝑐 = 𝑔𝑥𝑢 + (1 − 𝑔)𝑥𝑝 .
+
+(9)
+
+To sum up, the corresponding visual and textual consistent crossmodal common manifold representations 𝑣𝑐 and 𝑡𝑐 can be obtained
+
+as
+
+𝑣𝑐 = 𝐿𝐴𝑆𝑀 (𝑣𝑢, 𝑣𝑝 ), 𝑡𝑐 = 𝐿𝐴𝑆𝑀 (𝑡𝑢, 𝑡𝑝 ).
+
+(10)
+
+3.4 Similarity for Inference
+
+For test and inference, several kinds of similarity scores are calculated. First, the similarity 𝑠𝑖𝑚𝑐 between a pair of visual/textual
+representations embedded in C3M is calculated:
+
+𝑠𝑖𝑚𝑐 = 𝑐𝑜𝑠 (𝑣𝑐, 𝑡𝑐 ),
+
+(11)
+
+where 𝑐𝑜𝑠 (·, ·) denotes the cosine similarity between two feature vectors. To further improve the retrieval performance, the global and fine-grained similarities are also utilized as an auxiliary. The
+
+global similarity 𝑠𝑖𝑚𝑔 between a pair of global multi-modal repre-
+
+sentations is computed as
+
+𝑠𝑖𝑚𝑔 = 𝑐𝑜𝑠 (𝑣𝑔, 𝑡𝑔).
+
+(12)
+
+To obtain the fine-grained similarity 𝑠𝑖𝑚𝑓 , a cross-modal attention (CA) mechanism is adopted:
+
+𝛼𝑖𝑋 =
+
+𝑒𝑥𝑝 𝑗 𝑒𝑥
+
+(𝑐𝑜𝑠 (𝑥𝑖𝑙 , 𝑦𝑔))
+
+𝑝
+
+(𝑐𝑜𝑠
+
+(𝑋
+
+𝑙 𝑗
+
+,
+
+𝑦𝑔
+
+))
+
+,
+
+(13)
+
+𝑥 𝑓 = CA (𝑦𝑔, 𝑋𝑙 ) =
+
+𝛼𝑖𝑋 𝑥𝑖𝑙 ,
+
+(14)
+
+𝛼𝑖𝑋 >𝛾
+
+where (𝑋, 𝑌 ) can be (𝑉 ,𝑇 ) or (𝑇 , 𝑉 ) while (𝑥, 𝑦) can be (𝑣, 𝑡) or
+
+(𝑡, 𝑣). 𝛾 is a threshold value. Thus, 𝑠𝑖𝑚𝑓 can be calculated by
+
+𝑣 𝑓 = CA (𝑡𝑔, 𝑉 𝑙 ), 𝑡 𝑓 = CA (𝑣𝑔,𝑇 𝑙 ),
+
+(15)
+
+𝑠𝑖𝑚𝑓 = 𝑐𝑜𝑠 (𝑣𝑔, 𝑡 𝑓 ) + 𝑐𝑜𝑠 (𝑣 𝑓 , 𝑡𝑔) .
+
+(16)
+
+2
+
+Eventually, we can get the overall similarity 𝑠𝑖𝑚 as
+
+𝑠𝑖𝑚 = 𝑠𝑖𝑚𝑐 + 𝜆1𝑠𝑖𝑚𝑔 + 𝜆2𝑠𝑖𝑚𝑓 .
+
+(17)
+
+3.5 Optimization
+To optimize LBUL, the ranking loss is employed to constrain the matched pairs to be closer than the mismatched ones in a mini-batch with a margin 𝛽:
+
+𝐿𝑟𝑘 (𝑥1, 𝑥2) = 𝑚𝑎𝑥 {𝛽 − 𝑐𝑜𝑠 (𝑥1, 𝑥2) + 𝑐𝑜𝑠 (𝑥1, 𝑥2), 0}
+𝑥2
++ 𝑚𝑎𝑥 {𝛽 − 𝑐𝑜𝑠 (𝑥1, 𝑥2) + 𝑐𝑜𝑠 (𝑥1, 𝑥2), 0}, (18)
+𝑥1
+where (𝑥1, 𝑥2) or (𝑥1, 𝑥2) denotes a mismatched pair while (𝑥1, 𝑥2) is a matched pair. Besides, the identification (ID) loss is also adopted:
+
+𝐿𝑖𝑑 (𝑥) = −𝑙𝑜𝑔(𝑠𝑜 𝑓 𝑡𝑚𝑎𝑥 (𝑊𝑖𝑑𝑥),
+
+(19)
+
+where 𝑊𝑖𝑑 ∈ R𝑄 ×𝑝 is a shared FC layer without bias while 𝑄 is the number of different pedestrians.
+
+The overall optimization process of LBUL includes two stages.
+
+Before conducting the common manifold mapping operation, it is necessary to ensure each learned sub-manifold is solid. Therefore, in the first stage, the ranking loss and ID loss are utilized to optimize the extracted global and fine-grained local features:
+
+L𝑔 = 𝐿𝑖𝑑 (𝑣𝑔) + 𝐿𝑖𝑑 (𝑡𝑔) + 𝐿𝑟𝑘 (𝑣𝑔, 𝑡𝑔),
+
+(20)
+
+L𝑓 = 𝐿𝑖𝑑 (𝑣 𝑓 ) + 𝐿𝑖𝑑 (𝑡 𝑓 ) + 𝐿𝑟𝑘 (𝑣𝑔, 𝑡 𝑓 ) + 𝐿𝑟𝑘 (𝑣 𝑓 , 𝑡𝑔), (21)
+
+L𝑆𝑡𝑎𝑔𝑒1 = L𝑔 + 𝜆3L 𝑓 .
+
+(22)
+
+In the second stage, first the ranking loss between the projected feature and the unified feature in the target modality is computed to ensure a reliable projection. Besides, the ID loss is also employed:
+
+L𝑝 = 𝐿𝑖𝑑 (𝑣𝑢 ) + 𝐿𝑖𝑑 (𝑡𝑢 ) + 𝐿𝑖𝑑 (𝑣𝑝 ) + 𝐿𝑖𝑑 (𝑡𝑝 ) + 𝐿𝑟𝑘 (𝑣𝑝, 𝑡𝑢 ) + 𝐿𝑟𝑘 (𝑣𝑢, 𝑡𝑝 ), (23)
+
+And then the loss between a pair of common manifold features is
+
+calculated as
+
+L𝑐 = 𝐿𝑖𝑑 (𝑣𝑐 ) + 𝐿𝑖𝑑 (𝑡𝑐 ) + 𝐿𝑟𝑘 (𝑣𝑐, 𝑡𝑐 ).
+
+(24)
+
+1988
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+The entire loss for the second stage is
+
+L𝑆𝑡𝑎𝑔𝑒2 = L𝑆𝑡𝑎𝑔𝑒1 + 𝜆4L𝑝 + 𝜆5L𝑐 .
+
+(25)
+
+4 EXPERIMENTS
+4.1 Experimental Setup
+4.1.1 Dataset and Metrics. Our approach is evaluated on two challenging Text-based Person Retrieval datasets including CUHKPEDES [13] and RSTPReid [40].
+(1) CUHK-PEDES: Following the official data split approach [13], the training set of CUHK-PEDES contains 34054 images, 11003 persons and 68126 textual descriptions. The validation set contains 3078 images, 1000 persons and 6158 textual descriptions while the test set has 3074 images, 1000 persons and 6156 descriptions. Every image generally has two descriptions, and each sentence is commonly no shorter than 23 words. After dropping words that appear less than twice, the word number is 4984.
+(2) RSTPReid: The RSTPReid dataset [40] is constructed based on MSMT17 [32], which contains 20505 images of 4,101 persons from 15 cameras. Each person has 5 corresponding images taken by different cameras and each image is annotated with 2 textual descriptions. For data division, 3701, 200 and 200 identities are utilized for training, validation and test, respectively. Each sentence is no shorter than 23 words.
+
+Evaluation Metrics. The performance is evaluated by the rankk accuracy. All images in the test set are ranked by their similarities with a given query natural language sentence. If any image of the corresponding person is contained in the top-k images, we call this a successful search. We report the rank-1, rank-5, and rank-10 accuracies for all experiments.
+
+4.1.2 Implementation Details. In our experiments, we set the
+
+representation dimensionality 𝑝 = 2048. The dimensionality of
+
+embedded word vectors is set to 500. The pretrained ResNet-50
+
+[7] is utilized as the visual CNN backbone and a pretrained BERT
+
+language model [24] is used to better handle the textual input. The
+
+total number of noun phrases obtained from each sentence is kept
+
+flexible while 𝑘 is set to 6. For both the CUHK-PEDES and RSTPReid
+
+dataset, the input images are resized to 384 × 128 × 3. The random
+
+horizontal flipping strategy is employed for data augmentation. The
+
+threshold value 𝛾
+
+in
+
+CA
+
+can
+
+be
+
+1 𝑘
+
+or
+
+1 𝑛
+
+for visual or
+
+textual
+
+data,
+
+respectively. The margin 𝛽 of ranking losses is set to 0.2 while the
+
+𝜆’s are empirically set to 1 in this paper. An Adam optimizer [11] is
+
+adopted to train the model with a batch size of 64 for 100 epochs.
+
+4.2 Ablation Analysis
+4.2.1 Comparison with CDCP-based Paradigms. The core
+idea of this paper is the ‘Look Before You Leap (LBUL)’ mechanism.
+To demonstrate its effectiveness, a series of experiments on CUHK-
+PEDES and RSTPReid are carried out to compare LBUL with CDCP-
+based paradigms: (1) CDCP-Sep (glo): directly using the global features 𝑣𝑔 and
+𝑡𝑔 extracted by modality-specific sub-models to calculate 𝑠𝑔 for
+matching; (2) CDCP-Sha (glo): calculating 𝑠𝑔 after processing 𝑣𝑔 and 𝑡𝑔
+with a shared mapping block;
+
+Zijie Wang et al.
+Table 1: Performance comparisons of common manifold mapping paradigms on CUHK-PEDES and RSTPReid.
+
+CUHK-PEDES
+
+Method
+
+Rank-1 Rank-5 Rank-10
+
+CDCP-Sep (glo) CDCP-Sha (glo) LBUL (glo) CDCP-Sep (USEM) CDCP-Sha (USEM) LBUL (USEM)
+
+56.19 56.78 57.20 59.62 59.88 61.95
+
+76.43 77.19 77.78 79.39 79.56 81.16
+
+83.63 84.07 84.23 85.83 85.91 87.19
+
+CDCP-Sep (glo) CDCP-Sha (glo) LBUL (glo) CDCP-Sep (USEM) CDCP-Sha (USEM) LBUL (USEM)
+
+37.05 37.85 38.65 40.70 41.40 43.35
+
+61.75 62.05 64.70 65.55 65.85 66.85
+
+71.10 71.50 73.20 75.10 75.40 76.50
+
+RSTPReid
+
+(3) LBUL (glo): processing global features with LBUL mechanism (XProj + LASM) to obtain 𝑠𝑔;
+(4) CDCP-Sep (USEM): calculating a similarity 𝑠𝑢 with output of USEM 𝑣𝑢 and 𝑡𝑢 , and then matching multi-modal samples with 𝑠𝑔, 𝑠 𝑓 and 𝑠𝑢 ;
+(5) CDCP-Sha (USEM): calculating 𝑠𝑐 after processing 𝑣𝑢 and 𝑡𝑢 with a shared mapping block and then matching multi-modal samples with 𝑠𝑔, 𝑠 𝑓 and 𝑠𝑐 ;
+(6) LBUL (USEM): just equivalent to the complete LBUL method, which conducts the LBUL-based operation on 𝑣𝑢 and 𝑡𝑢 to obtain 𝑠𝑐 and matches multi-modal samples with 𝑠𝑔, 𝑠 𝑓 and 𝑠𝑐 .
+The experimental results are reported in Tab. 1. As can be ob-
+served from the table, for CDCP-based methods, approaches using a
+shared common manifold mapping block outperform ones without
+to some extent. Furthermore, with the idea of LBUL for common
+manifold mapping, an obvious performance gain can be achieved. For instance, for methods using 𝑣𝑢 and 𝑡𝑢 , the LBUL-based method
+outperforms the CDCP-based method with a shared mapping block by 2.07%, 1.60%, 1.28% and 1.95%, 1.00%, 1.10% on CUHK-PEDES
+and RSTPReid, respectively. The experimental results demonstrate
+that by conducting the common manifold mapping operation after
+seeing distribution characteristics of both modalities, LBUL is more
+capable of learning consistent common representations with less
+information loss and higher retrieval accuracy.
+4.2.2 Impact of Uni-modal Sub-manifold Embedding Module (USEM). We enumerate some variants for the Uni-modal Sub-
+manifold Embedding Module (USEM) and compare them with our
+proposed USEM: (1) Glo: 𝑣𝑢, 𝑡𝑢 = 𝑣𝑔, 𝑡𝑔; (2) Avg: 𝑣𝑢, 𝑡𝑢 = 𝑎𝑣𝑔(𝑉 ), 𝑎𝑣𝑔(𝑇 ); (3) AvgLoc + Glo: 𝑣𝑢, 𝑡𝑢 = 𝑣𝑔 + 𝑎𝑣𝑔(𝑉 𝑙 ), 𝑡𝑔 + 𝑎𝑣𝑔(𝑇 𝑙 ), where
+𝑎𝑣𝑔(·) denotes the feature averaging operation.
+We can observe from Tab. 2 that the performance of the model
+with USEM is obviously better than the other substitutions, which
+indicate the effectiveness of USEM.
+4.2.3 Impact of Leaping After Seeing Module (LASM). How to properly take advantage of the two feature representations 𝑥𝑢
+
+1989
+
+Look Before You Leap: Improving Text-based Person Retrieval by Learning A Consistent Cross-modal Common Manifold
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+Table 2: Ablation study on proposed components of LBUL on CUHK-PEDES and RSTPReid.
+
+Component
+
+CUHK-PEDES
+
+RSTPReid
+
+𝑠𝑔 𝑠 𝑓 𝑠𝑐 2ST
+
+USEM
+
+LASM
+
+BERT Rank-1 Rank-5 Rank-10 Rank-1 Rank-5 Rank-10
+
+×
+
+× 53.50 75.05 82.68 34.85 60.15 70.95
+
+×× -
+
+-
+
+×-
+
+-
+
+-
+
+× 54.81 75.65 83.43 37.00 61.75 71.10
+
+-
+
+× 57.37 77.83 85.00 40.15 63.95 74.10
+
+glo avg avgloc + glo
+
+× 60.81 80.79 86.72 41.60 65.55 75.30 × 60.37 80.17 86.62 42.40 66.15 76.10 × 61.04 80.95 86.85 42.15 66.00 76.15
+
+w/o DS
+
+×
+
+add
+
+×
+
+add + MLP
+
+×
+
+concat
+
+×
+
+concat + MLP ×
+
+scalar gate
+
+×
+
+⊕=add
+
+×
+
+60.24 60.57 60.32 60.31 60.39 61.27 61.74
+
+80.12 80.56 80.05 80.41 80.36 80.70 80.93
+
+86.32 86.56 86.53 86.93 86.19 86.89 86.97
+
+41.25 40.45 41.15 42.25 42.05 42.65 43.20
+
+65.15 64.35 65.25 66.30 65.70 66.55 66.60
+
+75.55 73.70 75.35 76.15 75.95 76.30 76.55
+
+× 61.95 81.16 87.19 43.35 66.85 76.50 64.04 82.66 87.22 45.55 68.20 77.85
+
+Table 3: Comparison with SOTA on CUHK-PEDES.
+
+Method
+
+Rank-1 Rank-5 Rank-10
+
+CNN-RNN [20] Neural Talk [25] GNA-RNN [13] IATV [12] PWM-ATH [3] Dual Path [39] GLA [2] CMPM-CMPC [36] MIA [18] A-GANet [16] PMA [10] TIMAM [21] CMAAM [1] AMEN [29] HGAN [38] DSSL [40]
+
+8.07 13.66 19.05 25.94 27.14 44.40 43.58 49.37 53.10 53.14 54.12 54.51 56.68 57.16 59.00 59.98
+
+49.45 66.26 66.93 71.69 75.00 74.03 75.45 77.56 77.18 78.64 79.49 80.41
+
+32.47 41.72 53.64 60.48 61.02 75.07 76.26 79.27 82.90 81.95 82.97 84.78 84.86 86.22 86.62 87.56
+
+LBUL (Ours)
+
+61.95 81.16 87.19
+
+LBUL + BERT (Ours) 64.04 82.66 87.22
+
+and 𝑥𝑝 in the Leaping After Seeing Module (LASM) is crucial to
+
+the performance of LBUL. Therefore, we conduct experiments with
+
+several substitution variants of LASM on both the CUHK-PEDES
+
+and RSTPReid dataset to see the effectiveness of our proposed
+
+method:
+
+(1) Add: 𝑥𝑐 = 𝑥𝑢 + 𝑥𝑝 ;
+
+(2) Add + MLP: 𝑥𝑐 = 𝑡𝑎𝑛ℎ(𝑊 (𝑥𝑢 + 𝑥𝑝 ) + 𝑏);
+
+(3) Concat: 𝑥𝑐 =
+
+𝑥𝑢 𝑥𝑝
+
+;
+
+Table 4: Comparison with SOTA on RSTPReid.
+
+Method
+
+Rank-1 Rank-5 Rank-10
+
+IMG-Net [31] AMEN [29] DSSL [40] SSAN [4]
+
+37.60 38.45 39.05 43.50
+
+61.15 62.40 62.60 67.80
+
+73.55 73.80 73.95 77.15
+
+LBUL (ours)
+
+43.35 66.85 76.50
+
+LBUL + BERT (Ours) 45.55 68.20 77.85
+
+(4) Concat + MLP: 𝑥𝑐 = 𝑡𝑎𝑛ℎ(𝑊
+
+𝑥𝑢 𝑥𝑝
+
++ 𝑏);
+
+(5) Scalar Gate: 𝑥𝑐 = 𝑎𝑥𝑢 + (1 − 𝑎)𝑥𝑝 where 𝑎 is a real-valued
+
+number parameterized by 𝑥𝑢 and 𝑥𝑝 ;
+
+(6) ⊕=add: substitute the concatenation operation in Eq. 8 for
+
+addition.
+
+As can be seen from Tab. 2, the feature aggregation paradigm
+
+proposed in LASM (i.e. Eq. 8 and Eq. 9) achieves substantially better
+
+performance than all the basic variants, while implementing ⊕ in
+
+Eq. 8 as addition or concatenation give similar retrieval accuracies,
+
+with the concatenation method slightly better.
+
+4.2.4 Impact of Distribution Shifting Mechanism. As shown in Tab. 2, the Distribution Shifting (DS) mechanism is a key component in XProj, without which the performance drops by 1.71%, 1.04%, 0.87% and 2.10%, 1.70%, 0.95% on CUHK-PEDES and RST-
+PReid, respectively. The decrease in retrieval accuracy indicates the significance of the proposed DS mechanism.
+
+4.2.5 Impact of the Two-stage Training Strategy. As described in Sec. 3.5, a two-stage strategy is proposed to train LBUL. To prove the validity of this optimization strategy, we conduct experiments
+
+1990
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+Zijie Wang et al.
+
+(a) Rank-1 Accuracy
+
+(b) Rank-5 Accuracy
+
+(c) Rank-10 Accuracy
+
+Figure 3: Illustration of the impact of the starting epoch for the second training stage on CUHK-PEDES.
+
+This woman is wearing a white t-shirt and sweat pants and carrying a hang bag on her right shoulder.
+
+The man is wearing a red hoodle jacket and carrying a lighter shade of red tote bag. He has on black pants and white sneakers.
+
+The man is wearing a white shirt with the sleeves rolled up, and light colored shoes. He has glasses and a black backpack.
+
+A woman in a white shirt, a pair of black pants and a pair of pink shoes on her feet.
+
+Back of a male walker holding a big black backpack. He is wearing red and black down jacket, loose grey pants. He is looking at something in his hand.
+
+The female walker covering hair with red scarf wears a red coat, a white blouse inside, dark pants and a pair of boots.
+
+The middle-aged man wears grey down jacket, dark pants and shoes with a The woman is wearing a light purple coat with the hood. She wears a pair of
+
+bag over his right shoulder. A phone is in his left hand.
+
+brown trousers and black shoes. And she is carrying a bright blue backpack.
+
+Figure 4: Illustration of top-10 text-based person retrieval results by LBUL. The matched pedestrian images are marked by green rectangles, while the mismatched person images are marked by red rectangles.
+which train LBUL with a one-stage strategy, namely, utilize L𝑆𝑡𝑎𝑔𝑒2 since the beginning. As can be seen from Tab. 2, the retrieval performance decrease by 8.45%, 6.11%, 4.51% and 8.50%, 6.70%, 5.55% on CUHK-PEDES and RSTPReid, respectively, which demonstrate that after reliable uni-modal sub-manifolds are learned, a more consistent cross-modal common manifold can be constructed by LBUL. To further analysis the impact of the starting epoch for the second training stage, we conduct extensive experiments on CUHKPEDES and the results are illustrated in Fig. 3. It can be observed that initially the performance keeps increasing with the growth of the starting epoch for the second stage. Then after the value of the starting epoch passes 15, the performance gradually stabilizes. And the performance drop slightly after the value of the starting epoch gets too large. Note that when the starting epoch is 0, it is just equivalent to adopting a one-stage training strategy.
+4.3 Comparison with SOTA on Text-based Person Retrieval
+We compare the proposed LBUL with previous methods on CUHKPEDES and RSTPReid. It can be observed from Tab. 3 and Tab. 4 that without BERT, our proposed LBUL achieves 61.95%, 81.16%
+
+and 87.19% of rank-1, rank-5 and rank-10 accuracies respectively on CUHK-PEDES and 43.35%, 66.85% and 76.50% on RSTPReid. By encouraging the proposed model to look before it leaps with the proposed two-step common manifold mapping mechanism, LBUL outperforms existing methods and achieves the state-of-the-art performance on the text-based person retrieval task. For instance, TIMAM [21] is one of the typical CDCP-based approaches. It aims to learn modality-invariant feature representations using adversarial and cross-modal matching objectives and utilizes a pretrained ResNet-101 as the visual backbone. With a ResNet-50 backbone, LBUL outperforms TIMAM by 7.44%, 3.60% and 2.38% on CUHKPEDES of rank-1, rank-5 and rank-10 accuracies, respectively, which further proves the effectiveness of our proposed method. We display some examples of the top-10 text-based person retrieval results by LBUL in Fig. 4. The matched/mismatched pedestrian images are marked by green/red rectangles.
+5 CONCLUSION
+In this paper, we propose a novel algorithm termed LBUL to learn a Consistent Cross-modal Common Manifold (C3M) for text-based person retrieval to overcome the CDCP dilemma. The core idea of our method, just as a Chinese saying goes, is ‘san si er hou xing’, namely, to Look Before yoU Leap (LBUL). The common manifold mapping mechanism of LBUL includes two steps, namely, a looking step and a leaping step. Compared to CDCP-based common manifold mapping paradigms, LBUL considers distribution characteristics of both the visual and textual modalities before embedding data from one certain modality into C3M to achieve a more solid cross-modal distribution consensus, and hence achieve a superior retrieval accuracy. We evaluate our proposed method on two text-based person retrieval datasets CUHK-PEDES and RSTPReid. Experimental results demonstrate that the proposed LBUL outperforms previous methods and achieves the state-of-the-art performance.
+ACKNOWLEDGMENTS
+This work is partially supported by the National Natural Science Foundation of China (Grant No. 62101245, 61972016), China Postdoctoral Science Foundation (Grant No.2019M661999) , Natural Science Research of Jiangsu Higher Education Institutions of China (19KJB520009) and Future Network Scientific Research Fund Project (Grant No. FNSRFP-2021-YB-21).
+
+1991
+
+Look Before You Leap: Improving Text-based Person Retrieval by Learning A Consistent Cross-modal Common Manifold
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+REFERENCES
+[1] Surbhi Aggarwal, Venkatesh Babu Radhakrishnan, and Anirban Chakraborty. 2020. Text-based person search via attribute-aided matching. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision. 2617–2625.
+[2] Dapeng Chen, Hongsheng Li, Xihui Liu, Yantao Shen, Jing Shao, Zejian Yuan, and Xiaogang Wang. 2018. Improving deep visual representation for person re-identification by global and local image-language association. In Proceedings of the European Conference on Computer Vision (ECCV). 54–70.
+[3] T. Chen, C. Xu, and J. Luo. 2018. Improving Text-Based Person Search by Spatial Matching and Adaptive Threshold. In 2018 IEEE Winter Conference on Applications of Computer Vision (WACV). 1879–1887.
+[4] Zefeng Ding, Changxing Ding, Zhiyin Shao, and Dacheng Tao. 2021. Semantically Self-Aligned Network for Text-to-Image Part-aware Person Re-identification. arXiv preprint arXiv:2107.12666 (2021).
+[5] Hehe Fan, Liang Zheng, Chenggang Yan, and Yi Yang. 2018. Unsupervised person re-identification: Clustering and fine-tuning. ACM Transactions on Multimedia Computing, Communications, and Applications (TOMM) 14, 4 (2018), 1–18.
+[6] Yang Fu, Yunchao Wei, Guanshuo Wang, Yuqian Zhou, Honghui Shi, and Thomas S Huang. 2019. Self-similarity grouping: A simple unsupervised cross domain adaptation approach for person re-identification. In Proceedings of the IEEE/CVF International Conference on Computer Vision. 6112–6121.
+[7] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer vision and pattern recognition. 770–778.
+[8] Ruibing Hou, Bingpeng Ma, Hong Chang, Xinqian Gu, Shiguang Shan, and Xilin Chen. 2019. Interaction-and-aggregation network for person re-identification. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 9317–9326.
+[9] Xin Jin, Cuiling Lan, Wenjun Zeng, and Zhibo Chen. 2020. Global distancedistributions separation for unsupervised person re-identification. In European Conference on Computer Vision. Springer, 735–751.
+[10] Ya Jing, Chenyang Si, Junbo Wang, Wei Wang, Liang Wang, and Tieniu Tan. 2020. Pose-guided multi-granularity attention network for text-based person search. In Proceedings of the AAAI Conference on Artificial Intelligence, Vol. 34. 11189–11196.
+[11] Diederik P. Kingma and Jimmy Ba. 2015. Adam: A Method for Stochastic Optimization. In 3rd International Conference on Learning Representations, ICLR 2015.
+[12] Shuang Li, Tong Xiao, Hongsheng Li, Wei Yang, and Xiaogang Wang. 2017. Identity-aware textual-visual matching with latent co-attention. In Proceedings of the IEEE International Conference on Computer Vision. 1890–1899.
+[13] Shuang Li, Tong Xiao, Hongsheng Li, Bolei Zhou, Dayu Yue, and Xiaogang Wang. 2017. Person search with natural language description. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 1970–1979.
+[14] Shengcai Liao, Yang Hu, Xiangyu Zhu, and Stan Z Li. 2015. Person reidentification by local maximal occurrence representation and metric learning. In Proceedings of the IEEE conference on computer vision and pattern recognition. 2197–2206.
+[15] Shan Lin, Haoliang Li, Chang-Tsun Li, and Alex Chichung Kot. 2018. Multitask mid-level feature alignment network for unsupervised cross-dataset person re-identification. arXiv preprint arXiv:1807.01440 (2018).
+[16] Jiawei Liu, Zheng-Jun Zha, Richang Hong, Meng Wang, and Yongdong Zhang. 2019. Deep adversarial graph attention convolution network for text-based person search. In Proceedings of the 27th ACM International Conference on Multimedia. 665–673.
+[17] Xin Ning, Ke Gong, Weijun Li, and Liping Zhang. 2021. JWSAA: joint weak saliency and attention aware for person re-identification. Neurocomputing 453 (2021), 801–811.
+[18] Kai Niu, Yan Huang, Wanli Ouyang, and Liang Wang. 2020. Improving descriptionbased person re-identification by multi-granularity image-text alignments. IEEE Transactions on Image Processing 29 (2020), 5542–5556.
+[19] Shengsheng Qian, Dizhan Xue, Quan Fang, and Changsheng Xu. 2021. Adaptive Label-aware Graph Convolutional Networks for Cross-Modal Retrieval. IEEE Transactions on Multimedia (2021).
+[20] Scott Reed, Zeynep Akata, Honglak Lee, and Bernt Schiele. 2016. Learning deep representations of fine-grained visual descriptions. In Proceedings of the IEEE
+
+Conference on Computer Vision and Pattern Recognition. 49–58. [21] Nikolaos Sarafianos, Xiang Xu, and Ioannis A Kakadiaris. 2019. Adversarial
+representation learning for text-to-image matching. In Proceedings of the IEEE/CVF International Conference on Computer Vision. 5814–5824. [22] Changchang Sun, Xuemeng Song, Fuli Feng, Wayne Xin Zhao, Hao Zhang, and Liqiang Nie. 2019. Supervised hierarchical cross-modal hashing. In Proceedings of the 42nd International ACM SIGIR Conference on Research and Development in Information Retrieval. 725–734. [23] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. In Advances in neural information processing systems. 5998–6008. [24] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. Advances in neural information processing systems 30 (2017). [25] Oriol Vinyals, Alexander Toshev, Samy Bengio, and Dumitru Erhan. 2015. Show and tell: A neural image caption generator. In Proceedings of the IEEE conference on computer vision and pattern recognition. 3156–3164. [26] Dongkai Wang and Shiliang Zhang. 2020. Unsupervised person re-identification via multi-label classification. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 10981–10990. [27] Hao Wang, Doyen Sahoo, Chenghao Liu, Ke Shu, Palakorn Achananuparp, Eepeng Lim, and CH Steven Hoi. 2021. Cross-modal food retrieval: learning a joint embedding of food images and recipes with semantic consistency and attention mechanism. IEEE Transactions on Multimedia (2021). [28] Jingya Wang, Xiatian Zhu, Shaogang Gong, and Wei Li. 2018. Transferable joint attribute-identity deep learning for unsupervised person re-identification. In Proceedings of the IEEE conference on computer vision and pattern recognition. 2275–2284. [29] Zijie Wang, Jingyi Xue, Aichun Zhu, Yifeng Li, Mingyi Zhang, and Chongliang Zhong. 2021. AMEN: Adversarial Multi-space Embedding Network for TextBased Person Re-identification. In Chinese Conference on Pattern Recognition and Computer Vision (PRCV). Springer, 462–473. [30] Zijie Wang, Aichun Zhu, Jingyi Xue, Daihong Jiang, Chao Liu, Yifeng Li, and Fangqiang Hu. 2022. SUM: Serialized Updating and Matching for text-based person retrieval. Knowledge-Based Systems 248 (2022), 108891. [31] Zijie Wang, Aichun Zhu, Zhe Zheng, Jing Jin, Zhouxin Xue, and Gang Hua. 2020. IMG-Net: inner-cross-modal attentional multigranular network for descriptionbased person re-identification. Journal of Electronic Imaging 29, 4 (2020), 043028. [32] Longhui Wei, Shiliang Zhang, Wen Gao, and Qi Tian. 2018. Person transfer gan to bridge domain gap for person re-identification. In Proceedings of the IEEE conference on computer vision and pattern recognition. 79–88. [33] Bryan Ning Xia, Yuan Gong, Yizhe Zhang, and Christian Poellabauer. 2019. Second-order non-local attention networks for person re-identification. In Proceedings of the IEEE International Conference on Computer Vision. 3760–3769. [34] Dong Yi, Zhen Lei, Shengcai Liao, and Stan Z Li. 2014. Deep metric learning for person re-identification. In 2014 22nd International Conference on Pattern Recognition. IEEE, 34–39. [35] Yuan Yuan, Jian’an Zhang, and Qi Wang. 2020. Deep Gabor convolution network for person re-identification. Neurocomputing 378 (2020), 387–398. [36] Ying Zhang and Huchuan Lu. 2018. Deep cross-modal projection learning for image-text matching. In Proceedings of the European Conference on Computer Vision (ECCV). 686–701. [37] Mingbo Zhao, Jiao Liu, Zhao Zhang, and Jicong Fan. 2021. A scalable sub-graph regularization for efficient content based image retrieval with long-term relevance feedback enhancement. Knowledge-based systems 212 (2021), 106505. [38] Kecheng Zheng, Wu Liu, Jiawei Liu, Zheng-Jun Zha, and Tao Mei. 2020. Hierarchical Gumbel Attention Network for Text-based Person Search. In Proceedings of the 28th ACM International Conference on Multimedia. 3441–3449. [39] Zhedong Zheng, Liang Zheng, Michael Garrett, Yi Yang, Mingliang Xu, and Yi-Dong Shen. 2020. Dual-Path Convolutional Image-Text Embeddings with Instance Loss. ACM Transactions on Multimedia Computing, Communications, and Applications (TOMM) 16, 2 (2020), 1–23. [40] Aichun Zhu, Zijie Wang, Yifeng Li, Xili Wan, Jing Jin, Tian Wang, Fangqiang Hu, and Gang Hua. 2021. DSSL: Deep Surroundings-person Separation Learning for Text-based Person Retrieval. In Proceedings of the 29th ACM International Conference on Multimedia. 209–217.
+
+1992
+

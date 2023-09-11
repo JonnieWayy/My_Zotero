@@ -1,0 +1,79 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2309.00363
+
+Help | Advanced Search
+Search
+Computer Science > Machine Learning
+(cs)
+[Submitted on 1 Sep 2023]
+Title: FederatedScope-LLM: A Comprehensive Package for Fine-tuning Large Language Models in Federated Learning
+Authors: Weirui Kuang , Bingchen Qian , Zitao Li , Daoyuan Chen , Dawei Gao , Xuchen Pan , Yuexiang Xie , Yaliang Li , Bolin Ding , Jingren Zhou
+Download a PDF of the paper titled FederatedScope-LLM: A Comprehensive Package for Fine-tuning Large Language Models in Federated Learning, by Weirui Kuang and 9 other authors
+Download PDF
+
+    Abstract: LLMs have demonstrated great capabilities in various NLP tasks. Different entities can further improve the performance of those LLMs on their specific downstream tasks by fine-tuning LLMs. When several entities have similar interested tasks, but their data cannot be shared because of privacy concerns regulations, federated learning (FL) is a mainstream solution to leverage the data of different entities. However, fine-tuning LLMs in federated learning settings still lacks adequate support from existing FL frameworks because it has to deal with optimizing the consumption of significant communication and computational resources, data preparation for different tasks, and distinct information protection demands. This paper first discusses these challenges of federated fine-tuning LLMs, and introduces our package FS-LLM as a main contribution, which consists of the following components: (1) we build an end-to-end benchmarking pipeline, automizing the processes of dataset preprocessing, federated fine-tuning execution, and performance evaluation on federated LLM fine-tuning; (2) we provide comprehensive federated parameter-efficient fine-tuning algorithm implementations and versatile programming interfaces for future extension in FL scenarios with low communication and computation costs, even without accessing the full model; (3) we adopt several accelerating and resource-efficient operators for fine-tuning LLMs with limited resources and the flexible pluggable sub-routines for interdisciplinary study. We conduct extensive experiments to validate the effectiveness of FS-LLM and benchmark advanced LLMs with state-of-the-art parameter-efficient fine-tuning algorithms in FL settings, which also yields valuable insights into federated fine-tuning LLMs for the research community. To facilitate further research and adoption, we release FS-LLM at this https URL . 
+
+Comments: 	Source code: this https URL
+Subjects: 	Machine Learning (cs.LG)
+Cite as: 	arXiv:2309.00363 [cs.LG]
+  	(or arXiv:2309.00363v1 [cs.LG] for this version)
+  	https://doi.org/10.48550/arXiv.2309.00363
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Yaliang Li [ view email ]
+[v1] Fri, 1 Sep 2023 09:40:36 UTC (1,041 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled FederatedScope-LLM: A Comprehensive Package for Fine-tuning Large Language Models in Federated Learning, by Weirui Kuang and 9 other authors
+    PDF
+    Other formats 
+
+( license )
+Current browse context:
+cs.LG
+< prev   |   next >
+new | recent | 2309
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

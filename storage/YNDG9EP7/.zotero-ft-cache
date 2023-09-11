@@ -1,0 +1,514 @@
+arXiv:2209.02691v1 [cs.CV] 6 Sep 2022
+
+Statistical Foundation Behind Machine Learning and Its Impact on Computer Vision
+Lei Zhang1 and Heung-Yeung Shum2
+1,2International Digital Economy Academy, Shenzhen 518048, China Email: 1leizhang@idea.edu.cn, 2hshum@idea.edu.cn
+Abstract
+This paper revisits the principle of uniform convergence in statistical learning, discusses how it acts as the foundation behind machine learning, and attempts to gain a better understanding of the essential problem that current deep learning algorithms are solving. Using computer vision as an example domain in machine learning, the discussion shows that recent research trends in leveraging increasingly large-scale data to perform pre-training for representation learning are largely to reduce the discrepancy between a practically tractable empirical loss and its ultimately desired but intractable expected loss. Furthermore, this paper suggests a few future research directions, predicts the continued increase of data, and argues that more fundamental research is needed on robustness, interpretability, and reasoning capabilities of machine learning by incorporating structure and knowledge.
+1 Background
+Since 2012, the breakthrough in deep learning has led to remarkable progress in computer vision [1, 2]. For example, for image classiﬁcation, the top-1 accuracy of 1000-class classiﬁcation on ImageNet has been dramatically improved from 50.9% before 2012 to 91.0% in 2022 [3, 4]. For object detection, the mAP (mean average precision) was only 53.3% [5] in 2014 on Pascal VOC 2012 for 20 object categories and has been improved to 68.17% [6] in 2019 on Open Images for 500 object categories, which are signiﬁcantly more than 20 categories in VOC. The algorithms developed for image classiﬁcation and object detection have become fundamental building blocks empowering many other vision problems. See [7] for a more comprehensive survey of deep learning for computer vision.
+However, looking at real applications that need computer vision techniques, we still see a big gap between the current state-of-the-art (SOTA) and the desired performance in real scenarios. Even for face recognition, which has been widely used in real applications, its algorithms still suﬀer from the bias issue and are vulnerable to adversarial attacks. For object detection, as the generic detection performance is only as good as mAP 68.17% (for 500 categories on Open Images), its application has to be narrowed to a handful number of object categories to make it practically usable, e.g. face detection and vehicle detection, or constrained to non mission-critical problems, e.g. digital asset management.
+Natural language processing (NLP) has witnessed a similar phenomenal progress but with even bigger challenges. Unlike computer vision, which is normally regarded as a sensing problem, language understanding often needs to deal with knowledge and reasoning, which lead to many critiques arguing its lack of theoretical foundation in addressing such problems. Such critiques are not only for the domain of NLP, but also for the whole area of artiﬁcial intelligence (AI). For example, Jordan [8] pointed out that the developments now being called AI arose mostly in the engineering ﬁelds associated with low-level pattern recognition and movement control, as well as in the ﬁeld of statistics, and their underlying systems do not involve high-level reasoning or thought. Pearl [9] amounted all the impressive achievements of deep learning to just curve ﬁtting and expected that causal reasoning could provide machines with human-level intelligence. Marcus [10] regarded deep learning a brute force approach, which works less well when there are limited amounts of training data, or when the test set diﬀers importantly from the training set, and proposed a hybrid, knowledge-driven, reasoning-based approach, centered around cognitive models for a more robust AI [11]. Zhang et al. [12] suggested that to address
+1
+
+the deﬁciencies of the current AI technologies, it is imperative to combine the two competing paradigms of AI development since 1956, i.e., symbolism and connectionism, to develop a new, explainable, and robust AI theory and method.
+Despite all the challenges and critiques, the recent progress in deep learning is undeniable. However, there are few discussions why deep learning is eﬀective in some ﬁelds but fails in others from the perspective of statistical learning. One often attributes the success of deep learning to three factors: algorithm, big data, and computing power [12], and call current deep learning-based algorithms datadriven approaches. Indeed, in the past few years, the scale of the dataset, the number of model parameters, and the number of GPUs used for training a language or vision foundation model have been tremendously increased [4, 13, 14, 15]. As a result, records are constantly refreshed on various benchmarks, e.g. ImageNet [16], COCO [17], WMT2014 [18], GLUE [19], etc. To understand how the factors of algorithm, big data, and computing power are connected and where they succeed or fail, it is worthwhile to revisit the statistical foundation behind machine learning, gain a better understanding of what essential problem the deep learning algorithms are solving, and develop solutions that can possibly address the shortcomings of the current approaches.
+The purpose of this paper is not to propose any new concept, but to show the fundamental connection between classical statistical learning and modern machine learning (particularly in the form of deep learning), which is often overlooked and less discussed in research papers in computer vision. The discussion about the statistical foundation behind machine learning is general to any application domains. But the paper uses computer vision as an example domain to make the discussion more accessible to researchers and practitioners in related ﬁelds. Through the discussion, we hope one can gain a better understanding of the current state of the art: what works, what does not, what is the limitation of current data-driven approaches, what we should improve, etc. In the end, we will suggest a few future research directions, predict the continued increase of data, and argue that more fundamental research is needed to address the weakness of data-driven approaches by incorporating structure and knowledge.
+2 Statistical Foundation Behind Machine Learning
+2.1 What is machine learning?
+Machine learning, a term popularized by Samuel [20], is generally viewed as a sub-ﬁeld of artiﬁcial intelligence. Over the past decades, many machine learning algorithms have been developed to empower computers to learn from data and make predictions or decisions without being explicitly programmed. Deep learning refers to machine learning algorithms that employ deep neural networks, and has led to great progress in many domains, including, but not limited to, computer vision, natural language processing, speech recognition, game, and robotics.
+Generally speaking, machine learning can be regarded as solving the following problem.
+Problem. Assuming that we have seen N data pairs {(xi, yi)}Ni=1, where xi ∈ X is an observed data sample and yi ∈ Y is its associated label, can we predict something about the (N + 1)-th data sample xN +1 ?
+This is also known as inductive reasoning which has been widely used in the development of science. Science is aiming at understanding the causal relationship from observed data so that important laws such as Newton’s law of universal gravitation can be discovered. Machine learning is trying to directly learn the relationship from data, though mostly being correlated instead of causal.
+Mathematically, machine learning is to learn a mapping function f : X → Y from a given set of functions parameterized by α ∈ Λ, which can be formulated as y = f (x|α). We also know that (x, y) follows a ﬁxed (but unknown) probability distribution F (x, y), from which we can sample data. For example, predicting whether an image has a face or not is a binary classiﬁcation problem. Generating a sentence to describe an image is an image-to-text caption generation problem.
+To make the problem tractable, a machine learning approach typically draws N independent and identically distributed (i.i.d.) samples {(xi, yi)}Ni=1 from F (x, y) and uses the sampled data as a proxy to deﬁne a learning problem and then ﬁnds its optimal parameter α. The intuition is, if y = f (x|α) explains {(xi, yi)}Ni=1 well, we hope it also works for xN+1.
+2
+
+Here, “explain” and “hope” are intuitive terms. For example, in many computer vision problems, one often trains a model on a ﬁnite set of training images. One of the criteria for a good model is that its prediction on any training image matches with its ground truth label. That is, the trained model explains1 well the training data. But the goal of machine learning is to make prediction on unseen data, which are normally inﬁnite in real applications. The problem of “hope” is if the trained model can make good predictions on unseen data. It is crucial to understand the statistical conditions when a model trained on ﬁnite data generalizes on inﬁnite unseen data.
+Next we will discuss what means “explain” and what means “hope” in more details. What means “explain”? To check if y = f (x|α) explains {(xi, yi)}Ni=1 well, we can deﬁne a loss function Q(f (x|α), y) to measure the diﬀerence between a predicted value and its desired value. The overall loss is deﬁned by averaging the diﬀerences over N data pairs:
+
+1N
+
+Lemp(α) = N Q(f (xi|α), yi).
+
+(1)
+
+i=1
+
+Note that this loss function depends on the sampled N data pairs, thus is called empirical loss. Compared with the general inductive reasoning principle utilized in the development process of science, Eq. (1) oﬀers a practical solution that can be solved by a computer rather than a genius scientist.
+Eq. (1) is very general. It helps to explain why three factors algorithm, big data, and computing power are essential for the success of machine learning and AI.
+
+• Algorithm - designing a proper mapping function f (x|α), parameterized by α ∈ Λ • Big data - deﬁning an empirical loss Lemp(α) to tell which function is better • Computing power - solving the optimization problem αˆ = arg minα∈Λ Lemp(α)
+
+2.1.1 Mapping function f (x|α)
+
+The mapping function reﬂects our understanding to the learning problem, i.e. how the input variable x is mapped to the output variable y. Prior to deep learning, linear function is most widely used and studied:
+f (x|α) = W x + b,
+where α = {W, b}. Deep learning provides a more principled way for designing a nonlinear mapping function in a
+layer-by-layer manner:
+
+f (x|α) = g h k r q (...)
+
+.
+
+In the past decade, the research community has developed and open-sourced many easy-to-use building blocks such as fully connected layer, convolutional layer, and Transformer encoder and decoder layers, which signiﬁcantly helped the design of mapping functions.
+
+2.1.2 Loss function Q(f (x|α), y) The loss function form in Eq. (1) covers most machine learning problems. Below we list a few examples for supervised learning:
+1. Binary classiﬁcation:
+
+0, if f (x|α) = y Q(f (x|α), y) =
+1, if f (x|α) = y,
+where y ∈ {0, 1} is a discrete binary value and f is a binary prediction function.
+1Note that explainability is a diﬀerent term in the literature. It is concerned that if the model prediction is a whitebox process which provides results that are understandable for experts in the domain [21]. For example, a model that lacks explainability can make unreasonable-to-human wrong predictions on adversarial inputs, for example, predicting a panda image with an imperceptibly small perturbation as “gibbon” [22].
+
+3
+
+2. K-class classiﬁcation (cross entropy):
+
+K
+Q(f (x|α), y) = yk log fk(x|α),
+k=1
+
+where y ∈ [0, 1]K and
+
+K k=1
+
+yk
+
+=
+
+1
+
+is
+
+a
+
+K-dimensional
+
+probability
+
+distribution
+
+and
+
+f
+
+is
+
+a
+
+probability prediction function.
+
+3. Regression (L2 loss):
+
+Q(f (x|α), y) =
+
+y − f (x|α))
+
+2 2
+
+,
+
+where y ∈ Rn is an n-dimensional real-valued vector and f is a real-valued vector prediction function.
+
+The loss function Q(f (x|α), y) also applies to unsupervised learning, where the supervision y is
+
+simply the input x itself, i.e. y = x. Below is an example for L2-based loss, while many other forms
+
+can also be introduced.
+
+Q(f (x|α), x) =
+
+x − f (x|α))
+
+2 2
+
+.
+
+Such a loss is essentially to perform a reconstruction task, with interest to discover intrinsic structures from data for more robust representation learning. More discussions please see Question 2 in Sec. 4.
+
+2.2 Statistical Foundation
+
+The empirical loss Lemp only deals with N seen data, aiming to learn a mapping function y = f (x|αˆ) that can explain {(xi, yi)}Ni=1 well if αˆ minimizes Lemp. However, optimizing Lemp is no more than a curve ﬁtting problem. How can we hope the learned mapping function also works for xN+1?
+One may argue that we can use a test set {(xi, yi)}M i=1 to measure the performance of the learned function, which is a widely used practice in machine learning. That is, after we ﬁnd the optimal
+parameter αˆ that minimizes Lemp, we can test the loss on {(xi, yi)}M i=1.
+
+1M
+
+Ltest(αˆ) = M Q(f (xi|αˆ), yi).
+
+(2)
+
+i=1
+
+Note that the test set is also sampled from the same probability distribution F (x, y) and subjects
+to sampling bias. When the size of the test set is limited and often smaller than the training set as
+in most applications, Ltest can only be used as an estimator and will inevitably lead to an estimation variance. There is no theoretical guarantee to ensure that the optimal parameter αˆ also optimizes
+Ltest. What means “hope”? To hope the learned mapping function also works for xN+1, we need to
+review our learning problem again. As shown in the beginning of Sec. 2.1, machine learning solves the problem of learning a mapping function y = f (x|α) from the sampled data set {(xi, yi)}Ni=1, which follows a ﬁxed (but unknown) probability distribution F (x, y). However, note that our true motivation
+is ﬁnding a right mapping function y = f (x|α) that works for unseen data. The sampled data set is
+only a proxy that helps us deﬁne an empirical loss Lemp and makes the learning problem tractable. The true expected loss function should be
+
+L(α) = Q(f (x|α), y)dF (x, y).
+
+(3)
+
+As shown in Fig. 1, statistical learning is concerned with the following question: is minimizing the empirical loss Lemp in Eq. (1)) consistent with minimizing the expected loss L in Eq. (3)? That is, if and when the following convergence takes place for any positive ,
+
+1N
+
+P sup
+α∈Λ
+
+Q(z, α)dF (z) − N
+
+Q(zi, α) >
+
+i=1
+
+−−−−→ 0,
+N →∞
+
+(4)
+
+4
+
+Inductive Reasoning:
+
+minimize: measure: minimize:
+
+(1)
+
+Empirical Loss
+
+
+- what we can compute
+
+(2)
+
+Test Loss
+
+
+- what we can measure
+
+(3)
+
+Expected Loss
+
+
+- what we ultimately want to solve
+
+Figure 1: Machine learning is to learn a mapping function from observed data in order to make predictions for unseen data. In practice, one normally minimizes an empirical loss deﬁned over observed data and measures the performance of the estimated parameter αˆ on another i.i.d test data set. But it is worth noting that the ultimate goal is to minimize the expected loss. Statistical learning is concerned that if the two objectives deﬁned in Eq. (1) and Eq. (3) are consistent.
+
+where for simplicity we have replaced Q(f (x|α), y) with Q(z, α) and F (x, y) with F (z). Note that {zi}Ni=1 are random variables sampled from F (z). The probability is computed over all possible sampled random variables for any given N .
+This is essentially the generalization problem for the inductive reasoning principle, which has been thoroughly studied in statistical learning [23]. The study has led to the generalization of the Law of Large Numbers in functional space.
+When Λ has only one (or a ﬁnite number of) element, i.e. only one choice of α, Eq. (4) is reduced to the Law of Large Numbers, which states that the average of the observation values converges to the expected value when the number of trials N goes to inﬁnity.
+This special case can be regarded as model evaluation after the learning process is done and an optimal parameter has been found. But even in this case, to evaluate the real expected performance, a suﬃciently large number of test examples is needed. Evaluation is very diﬃcult in many applications as it requires intensive eﬀorts to develop a comprehensive evaluation data set.
+When Λ has an inﬁnite number of elements, Eq. (4) does not necessarily converges. Its convergence is the generalization of the Law of Large Numbers in functional space. In statistical learning, the necessary and suﬃcient condition that ensures this convergence was proved in 1980s [23]. The condition is mainly to bound the capacity of the function set {f (x|α)|α ∈ Λ}. Otherwise, if the function set had an unlimited capacity, it would memorize any given training set and lead to an empirical loss of 0 but cannot generalize to any unseen data.
+Eq. (4), which is called uniform convergence, is profound in statistical learning. From Eq. (4) and its necessary and suﬃcient condition about the function capacity, we can see three essential factors for eﬀective learning.
+• Big data – Large-scale data not only helps deﬁne an approximation ( empirical loss) to a target problem, but also is a necessary condition to ensure the asymptotic convergence of an empirical loss to its expected loss. A smaller scale data set will inevitably lead to the variance error due to the randomness of the sampled data. Moreover, data is never suﬃcient in real applications. Take face/non-face classiﬁcation on an input image of 20 × 20 with 16 level gray values as a simple example. The total number of all possible samples would be 1620×20 ≈ 4.5 × 10481, which is simply impossible to enumerate. To mitigate this issue, some priors over the mapping function f (x|α) or data manifold have been introduced for better generalization. For example, some priors are function smoothness, low-dimensional data manifold, multiple and hierarchical explanatory factors, etc. See [24] for more discussions.
+• i.i.d assumption – Uniform convergence assumes the sampled data are independent and identically distributed. The independent assumption makes it possible to decouple the joint distribution
+
+5
+
+of p(z1, z2, ..., zN ) into the multiplication of distributions over individual samples
+
+N i=1
+
+p(zi)
+
+and
+
+then convert it to the sum of log probabilities
+
+N i=1
+
+log
+
+p(zi).
+
+To
+
+see
+
+what
+
+it
+
+means
+
+in
+
+deep
+
+learn-
+
+ing, empirical loss is typically deﬁned as an additive loss (due to the i.i.d. assumption) over every
+
+training sample and then stochastic gradient descent (SGD) can be applied on mini-batches.
+
+In practice, it is hard to ensure the identically distributed assumption as we cannot directly access the probability distribution F (z), which is ﬁxed but unknown. Instead, we have to collect data based on domain experiences and try to cover all possible cases. The general principle is that the collected data should follow the underlying probability distribution F (z). Otherwise, the learned function will lead to many failure cases where data are poorly covered. This also explains why it is so diﬃcult to develop a machine learning model for a general domain. Instead, one has to narrow down the target domain and try to close the loop of data collection and model development in real applications.
+
+• Limited function capacity – This assumption matches with our daily experience. For example, Occam’s razor principle states that, of two explanations that account for all the facts, the simpler one is more likely to be correct. The statistical learning ﬁeld has developed many theories to measure the capacity of a given set of functions Q(z, α), α ∈ Λ. VC-dimension is one of such theories that has guided the development of the support vector machine (SVM) algorithm. However, it remains unclear how to explain deep learning models, which have demonstrated a remarkable generalization capability in many applications, yet seem to show an unlimited capacity in ﬁtting any randomly labeled training data [25]. One of the most commonly used tricks in deep learning training approaches is data augmentation which ensures local smoothness of the learned function as adding small amount of noises to any input sample does not change its target label. The local smoothness property to some extend limits the capacity of the learning function as the function cannot ﬁt arbitrarily changed labels in a local neighborhood of any input sample. Some other research [26] shows that this problem might be coupled with the SGD optimization process, which acts as an implicit regularization but is not included in the loss function. The deep learning generalization problem remains a large space for future studies.
+
+3 The Impact of Statistical Foundation on Computer Vision
+Computer vision can be generally divided into two major areas: geometry understanding and content understanding. Geometry understanding is largely driven by 3D reconstruction with projective geometry as its mathematical foundation, whereas content understanding is mostly concerned with visual recognition with statistical learning as its mathematical foundation.
+This section mainly discusses computer vision problems related to visual recognition. We will see successful cases are often constrained to relatively narrow domains and where data can be easily collected and scaled up.
+3.1 Successful Cases in Visual Recognition
+Face detection is probably the ﬁrst solved recognition problem in computer vision. The ﬁrst breakthrough was taken place in 2001, thanks to the Viola–Jones object detection framework [27]. In early 2000s, the training data for face detection is from a few thousands to tens of thousands. But it already led to many real applications. The most representative one is the hardware-enabled face detection module widely used in digital cameras for improving face-prioritized focusing function [28]. Since 2012, the research community has developed much larger datasets for face detection, e.g. 367,888 face annotations for 8,277 subjects in the UMDFaces dataset [29] and 393,703 faces from 32,203 images with a high degree of variability in scale, pose and occlusion in the WIDER Face dataset [30]. As a result, the face detection performance has been signiﬁcantly improved from AP 58.8% in 2014 to 95.7% in 2019 as measured on the WIDER Face medium set [31].
+Face recognition has lagged behind face detection for many years but started to blossom since 2012 due to three factors. First, the breakthrough in deep learning algorithms made end-to-end feature learning possible and eﬀective. Second, large-scale face recognition data sets developed in the research community, including CASIA WebFace [32], MS-Celeb-1M [33], VGG-Face2 [34], etc, greatly improved the robustness and generalization ability of the learned representation and motivated more researches
+
+6
+
+on new loss functions that encourage large margin and better generalization. Third, the deployment in real applications further closed the loop in scenario-targeted data collection and eﬀectively increased the coverage of tail data that are under sampled in general face recognition data sets. However, while face recognition has been able to leverage hundreds of millions of face images, it still suﬀers from the bias issue and is vulnerable to adversarial attack, indicating the extreme diﬃculty of satisfying the asymptotic uniform convergence condition which requires suﬃciently large number of samples. Nevertheless, from the research perspective, face recognition is a unique domain that can setup a classiﬁcation problem with millions of mutually exclusive classes. Moreover, face images are normally cropped and aligned, leading to a data manifold of much lower dimension. This makes face recognition an ideal problem for representation learning study.
+In other domains, despite great progress in the past few years, there is a big gap between the SOTA and the desired performance in real applications. The progress is mainly on the algorithm part, i.e. the mapping function f (x|α) in terms of the statistical learning formulation as in Eq. (3). However, the progress is greatly limited by the lack of suﬃcient data, regardless of image classiﬁcation, object detection, object/scene segmentation, or motion-related video analysis. The more general a visual recognition problem is, the harder it is to address the data shortage. To address this challenge, a typical practice is to limit the problem to a narrow domain to reduce the variety of the input data space, letting the underlying probability distribution F (x, y) concentrate on a small region and thus making it easier to fulﬁll the i.i.d sample assumption. Another practice is to collect more real data after a model is deployed, building a closed loop for data collection and model improvement. This has been a practical paradigm in many applications.
+While such practices have led to many successful vision applications, they also led to many issues such as scattered model development eﬀorts, hard-to-maintain pipelines, limited model generalization capability, and being vulnerable to attacks, etc.
+3.2 Towards Generic Representation Learning
+To address the aforementioned issues, recent years have witnessed great progress in visual representation learning, with the goal to leverage a much larger scale of weakly labeled data to learn better visual representations via pre-training. For example, Kolesnikov et al. [35] scaled up pre-training on the JFT-300M dataset, which contains 300M noisily labeled images. Their largest pre-trained model BiT-L shows remarkable transferring capabilities after being ﬁne-tuned on a wide range of data sets. For example, BiT achieves 87.5% top-1 accuracy on ImageNet and 76.3% on the 19 task Visual Task Adaptation Benchmark (VTAB). Dosovitskiy et al. [36] for the ﬁrst time introduced Transformers to replace convolutional networks for image classiﬁcation. When pre-trained on the same JFT-300M dataset, Vision Transformers (ViT) reaches the accuracy of 88.55% on ImageNet. This work not only established a new SOTA on ImageNet, but also motivated many model architecture improvements by introducing better inductive biases to compensate Transformers which only rely on global attention. A natural idea is to marry convolutions or local attentions with Transformers to enjoy both local structure (and thus translation-invariant) and long range attention. For example, CvT [37] introduces convolution projections to enhance the linear projections for query, key, and value tokens. Swin Transformer [38] proposes to use a shifted windowing scheme by limiting self-attention computation to non-overlapping local windows for greater eﬃciency. CoAtNet [39] develops a family of hybrid models to stack convolution layers and Transformer layers. By pre-training on an enlarged JFT-3B dataset, CoAtNet further refreshed the SOTA on ImageNet with an accuracy of 90.88%.
+The above works mainly train models using weakly labeled classiﬁcation data, i.e. images with noisy keywords, and the learned representation can only be transferred to classiﬁcation tasks. In contrast, Radford et al. [40] developed a contrastive language–image pre-training (CLIP) approach which can leverage a wide variety of images with noisy natural language supervision that is abundantly available on the internet. By pre-training on 400M images with noisy language supervision, the learned visual representation is well aligned with language representation and achieves competitive zero-shot performance on a great variety of image classiﬁcation datasets. For example, CLIP ViT-L achieves a zero-shot image classiﬁcation accuracy of 76.2% on ImageNet and matches the performance of ResNet50 without using any training images from ImageNet. Jia et al. [41] scaled up the training data to 1.8B image alt-text pairs collected on the web to train a model named ALIGN (A Large-scale ImaGe and Noisy-text embedding). The aligned visual and language representation further improves zero-shot image classiﬁcation to 76.4% and also sets new SOTA results on Flickr30K [42] and MSCOCO [17]
+7
+
+image-text retrieval benchmarks. Yu et al. [4] developed an image-text encoder-decoder foundation model called CoCa (Contrastive Captioner), pre-trained the model on JFT-3B (3B weakly labeled images) and ALIGN (1.8B image-text pairs), and achieved a new SOTA on ImageNet with an accuracy of 91.0%.
+CLIP marks the beginning of large-scale vision-language multi-modality representation learning. However, the visual representation learned in both CLIP and ALIGN are at the image level, which can be mainly used for image classiﬁcation and cross-modal retrieval tasks. To expand the representations to a wider scope of vision tasks, Yuan et al. [13] developed a new vision foundation model called Florence, which is trained on 900M images with 900M free-form texts. To bridge the gap between the generic pre-trained representation and the ﬁnal downstream tasks of great varieties, such as object detection, vision-language tasks (e.g. image captioning and visual question answering), and video understanding, Florence introduces several adapters which further ﬁne-tune the generic representation for diﬀerent task domains. This foundation model achieves new SOTA results on a majority of 44 representative benchmarks, e.g. ImageNet-1K zero-shot classiﬁcation with top-1 accuracy of 83.74%, 62.4% mAP on COCO detection, 80.36% on VQA, and 87.8% on Kinetics-600.
+The progress towards generic representation learning is closely coupled with the increase of training data, which are typically of billion images nowadays. Such a trend can be regarded as an application of the uniform convergence as shown in Eq. (4). The goal of generic representation learning should be to minimize the expected loss as in Eq. (3), so that the learned representation works the best for all possible visual inputs. However, due to many practical limitations, such as non-trivial and even biased training data collection, limited computing resource, and imperfect mapping function (model architecture), we can only perform representation learning via Eq. (1). As the uniform convergence is concerned with asymptotic convergence, it only shows us a trend of continued performance improvement with more training data used. To understand such a trend, Kaplan et al. [43] and Zhai et al. [44] studied the empirical scaling laws of neural language models and disciminative image models, respectively. Both papers ﬁnd power laws that can describe the relationships between compute, data size, model size, and performance. While billions of images have presented tremendous technical challenges, considering the nature of the complexity of our visual world, we believe the trend of scaling up training data will continue. However, it does not mean that adding more data is the only way to improve the generalization of the learned representation. Introducing better inductive biases to capture intrinsic structures of visual concepts can make the learning more data-eﬃcient.
+4 Discussions
+We have revisited the statistical foundation behind machine learning and how it impacts visual representation learning. With the development of deep learning, the computer vision community has made remarkable progress in the past decade by scaling up data, model, and compute. In this section, we discuss several questions related to visual representation and multimodal learning which are frequently asked and discussed in the public media and research community. We attempt to answer and discuss them from the perspective of statistical learning.
+Question 1. Are giant models really necessary?
+In the past few years, we have seen great process in developing gigantic deep learning models for both language understanding and visual recognition. Such giant models typically have billions or even trillions of parameters and are also called foundation models [45] for their great adaptability to a wide range of downstream tasks. For example, BiT [35], ViT [36], CLIP [40], ALIGN [41], SimVLM [46], CoCa [4], Florence [13], and GIT [47] as vision or vision-language models have led to SOTA’s on many downstream tasks, while they also received many critiques for their limited capability in reasoning.
+If we view the progress from the perspective of statistical learning, Eq. (4) shows that big data is a necessary condition to ensure the convergence of an empirical loss to its expected loss. See our discussion about big data in Sec. 2.2. Even for a simple face/non-face classiﬁcation problem for an input image of 20 × 20 with 16-level gray values, it is impossible to enumerate all possible images for training using our current computing power, let alone more challenging problems such as generic language understanding and visual recognition. To gain a better performance using statistical learningbased approaches such as deep learning, scaling up data is a necessary condition. Given the complexity brought in by super large-scale data, giant models are highly desirable for their greater capacities.
+8
+
+In terms of uniform convergence, the SOTA scale of the training data used for training language or vision models is still far from suﬃciently large. On one hand, we foresee continued progress of giant models in the next few years. On the other hand, for open domain problems such as language understanding and generic visual recognition, it is impossible to solve the problem merely by scaling up data and model. New breakthroughs from algorithms to approaches need to be investigated and explored.
+
+Question 2. Why is unsupervised learning so critical for representation learning?
+
+In Sec. 2.1.2, we have shown several loss functions Q(f (x|α), y) for supervised learning to measure the diﬀerence between the predicted value f (x|α) for a given input x and its corresponding ground truth target y. We also brieﬂy mention that the loss function Q(f (x|α), y) also applies to unsupervised learning, where the supervision y is simply the input x itself, i.e. y = x. Below is an example for L2-based loss, while many other forms can also be introduced.
+
+Q(f (x|α), x) =
+
+x − f (x|α))
+
+2 2
+
+.
+
+Such a loss is essentially to perform a reconstruction task, with interest to discover intrinsic structures from data for more robust representation learning, e.g. ﬁnding low-rank structures on data manifold (sparse coding, auto-encoder, K-means, principle component analysis, Gaussian mixture model, etc.), disentangling multiple factors that control data generation (decoupling shape and appearance representations), masking and reconstructing tokens for contextualized representation learning, and predicting next tokens in an auto-regressive way for sequence generation.
+Due to the strong desire of using large-scale data to ensure (or approach to) the asymptotic convergence to the true underlining expected training loss, unsupervised learning has become a fundamental approach to representation learning as it can easily leverage unlimited amount of training data without additional annotations.
+Below we list several practical examples recently used for either language, vision, or language-vision multi-modality representation learning, and how they are connected with unsupervised learning:
+
+• Text to text: This is the most widely used form in natural language processing, where corrupted human-written text is used as input to predict (or reconstruct) the corrupted words. The corruption could be either random token mask or left-to-right auto regression. The recent SOTA language models such as BERT [48], GPT-3 [14], Switch Transformer [49], and Wudao 2.0 [15] are all trained in this way.
+
+• Image to image: This is related to many classic computer vision problems, such as low-level image processing (super-resolution, denoising, deraining, etc.), face synthesis, style generation, and image auto regression. Image Processing Transformer (IPT) [50] and Image GPT [51] are two early examples demonstrating the power of Transformers for image reconstruction. BEiT [52, 53, 54], Masked Autoencoder (MAE) [55], Contextual Autoencoder (CAE) [56], and Masked Image Modeling (MIM) [57] are other examples for visual representation learning by masking random patches of an input image and reconstructing the missing pixels.
+
+• Image to text: Assuming the input includes paired image and text, this is to generate image caption in an auto regressive way. For example, the Oscar pre-training [58] is designed similarly as in text-to-text training, except that it has additional visual tokens extracted from images. Likewise, both CoCa [4] and GIT [47] include an auto regressive caption generation process conditioned on an input image.
+
+• Text to image: While this is not a new topic, its performance is far from satisfactory due to the limited information conveyed in an input text and a large degree of freedom in the image space. Recently, DALL.E [59], GLIDE [60], DALL.E 2 [61], Imagen [62] show a new potential of text-to-image generation with impressive generation results. It again conﬁrms the necessity of using large-scale data for solving such a challenging problem.
+
+While reconstruction-based learning is a natural choice for unsupervised learning, other self-supervised and weakly-supervised learning are also indispensable when large-scale datasets with either intrinsic structures or weak labels are available. For example:
+
+9
+
+• Self-supervised learning: MoCo [63] and SimCLR [64] leverage image intrinsic structures and perform contrastive learning to learn representations by maximizing agreement between diﬀerently augmented views of the same image.
+• Contrastive Language-Image Pre-training: CLIP [40] leverages 400M (image, text) pairs collected from the internet to perform contrastive learning to learn representations by maximizing agreement between paired image and text.
+Question 3. Why is pre-training needed?
+Model pre-training and ﬁne-tuning has been a widely used practice in computer vision. For example, object detection normally pre-trains classiﬁcation-related model parameters on ImageNet and then ﬁne-tune all parameters on a detection data set [65].
+Similar to computer vision, NLP has also seen great progress in the areas where large-scale data sets have been developed, for examples, machine translation, but falls short when it is hard to collect substantial amount of labeled data. To address the data challenge, the NLP research community has shifted from the problem-speciﬁc model development mode to the paradigm of pre-training and ﬁnetuning, as evidenced by BERT [48] and GPT-3 [14]. The phenomenal success of model pre-training in NLP has greatly motivated computer vision researchers to explore the new paradigm of pre-training and ﬁne-tuning, e.g. ViT [36], CLIP [40], Florence [13], CoCa [4], etc.
+Despite many diﬀerences between computer vision and NLP, if we take a step back and think about their similarities in terms of statistical learning, we can learn many things from each other.
+For instance, the spirit of pre-training is that one can leverage unlimited amount of data without labels (or with weak labels) to learn features that conform with downstream tasks. Then with very limited (e.g. few-shot) supervision, the learned feature can lead to a high accuracy on downstream tasks. This makes the paradigm of pre-training and ﬁne-tuning an eﬀective solution to solving (or mitigating) the data shortage problem.
+The connection between pre-training and ﬁne-tuning can be seen in Table 1. In the table, we use examples mainly from vision. We want to particularly echo the importance of reconstruction-based loss (see the related discussion in Question 2) for its unsupervised nature, making it possible to utilize unlimited amount of data without additional manual annotations. Table 1 not only provides a statistical justiﬁcation of the pre-training and ﬁne-tuning paradigm, but also points out the signiﬁcance of big data for generic representation learning. The connection between pre-training and ﬁne-tuning is the shared function f (x|α), which can be largely reused (generalized) in downstream tasks with slight ﬁne-tuning on small-scale high-precision supervised data. The generalization ability mainly comes from two ways. The ﬁrst is that the largescale data set used in pre-training helps to deﬁne a better approximation to the expected loss. The second is that the layer-by-layer designed deep learning function includes hierarchical and multiple explanatory factors to allow re-using parameters in a combinatorially eﬃcient way [24]. As both pre-training and ﬁne-tuning use stochastic gradient decent (SGD) approaches to search for optimal parameters, pre-training can also be interpreted as ﬁnding and providing a better initialization location in the parameter space for ﬁne-tuning optimization. A recent research work [26] shows that a largerscale training set can let SGD explore a larger parameter space, leading to a better parameter that cannot be found by only training on a smaller-scale training set. However, it remains an open problem to fully understand the generalization ability of the learned representation through pre-training. This new paradigm of large-scale pre-training naturally leads us to rethink vision problems in data construction, learning algorithm design, and scalable infrastructure development.
+Question 4. Is it possible for machine learning to generalize?
+Generalization is a widely but often vaguely used term in computer vision and natural language processing. As the goal of machine learning is to make predictions for unseen samples, a common practice is to use a test set or multiple test sets, as a surrogate to the expected loss, to measure the prediction accuracy of the learned model. In many cases, data-eﬃcient learning algorithms are highly demanded so that one can use less amount of training data to achieve better prediction accuracy, which is often referred to as better generalization. To improve the generalization ability of a learning algorithm, many general principles have been developed in the past, such as L2 regularization [66] and large margin [23], which help avoid over-ﬁtting by adding very general prior information to regularize the learning function f (x|α).
+10
+
+Table 1: Connection between pre-training and ﬁne-tuning
+
+Pre-training
+
+Fine-tuning
+
+Overall training loss
+
+1N
+
+Lemp(α) = N
+
+Q(f (xi|α), yi)
+
+i=1
+
+N is normally much larger.
+
+1M
+
+Lemp(α) = N
+
+Q (f (xi|α), yi)
+
+i=1
+
+M is small, M N .
+
+Typical training tasks
+
+• Unsupervised: Reconstruction-based loss, where we do not have supervised label yi but can use xi as a self-supervision target:
+
+Q(x, f (x|α)) =
+
+x − f (x|α))
+
+2 2
+
+KL distance can also be used when x can be converted to a probability. E.g. auto regression or masked token loss for selfsupervised image pre-training (BEiT).
+
+• Self-supervised: Contrastive learning for image multi-crops, e.g. MoCo and SimCLR.
+
+• Weakly-supervised:
+
+Contrastive
+
+learning for multi-modality data, e.g.
+
+CLIP.
+
+• Supervised:
+
+Q (y, f (x|α)) =
+
+y − f (x|α))
+
+2 2
+
+Data set scale Connection
+
+Training tasks are designed to easily scale up data for better convergence of the empirical loss to the expected loss.
+
+Small-scale (even few-shot) high-precision supervised data for model adaptation.
+
+The connection is the shared function f (x|α), which can be slightly ﬁne-tuned or directly used in downstream tasks, thanks to the layered deep function design, making feature reuse more eﬀective.
+
+While great progress has been made in developing general learning theories and practical algorithms, one often compares machine learning with human intelligence, hoping to gain even better “generalization” abilities, such as commonsense, interpretability, and reasoning capabilities. It is worth noting that statistical learning alone cannot lead to such better “generalizations.” Uniform convergence only tells us the suﬃcient and necessary conditions of the empirical loss converging to the expected loss. Even when the convergence happens, the best mapping function f (x|α∗) parameterized by α∗ that minimizes the expected loss cannot yield more desired “generalization” abilities. The root cause is due to the black box function used in statistical learning, or more recently in deep learning.
+As machine learning can be regarded as an application of the inductive reasoning principle, it would be interesting to revisit the development of Newton’s law of universal gravitation, which is an unprecedented successful case of inductive reasoning. It demonstrates great “generalization” abilities, with the result interpretable and conforming with commonsense. The “generalization” abilities are the result of the white box approaches employed by Newton, including the use of Newton’s laws of motion and the inﬁnitesimal calculus developed by him, to explain planetary motion. Prior to him, Kepler also developed three laws of planetary motion by analyzing the astronomical observations about orbits of planets around the Sun. Both Kepler and Newton applied the inductive reasoning principle, to explain why planets move around the Sun in the way as observed by previous astronomers. But Kepler’s approach is more data-driven, extracting scientiﬁc discoveries through the analysis of data, whereas Newton’s approach is ﬁrst-principle-based, aiming at discovering the fundamental principles that govern the world by applying the laws of motion and calculus [67]. Note that both approaches are still explaining seen data for small masses or those travelling in slow speeds, but fail in generalizing to
+
+11
+
+out-of-distribution data when the speed of an object approaches the speed of light. Unlike pure data-driven approaches, Newton’s approach is much more data-eﬃcient, but leads to
+a strong generalization ability. This is largely due to the while box approaches used in the derivation of the law of universal gravitation. For example, the Newton’s law of motion and the inﬁnitesimal calculus introduce causal relationships between force and motion, which are the result of deductive reasoning and hold beyond the observed orbits of planets.
+Similarly, the convolution operation introduces the translation-invariant property which does not need to be learned from data but generally holds for any 2D images. This operation eﬀectively eliminates the need of redundant training data with same objects appearing at diﬀerent locations. Likewise, Transformers utilize the attention mechanism to fuse information over multiple tokens, which eﬀectively capture the intrinsic structure of language. After Transformers were introduced to vision, researchers have found it very beneﬁcial to introduce hierarchical structure (for multi-scale features) [68], constrain global attention (for local spatial modeling) [38], and marry attentions with convolutions [37]. Such structures built into deep neural networks are normally called inductive biases, which were believed at the heart of the ability to generalize beyond observed data [69]. Future eﬀorts to study machine learning must focus on adding structures and prior knowledge to the learning process, making the learned representations capable of performing reasoning, interpreting predictions, and thus generalizing beyond observed data. Recently, there have been a few attempts to introduce part-whole structures [70], to develop a cognitive architecture with a world model that can be trained in a self-supervised manner [71], or to impose the principles of parsimony and self-consistency for a white-box and closed-loop learning [72].
+5 Future Trends
+We are seeing a transformation in both vision and language areas to pursue large-scale pre-training for representation learning, as evidenced by the explosive growth of big model training in NLP and vision. This coincides with the statistical foundation behind machine learning. The use of large-scale data leads to a better convergence of an empirical loss to its expected loss. As a result, the learned representation is more robust and generalizes better in downstream tasks.
+We discuss in this section several future trends which call for both system-level and algorithm-level researches.
+Continued increase of training data: Data is never suﬃcient in real computer vision applications. As long as a learning problem is formulated properly, adding data will always improve the convergence of an empirically learned model to its expected model. As it is generally hard to scale up supervised data that require manual annotations, the increase of data will be eventually unsupervised or weakly supervised, which can be collected from the web, such as text, images, videos, and multi-modality data. And recent progress in new model architectures and learning approaches such as Transformer and contrastive learning makes it possible to consume super large-scale training data with noises. Proprietary data collected from enterprise scenarios will further build a competing advantage in related applications.
+There is, however, a question of diminishing return when more and more data is added to help train a bigger and bigger model. In practice, it is often the small amount of data for a speciﬁc domain that makes the real diﬀerence in system performance.
+System-level optimization: The use of web-scale data signiﬁcantly increases the computational cost, let alone its demand of larger model requires more computational budget. As a result, it is not uncommon that a pre-training task uses hundreds or thousands of modern GPUs. This introduces many system-level problems, such as eﬃcient communication between compute nodes, data partition and model partition across GPUs, memory-eﬃcient optimizer allowing to use larger batch size, etc. Large-scale gradient decent-based optimization also leads to many numerical and training convergence issues, such as overﬂow and underﬂow in ﬂoat point representation especially when half-precision like FP16 is used. Building a scalable training infrastructure with system-level optimization will be indispensable for large-scale training.
+Novel pre-training tasks: Compared with NLP, vision problems are more diverse, varying by their prediction granularity: classiﬁcation, object detection, segmentation, pose estimation, motion and tracking, image/video captioning, etc. each requiring diﬀerent solutions. Novel pre-training tasks for vision that can beneﬁt multiple problems, leverage larger-scale training data, and boost downstream
+12
+
+vision problems will be appreciated. We also foresee that multi-modality learning for both image and video will become a mainstream direction for its great potential of combining supervisions from multimodality signals and learning grounded representation to improve both vision and language problems.
+Synthesis and simulation: As data is never suﬃcient in terms of asymptotic uniform convergence, a large-scale simulation system that can generate close-to-real images of scenes with diverse view, lighting, and texture will be of great value to compensate the lack of data. Some problem domains, such as autonomous driving and human analysis, have seen very encouraging progress of training data generated by simulation. We expect continued progress in more domains where computer graphics techniques are improving as driven by strong industrial needs in game, digital twin, and metaverse. The synthetic data might be particularly more helpful when combined with pre-training tasks which can leverage both real and synthetic data and are more resilient to noise. Moreover, synthesis, combined with analysis, which is called analysis by synthesis, is also a crucial way to testing the analysis result, performing disentangled learning, and making analysis more explainable. Developing algorithms that can combine analysis and synthesis in a large-scale system will become more mainstream.
+Adding structure and knowledge: With more data used, the learned representation will be statistically more robust and expressive. This provides a solid foundation for adding structure and knowledge to the learned representation and pursuing robustness, interpretability, commonsense, and reasoning capabilities in advancing artiﬁcial intelligence. An example is the recent image generation work DALL.E, which ﬁrst trains a VQ-VAE model on large-scale unlabeled images (essentially a reconstruction task) to learn a compact representation and then combines the learned representation with language representation to perform conditional generation. Such kind of unsupervised and reconstruction-based learning will be a promising way for introducing structure and knowledge, disentangling multiple factors, and adding human priors into representations. This is made possible by the mathematically guaranteed uniform convergence behind data-driven machine learning.
+
+References
+
+[1] Yann LeCun, Yoshua Bengio, and Geoﬀrey Hinton. Deep learning. Nature, 521(7553):436–444, 2015.
+
+[2] Yoshua Bengio, Yann Lecun, and Geoﬀrey Hinton. Deep learning for AI. Communications of the ACM, 64(7):58–65, 2021.
+
+[3] Papers With Code. Image classiﬁcation on ImageNet, 2022. https://paperswithcode.com/ sota/image-classification-on-imagenet, accessed on Jan. 2, 2022.
+
+[4] Jiahui Yu, Zirui Wang, Vijay Vasudevan, Legg Yeung, Mojtaba Seyedhosseini, and Yonghui Wu. CoCa: Contrastive captioners are image-text foundation models. arXiv preprint arXiv:2205.01917, 2022.
+
+[5] Ross Girshick, Jeﬀ Donahue, Trevor Darrell, and Jitendra Malik. Rich feature hierarchies for accurate object detection and semantic segmentation. In IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pages 580–587, 2014.
+
+[6] Yu Liu, Guanglu Song, Yuhang Zang, Yan Gao, Enze Xie, Junjie Yan, Chen Change Loy, and Xiaogang Wang. 1st place solutions for OpenImage2019 – object detection and instance segmentation. arXiv preprint arXiv:2003.07557, 2020.
+
+[7] Athanasios Voulodimos, Nikolaos Doulamis, Anastasios Doulamis, and Eftychios Protopapadakis. Deep learning for computer vision: A brief review. Computational Intelligence and Neuroscience, 2018, 2018.
+
+[8] Michael I Jordan. Artiﬁcial intelligence – the revolution hasn’t happened yet. Harvard Data Science Review, 1(1), 2019.
+
+[9] Judea Pearl.
+
+To build truly intelligent machines, teach them cause
+
+and eﬀect.
+
+Quanta Magazine, 2018.
+
+https://www.quantamagazine.org/
+
+to-build-truly-intelligent-machines-teach-them-cause-and-effect-20180515/, ac-
+
+cessed on Jan. 2, 2022.
+
+13
+
+[10] Gary Marcus. Deep learning: A critical appraisal. arXiv preprint arXiv:1801.00631, 2018.
+[11] Gary Marcus. The next decade in AI: Four steps towards robust artiﬁcial intelligence. arXiv preprint arXiv:2002.06177, 2020.
+[12] Bo Zhang, Jun Zhu, and Hang Su. Toward the third generation of artiﬁcial intelligence (in Chinese). SCIENTIA SINICA Informationis, 50(9):1281–1302, 2020.
+[13] Lu Yuan, Dongdong Chen, Yi-Ling Chen, Noel Codella, Xiyang Dai, Jianfeng Gao, Houdong Hu, Xuedong Huang, Boxin Li, Chunyuan Li, et al. Florence: A new foundation model for computer vision. arXiv preprint arXiv:2111.11432, 2021.
+[14] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel Ziegler, Jeﬀrey Wu, Clemens Winter, Chris Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. Language models are few-shot learners. In Advances in Neural Information Processing Systems (NeurIPS), volume 33, pages 1877–1901, 2020.
+[15] BAAI. Wu Dao 2.0, 2021. https://gpt3demo.com/apps/wu-dao-20, accessed on Jan. 15, 2022.
+[16] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. Imagenet: A large-scale hierarchical image database. In IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pages 248–255. IEEE, 2009.
+[17] Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr Dolla´r, and C Lawrence Zitnick. Microsoft COCO: Common objects in context. In European Conference on Computer Vision (ECCV), pages 740–755. Springer, 2014.
+[18] Ondˇrej Bojar, Christian Buck, Christian Federmann, Barry Haddow, Philipp Koehn, Johannes Leveling, Christof Monz, Pavel Pecina, Matt Post, Herve Saint-Amand, et al. Findings of the 2014 workshop on statistical machine translation. In Proceedings of the Ninth Workshop on Statistical Machine Translation, pages 12–58, 2014.
+[19] Alex Wang, Amanpreet Singh, Julian Michael, Felix Hill, Omer Levy, and Samuel Bowman. GLUE: A multi-task benchmark and analysis platform for natural language understanding. In Proceedings of the 2018 EMNLP Workshop BlackboxNLP: Analyzing and Interpreting Neural Networks for NLP, pages 353–355, Brussels, Belgium, November 2018. Association for Computational Linguistics.
+[20] Arthur L Samuel. Some studies in machine learning using the game of checkers. IBM Journal of research and development, 3(3):210–229, 1959.
+[21] Wikipedia. Explainable artiﬁcial intelligence, 2022. https://en.wikipedia.org/wiki/ Explainable_artificial_intelligence, accessed on Sep. 2, 2022.
+[22] Ian Goodfellow, Jonathon Shlens, and Christian Szegedy. Explaining and harnessing adversarial examples. In International Conference on Learning Representations (ICLR), 2015.
+[23] Vladimir Vapnik. Statistical learning theory. John Wiley & Sons, Inc, 1998.
+[24] Yoshua Bengio, Aaron Courville, and Pascal Vincent. Representation learning: A review and new perspectives. IEEE transactions on pattern analysis and machine intelligence, 35(8):1798–1828, 2013.
+[25] Chiyuan Zhang, Samy Bengio, Moritz Hardt, Benjamin Recht, and Oriol Vinyals. Understanding deep learning requires rethinking generalization. In International Conference on Learning Representations (ICLR), 2017.
+[26] Vaishnavh Nagarajan and J. Zico Kolter. Uniform convergence may be unable to explain generalization in deep learning. In Advances in Neural Information Processing Systems, volume 32, 2019.
+14
+
+[27] Paul Viola and Michael Jones. Rapid object detection using a boosted cascade of simple features. In IEEE Computer Society Conference on Computer Vision and Pattern Recognition (CVPR), 2001.
+[28] DPReview. Nikon face-priority AF, 2005. https://www.dpreview.com/articles/1009928338/ nikonfaceaf, accessed on Feb. 1, 2022.
+[29] Ankan Bansal, Anirudh Nanduri, Carlos D Castillo, Rajeev Ranjan, and Rama Chellappa. Umdfaces: An annotated face dataset for training deep networks. In IEEE International Joint Conference on Biometrics (IJCB), pages 464–473. IEEE, 2017.
+[30] Shuo Yang, Ping Luo, Chen Change Loy, and Xiaoou Tang. Wider face: A face detection benchmark. In IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2016.
+[31] Papers With Code. Face detection on WIDER Face (Medium), 2022. https://paperswithcode. com/sota/face-detection-on-wider-face-medium, accessed on Jan. 7, 2022.
+[32] Dong Yi, Zhen Lei, Shengcai Liao, and Stan Z Li. Learning face representation from scratch. arXiv preprint arXiv:1411.7923, 2014.
+[33] Yandong Guo, Lei Zhang, Yuxiao Hu, Xiaodong He, and Jianfeng Gao. MS-Celeb-1M: A dataset and benchmark for large-scale face recognition. In European Conference on Computer Vision (ECCV), pages 87–102. Springer, 2016.
+[34] Qiong Cao, Li Shen, Weidi Xie, Omkar M Parkhi, and Andrew Zisserman. VGGFace2: A dataset for recognising faces across pose and age.(2017). arXiv preprint arXiv:1710.08092, 2017.
+[35] Alexander Kolesnikov, Lucas Beyer, Xiaohua Zhai, Joan Puigcerver, Jessica Yung, Sylvain Gelly, and Neil Houlsby. Big Transfer (BiT): General visual representation learning. In European Conference on Computer Vision (ECCV), pages 491–507. Springer, 2020.
+[36] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An image is worth 16x16 words: Transformers for image recognition at scale. In International Conference on Learning Representations (ICLR), 2020.
+[37] Haiping Wu, Bin Xiao, Noel Codella, Mengchen Liu, Xiyang Dai, Lu Yuan, and Lei Zhang. CvT: Introducing convolutions to vision transformers. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2021.
+[38] Ze Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng Zhang, Stephen Lin, and Baining Guo. Swin Transformer: Hierarchical vision transformer using shifted windows. In IEEE/CVF International Conference on Computer Vision (ICCV), 2021.
+[39] Zihang Dai, Hanxiao Liu, Quoc V Le, and Mingxing Tan. CoAtNet: Marrying convolution and attention for all data sizes. In Neural Information Processing Systems (NeurIPS), 2021.
+[40] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In International Conference on Machine Learning (ICML), 2021.
+[41] Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu Pham, Quoc V Le, Yunhsuan Sung, Zhen Li, and Tom Duerig. Scaling up visual and vision-language representation learning with noisy text supervision. In International Conference on Machine Learning (ICML), 2021.
+[42] Bryan A Plummer, Liwei Wang, Chris M Cervantes, Juan C Caicedo, Julia Hockenmaier, and Svetlana Lazebnik. Flickr30k Entities: Collecting region-to-phrase correspondences for richer image-to-sentence models. In IEEE International Conference on Computer Vision (ICCV), pages 2641–2649, 2015.
+15
+
+[43] Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B Brown, Benjamin Chess, Rewon Child, Scott Gray, Alec Radford, Jeﬀrey Wu, and Dario Amodei. Scaling laws for neural language models. arXiv preprint arXiv:2001.08361, 2020.
+[44] Xiaohua Zhai, Alexander Kolesnikov, Neil Houlsby, and Lucas Beyer. Scaling vision transformers. arXiv preprint arXiv:2106.04560, 2021.
+[45] Rishi Bommasani, Drew A Hudson, Ehsan Adeli, Russ Altman, Simran Arora, Sydney von Arx, Michael S Bernstein, Jeannette Bohg, Antoine Bosselut, Emma Brunskill, et al. On the opportunities and risks of foundation models. arXiv preprint arXiv:2108.07258, 2021.
+[46] Zirui Wang, Jiahui Yu, Adams Wei Yu, Zihang Dai, Yulia Tsvetkov, and Yuan Cao. SimVLM: Simple visual language model pretraining with weak supervision. arXiv preprint arXiv:2108.10904, 2021.
+[47] Jianfeng Wang, Zhengyuan Yang, Xiaowei Hu, Linjie Li, Kevin Lin, Zhe Gan, Zicheng Liu, Ce Liu, and Lijuan Wang. GIT: A generative image-to-text transformer for vision and language. arXiv preprint arXiv:2205.14100, 2022.
+[48] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. BERT: pre-training of deep bidirectional transformers for language understanding. In Annual Conference of North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pages 4171–4186, 2019.
+[49] William Fedus, Barret Zoph, and Noam Shazeer. Switch transformers: Scaling to trillion parameter models with simple and eﬃcient sparsity. arXiv preprint arXiv:2101.03961, 2021.
+[50] Hanting Chen, Yunhe Wang, Tianyu Guo, Chang Xu, Yiping Deng, Zhenhua Liu, Siwei Ma, Chunjing Xu, Chao Xu, and Wen Gao. Pre-trained image processing transformer. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 12299–12310, 2021.
+[51] Mark Chen, Alec Radford, Rewon Child, Jeﬀrey Wu, Heewoo Jun, David Luan, and Ilya Sutskever. Generative pretraining from pixels. In International Conference on Machine Learning (ICML), pages 1691–1703, 2020.
+[52] Hangbo Bao, Li Dong, Songhao Piao, and Furu Wei. BEiT: BERT pre-training of image transformers. In International Conference on Learning Representations (ICLR), 2021.
+[53] Zhiliang Peng, Li Dong, Hangbo Bao, Qixiang Ye, and Furu Wei. BEiT v2: Masked image modeling with vector-quantized visual tokenizers. arXiv preprint arXiv:2208.06366, 2022.
+[54] Wenhui Wang, Hangbo Bao, Li Dong, Johan Bjorck, Zhiliang Peng, Qiang Liu, Kriti Aggarwal, Owais Khan Mohammed, Saksham Singhal, Subhojit Som, et al. Image as a foreign language: BEiT pretraining for all vision and vision-language tasks. arXiv preprint arXiv:2208.10442, 2022.
+[55] Kaiming He, Xinlei Chen, Saining Xie, Yanghao Li, Piotr Doll´ar, and Ross Girshick. Masked autoencoders are scalable vision learners. arXiv preprint arXiv:2111.06377, 2021.
+[56] Xiaokang Chen, Mingyu Ding, Xiaodi Wang, Ying Xin, Shentong Mo, Yunhao Wang, Shumin Han, Ping Luo, Gang Zeng, and Jingdong Wang. Context autoencoder for self-supervised representation learning. arXiv preprint arXiv:2202.03026, 2022.
+[57] Zhenda Xie, Zheng Zhang, Yue Cao, Yutong Lin, Jianmin Bao, Zhuliang Yao, Qi Dai, and Han Hu. SimMIM: A simple framework for masked image modeling. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 9653–9663, 2022.
+[58] Xiujun Li, Xi Yin, Chunyuan Li, Pengchuan Zhang, Xiaowei Hu, Lei Zhang, Lijuan Wang, Houdong Hu, Li Dong, Furu Wei, et al. Oscar: Object-semantics aligned pre-training for visionlanguage tasks. In European Conference on Computer Vision (ECCV), pages 121–137. Springer, 2020.
+16
+
+[59] Aditya Ramesh, Mikhail Pavlov, Gabriel Goh, Scott Gray, Chelsea Voss, Alec Radford, Mark Chen, and Ilya Sutskever. Zero-shot text-to-image generation. arXiv preprint arXiv:2102.12092, 2021.
+[60] Alex Nichol, Prafulla Dhariwal, Aditya Ramesh, Pranav Shyam, Pamela Mishkin, Bob McGrew, Ilya Sutskever, and Mark Chen. GLIDE: Towards photorealistic image generation and editing with text-guided diﬀusion models. arXiv preprint arXiv:2112.10741, 2021.
+[61] Aditya Ramesh, Prafulla Dhariwal, Alex Nichol, Casey Chu, and Mark Chen. Hierarchical textconditional image generation with clip latents. arXiv preprint arXiv:2204.06125, 2022.
+[62] Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily Denton, Seyed Kamyar Seyed Ghasemipour, Burcu Karagol Ayan, S Sara Mahdavi, Rapha Gontijo Lopes, et al. Photorealistic text-to-image diﬀusion models with deep language understanding. arXiv preprint arXiv:2205.11487, 2022.
+[63] Kaiming He, Haoqi Fan, Yuxin Wu, Saining Xie, and Ross Girshick. Momentum contrast for unsupervised visual representation learning. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 9729–9738, 2020.
+[64] Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoﬀrey Hinton. A simple framework for contrastive learning of visual representations. In International Conference on Machine Learning (ICML), pages 1597–1607. PMLR, 2020.
+[65] Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun. Faster R-CNN: Towards real-time object detection with region proposal networks. Advances in neural information processing systems (NIPS), 28:91–99, 2015.
+[66] Andrei Nikolaevich Tikhonov, AV Goncharsky, VV Stepanov, and Anatoly G Yagola. Numerical methods for the solution of ill-posed problems, volume 328. Springer Science & Business Media, 1995.
+[67] Weinan E. The dawning of a new era in applied mathematics. Notices of the American Mathematical Society, 68(4):565–571, 2021.
+[68] Wenhai Wang, Enze Xie, Xiang Li, Deng-Ping Fan, Kaitao Song, Ding Liang, Tong Lu, Ping Luo, and Ling Shao. Pyramid Vision Transformer: A versatile backbone for dense prediction without convolutions. In IEEE/CVF International Conference on Computer Vision (ICCV), pages 568– 578, October 2021.
+[69] Tom M Mitchell. The need for biases in learning generalizations. Department of Computer Science, Laboratory for Computer Science Research, 1980.
+[70] Geoﬀrey Hinton. How to represent part-whole hierarchies in a neural network. arXiv preprint arXiv:2102.12627, 2021.
+[71] Yann LeCun. A path towards autonomous machine intelligence version 0.9. 2, 2022-06-27. OpenReview, 2022.
+[72] Yi Ma, Doris Tsao, and Heung-Yeung Shum. On the principles of parsimony and self-consistency for the emergence of intelligence. Frontiers of Information Technology & Electronic Engineering, pages 1–26, 2022.
+17
+

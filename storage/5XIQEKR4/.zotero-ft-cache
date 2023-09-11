@@ -1,0 +1,1588 @@
+1
+
+Diffusion Models for Image Restoration and Enhancement – A Comprehensive Survey
+
+Xin Li, Yulin Ren, Xin Jin, Cuiling Lan, Xingrui Wang, Wenjun Zeng, Xinchao Wang, and Zhibo Chen
+
+arXiv:2308.09388v1 [cs.CV] 18 Aug 2023
+
+Abstract—Image restoration (IR) has been an indispensable and challenging task in the low-level vision field, which strives to improve the subjective quality of images distorted by various forms of degradation. Recently, the diffusion model has achieved significant advancements in the visual generation of AIGC, thereby raising an intuitive question, “whether diffusion model can boost image restoration”. To answer this, some pioneering studies attempt to integrate diffusion models into the image restoration task, resulting in superior performances than previous GAN-based methods. Despite that, a comprehensive and enlightening survey on diffusion model-based image restoration remains scarce. In this paper, we are the first to present a comprehensive review of recent diffusion model-based methods on image restoration, encompassing the learning paradigm, conditional strategy, framework design, modeling strategy, and evaluation. Concretely, we first introduce the background of the diffusion model briefly and then present two prevalent workflows that exploit diffusion models in image restoration. Subsequently, we classify and emphasize the innovative designs using diffusion models for both IR and blind/real-world IR, intending to inspire future development. To evaluate existing methods thoroughly, we summarize the commonly-used dataset, implementation details, and evaluation metrics. Additionally, we present the objective comparison for open-sourced methods across three tasks, including image super-resolution, deblurring, and inpainting. Ultimately, informed by the limitations in existing works, we propose five potential and challenging directions for the future research of diffusion model-based IR, including sampling efficiency, model compression, distortion simulation and estimation, distortion invariant learning, and framework design. The repository will be released at https://github.com/lixinustc/Awesome-diffusion-model-for-image-processing/
+
+Index Terms—Diffusion Model, Image Restoration, Image Enhancement, Image Super-resolution
+✦
+
+1 INTRODUCTION
+
+I MAGE Restoration (IR) has been a long-term research topic in low-level vision tasks, which plays an irreplaceable role in improving the subjective quality of images. The popular IR tasks contain image super-resolution (SR) [1–10], deblurring [11–17], denoising [18–25], inpainting [26–31] and compression artifacts removing [32–38], etc. The visual illustration of some IR tasks are shown in Fig. 1. To restore the distorted images, traditional IR methods treated the restoration as the signal processing and reduce the artifacts with hand-crafted algorithms from the spatial or frequency perspective [18, 39–44]. With the development of deep learning, numerous IR works collected a series of datasets tailored for various IR tasks, e.g., DIV2K [45], Set5 [46], and Set14 [47] for SR, Rain800 [48], Rain200 [? ], Raindrop [49] and DID-MDN [50] for draining, REDS [51], and Gopro [52] for motion deblurring, etc. Leveraging these datasets, the majority of recent works [1–3, 7–11, 13, 16, 19, 21–23, 32– 34, 53–55] focused on improving the representation capability of IR networks for complicated degradation through well-designed backbones based on Convolutional neural networks (CNNs) [56] or Transformer [57]. Although these works achieve superior progress in the objective quality (e.g., PSNR, and SSIM), the restored images still suffer from unsatisfied texture generation, hindering the application of IR methods in real-world scenarios.
+Xin Li and Yulin Ren contributed equally to this work. (Corresponding authors: Zhibo Chen and Xinchao Wang.) Xin Li is with the University of Science and Technology of China (USTC) and the National University of Singapore (NUS). Yulin Ren, Xingrui Wang and Zhibo Chen are with the USTC. Xinchao Wang is with NUS. Xin Jin and Wenjun Zeng are with Eastern Institute for Advanced Study (EIT). Cuiling Lan is with Microsoft Research Asia (MSRA). (e-mail: lixin666@mail.ustc.edu.cn)
+
+Thanks to the development of generative models [58–66], especially the generative adversarial network (GAN) [64], some pioneering IR studies [5, 6, 67–70] pinpoint that previous pixel-wise losses, e.g., MSE loss, and L1 loss are susceptible to the blurring textures, and introduce the adversarial loss from GAN to the optimization of IR network, thereby enhancing its texture generation capability. For instance, SRGAN [5] and DeblurGAN [12] utilize a combination of pixel-wise loss and adversarial loss to achieve perceptionoriented SR network and deblurring network, respectively. Following them, two primary directions to improve GANbased IR arise from enhancing the generator (i.e., the restoration network) [5, 6, 71–73] and discriminator [74–77]. In particular, ESRGAN [6] introduces the powerful RRDB [6] as a generator for GAN-based SR tasks. Three popular discriminators, including pixel-wise discriminator (U-Net shape) [74], patch-wise discriminator [75, 78–80], and imagewise discriminator [76, 77] (i.e., VGG-like architecture) are designed to focus on the subjective quality at different levels of granularity, (i.e., from local to global). Although the above progresses, most researches on GAN-based IR still meet two inevitable but crucial problems: 1) The training of GANbased IR is susceptible to mode corruption and unstable optimization and 2) The textures of most generated images seem to be fake and counterfactual.
+Recently, diffusion models have emerged as a new branch of generative models, leading to a series of breakthroughs in visual generation tasks. The prototype of the diffusion model can be traced back to the work [81], and has been developed by DDPM [82], NCSN [83] and SDE [84]. In general, the diffusion model is composed of the forward/diffusion process and reverse process, where the
+
+2
+
+Fig. 1: Examples of different image restoration tasks (the left and right images are the distorted and its corresponding clean/original image, respectively).
+
+forward process progressively increases the pixel-wise noise to the image until it satisfies the Gaussian noise, and the reverse process aims to reconstruct the image by denoising with score estimating [83] or noise prediction [82]. Compared to GANs, the diffusion model yields high-fidelity and diverse generation results, thereby successfully replacing the GANs in a series of fields, such as visual generation [82– 86] and conditional visual generation [86–97]. With the advancement of the vision-language model, diffusion model has been extended to the cross-modality generation, such as StableDiffusion [98], and DALLE-2 [99]. This greatly promotes the development of artificial intelligence-generated content (AIGC). We have listed the representative works on diffusion models based on the timeline in Fig. 2.
+Inspired by the superior generative capability of diffusion models, numerous studies have investigated their application in image restoration tasks, targeting to facilitate the texture recovery. According to the training strategy, these works can be roughly divided into two categories: 1) the first category [100–109] is dedicated to optimizing the diffusion model for IR from scratch via supervised learning, and 2) the second one (i.e., zero-shot one) [110–117] strives to exploit the generative priors in the pre-trained diffusion models for IR. Typically, supervised learning-based methods necessitate the collection of large-scale distorted/clean image pairs, while zero-shot-based methods predominantly rely on known degradation modes. These limitations impede the application of these diffusion model-based methods in realworld scenarios, where the distortions are typically diverse and unknown. To further tackle the above issue, some researches [118–123] have extended the diffusion model to handle blind/real-world image restoration by incorporating real-world distortion simulation, kernel estimation, domain
+
+translation, and distortion invariant learning.
+Although the diffusion models have shown significant efficacy in image restoration, the associated techniques and benchmarks exhibit considerable diversity and complexity, making them hard to be followed and improved. Moreover, the absence of a comprehensive review for diffusion modelbased IR further limits its development. In this paper, we are the first to review and summarize the works on diffusion model-based image restoration methods, aiming to provide a well-structured and in-depth knowledge base and facilitate its evolution within the image restoration community.
+In this survey, we start by presenting the background of diffusion models in Sec. 2, highlighting three foundational modeling methods, i.e., NCSN [83], DDPM [82], and SDE [84], along with the further improvements on diffusion models from the perspectives of optimization strategy, sampling efficiency, model architecture, and conditional strategies. Based on these preliminaries, we shed light on the advances of diffusion models in image restoration from two distinct directions in Sec. 3: 1) supervised diffusion modelbased IR, and 2) zero-shot diffusion model-based IR. In Sec. 4, we summarize the diffusion model-based IR under more practical and challenging scenarios, i.e., blind/realworld degradation. This intends to further enhance the capability of the diffusion model-based IR methods in fulfilling the demands of practical application. To facilitate a reasonable and exhaustive comparison, in Sec. 5, we clarify the commonly-used datasets, and experimental settings in different diffusion model-based IR tasks. Furthermore, the comprehensive comparisons between the benchmarks across different tasks are provided. In Sec. 6, we delve into the insightful analysis of the primary challenges and potential directions in diffusion model-based IR. The final
+
+3
+
+Fig. 2: The representative works in diffusion models for different applications(Green denotes image generation tasks, orange denotes image restoration tasks, blue denotes text-to-image tasks )
+
+conclusion for this review is summarized in Sec. 7.
+2 BACKGROUND ON DIFFUSION MODEL (DM)
+Diffusion probabilistic model (i.e., diffusion model) has brought an evolution in the field of generative models, which transforms the complicated and unstable generation process into several independent and stable reverse processes via Markov Chain modelling. There are three foundational diffusion models that are widely utilized, including DDPM [82]. NCSNs [83] and SDE [84]. Among them, NCSNs [83] seeks to model the data distribution by sampling from a sequence of decreasing noise scales with the annealed Langevin dynamics. In contrast, DDPM [82] models the forward process with a fixed process of adding Gaussian noise, which simplifies the reverse process of the diffusion model into a solution process for the variational bound objective. These two basic diffusion models are actually special cases of score-based generative models [84]. SDE [84], as the unified form, models the continuous diffusion and reverse with stochastic differential equation (SDE). It proves that the NCSNs and DDPM are only two separate discretizations of SDE. We will clarify the modeling strategies of these three basic diffusion models in the following subsections.
+2.1 Noise Conditioned Score Networks (NCSNs)
+The purpose of generative models is to learn the probabilistic distribution of the target data. Different from previous likelihood-based [124–129] and GAN-based [130–138] methods, NCSNs aim to estimate the data distribution from the gradient of the log-density function (i.e., the score function ∇ log p(x) ), which guides the sampling progressively forward to the direction of the center of the data distribution. Concretely, NCSNs predict the score function of original data with a neural network sθ parameterized by θ. To avoid the resulting distribution collapses to the low dimensional manifold and the inaccurate score estimation in the lowdensity region, the annealed Langevian dynamics [139, 140] is designed for the score-based generative model, where the predefined noises with the monotonically decreasing levels
+
+σiL=1 are introduced to perturb the data. The original sampling process with Langevin dynamics can be represented
+
+as:
+
+ϵ
+
+√
+
+x˜t = x˜t−1 + 2 ∇x˜ log p(x˜t−1) + ϵzt,
+
+(1)
+
+where zt is the random normal Gaussian noise at time step t, ϵ is the fixed step size. When time step T →− ∞ and ϵ →− 0, the distribution p(x˜T ) will equal to original data distribution p(x). After adding the noise with level σ, the perturbed distribution will be qσ(x˜) ≜ p(x)N (x˜|x, σ2I)dx. The noise conditional score network (NCSN) can be optimized toward sθ(x˜, σ) = −∇x˜ log qσ(x˜) with the noise score matching objectives as:
+
+L(θ, σ)
+
+=
+
+1 2 Ep(x)Ex˜∼N (x,σ2I)[∥sθ(x˜, σ) +
+
+x˜
+
+− σ2
+
+x
+
+∥22
+
+]
+
+(2)
+
+2.2 Denoising Diffusion Probabilistic Model
+DDPM (Denosing diffusion probabilistic model) [82] originates from the diffusion models [141], which introduces the simple variational bound objective for diffusion models by setting the variance βt as the fixed values. There are two crucial processes in diffusion models, i.e., forward process and reverse process. In particular, the forward process (i.e., the diffusion process in DDPM) aims to progressively corrupt the training data to the Gaussian Noise, which is a parameterized Markov chain as:
+
+q(xt|xt−1) = N (xt; 1 − βt · xt−1, βtI),
+
+(3)
+
+where x0, x1, ..., xT are the noise latent variables by adding noises to the training data point x0 ∼ pdata(x) progressively with noise schedule as β1, ..., βT ∈ (0, 1) for T steps. And we can compute the probabilistic distribution of xt given x0 as:
+
+q(xt|x0) = N (xt; αˆtx0, 1 − αˆtI),
+
+(4)
+
+t
+where αt = 1 − βt and αˆt = αi. When time step t → T
+i=1
+is large enough, the distribution of xT will be a standard
+Gaussian distribution π(xT ) ∼ N (0, I) since αˆt → 0.
+
+4
+
+The reverse process of diffusion models aims to recover the data distribution from the Gaussian noises by approximating the posterior distribution q(xt−1|xt, x0) as:
+
+q(xt−1|xt, x0) = N (xt−1; µ˜t(xt, x0), β˜tI),
+
+(5)
+
+where
+
+µ˜t(xt, x0)
+
+=
+
+√
+
+αˆ t−1 βt 1−αˆt
+
+x0
+
++
+
+√
+
+x αˆ t (1−αˆ t−1 )
+
+1−αˆt
+
+t
+
+=
+
+√1 αt
+
+(xt
+
+−
+
+√ βt 1−αˆt
+
+)ϵ
+
+for
+
+ϵ
+
+∼
+
+N (0, I) and β˜t
+
+=
+
+1−αˆt−1 1−αˆt
+
+.
+
+As
+
+stated
+
+in
+
+Eq.
+
+5,
+
+the variance schedule βt is predefined, and thus, it only
+
+requires approximating the mean µθ(xt, t) = µ˜t(xt, xo) by a
+
+denoising network ϵθ(xt, t). The optimization objective [82]
+
+for denoising network can be written as:
+
+Lsimple = Et,x0,ϵ[||ϵ − ϵθ( αˆtx0 + ϵ 1 − αˆt, t)||22] (6)
+
+The direct illustration of denoising diffusion probailisitic models(DDPM) is shown in Fig. 3
+
+Fig. 3: Denoising Diffusion Probabilistic Models.
+
+2.3 Stochastic Differential Equations (SDEs)
+To unify the approaches with the score-based generative modeling and diffusion probabilistic modeling, SDEs [84] exploit the continuous diffusion process through the stochastic differentiable equation (SDE) as:
+
+dx = f (x, t)dt + g(t)dw
+
+(7)
+
+where w is the standard Wiener process, f (·, t) is called drift coefficient of x(t) and g(·) is called the diffusion coefficient of x(t). Here, the diffusion coefficient can be understood as the degree perturbed by random noise, and the drift coefficients can be designed to ensure the Gaussian distribution, such as DDPM [82] and NCSN [83]. The reverse process of the above continuous diffusion process (i.e., sampling data from noise) is also a diffusion process and can be modeled by a reverse-time SDE:
+dx = [f (x, t) − g(t)2∇x log pt(x)]dt + g(t)dwˆ (8)
+
+Here dt is an infinitesimal negative time step and wˆ is the standard Wiener process when time flows backward from T to 0. The core of reverse-time SDE is to estimate the score function using a neural network and then Eq. 8 can be solved with the score matching [142, 143].
+DDPM and NCSN can be regarded as discretizations of two different SDEs. When the time variable turns to infinity, the forward process of DDPM will converge to the following:
+
+1
+
+dx = − 2 (1 − αˆt)xdt + 1 − αˆtdw.
+
+(9)
+
+And the SDE form of NCSN is as follows:
+
+d[σ2(t)]
+
+dx =
+
+dw.
+
+(10)
+
+dt
+
+Here, Eq. 9 and Eq. 10 are called the Variance Preserving (VP) SDE and the Variance Exploding (VE) SDE, respectively.
+2.4 Improvements with Diffusion Model
+Based on the foundational diffusion models described above, numerous works are developed to further enhance the diffusion model from the perspectives of optimization strategy, sampling efficiency, model architecture, conditional strategy, etc.
+Optimization Strategies. To enhance the stability and performance of the diffusion model, several works [144–148] have explored the optimization of the variance/noise schedule in both forward and backward processes. Notably, the noise schedule in the forward process controls the perturbation degrees at each step, which is particularly crucial for the inverse process. As the representative work, DDPM [82], employs the straightforward linear noise schedule for the diffusion process. But this approach often leads to suboptimal results, especially for the low-resolution image generation [144]. To mitigate this, IDDPM [144] introduces a cosine noise schedule to obviate the negative effects of rapid noise accumulation at the early perturbation stages. Concurrently, Diederik et al. [146] parameterize the noise schedule with a monotonic neural network and jointly optimize it with the diffusion model. In general, the variance schedule in the reverse process is fixed and computed with the noise schedule in the forward process. However, IDDPM [144] found learning variance can further improve the log-likelihood and thus employed the variance schedule as the learnable linear interpolation of variances in both the forward and reverse processes. In contrast, AnalyticDPM [149] derives the optimal variances trajectory through analytic estimation, thereby improving the log-likelihood of various DPMs. Depart from the above methods, JolicoeurMartineau et al. [150] propose a brand-new sampling procedure, i.e., Consistent Annealed Sampling, which is more stable for diffusion model than annealed Langevin method.
+Sampling Efficiency. The generative quality of the diffusion model is critically contingent on a significant number of sampling steps, thereby posing challenges to its efficiency in practical application. To mitigate this, four principal lines of work have been proposed to accelerate the sampling process. 1) The first line involves the handcrafted sampling strategies related to ODE [85, 151–154]. For instance, DDIM [85] introduces the non-Markovian chain in the forward process, enabling the diffusion model to achieve sampling over an arbitrary number of steps. In contrast, DPM-solver [151] strives for a fast ODE solver by analytically computing the linear part of the ODE solution rather than utilizing the black-box ODE solvers. Consequently, this method substantially narrows down the sampling steps required to generate high-quality images, limiting them to an acceptable range of 10 to 20. 2) The second paradigm is to revise the diffusion process [155, 156]. As the representative work, Lou et al. [155] propose to truncate the diffusion process with an early stopping mechanism, and initiate the sampling from the non-Gaussian distribution, which is generated with a pre-trained VAE/GAN model. 3) In the third
+
+5
+
+Fig. 4: The overview of diffusion model based image restoration models. This figure categorizes diffusion models into two types based on their training methods, namely the supervised-based models (indicated with a blue background) and zeroshot-based models (indicated with an orange background). Additionally, the figure provides a more detailed classification of models within these two categories according to how conditions are incorporated. The models with a green background are specifically designed for real image restoration.
+
+strategy, knowledge distillation is employed to transfer the generation capability from multiple sampling steps to a few sampling steps [157–160]. 4) The final approach leverages the condition strategy [98, 161–164] to embed the generative prior, thereby optimizing the sampling efficiency.
+Model Architecture. Diffusion models predominantly employ two kinds of architectures, i.e., CNN-based U-Net, and Transformer-based model. Notably, U-Net architecture is preferred in early studies for noise/score prediction [82, 83], benefiting from its capacity for resolution preservation and eliminating the resource cost through the multi-grained downsampled feature space. Following these, a series of efforts have been made in subsequent works to refine the U-Net architecture by incorporating cross attention module [98], group normalization [82, 165], multi-head attention [84, 144, 145], and position encoding [82]. Recently, the transformer has demonstrated its proficiency in modeling long-range dependencies and unifying the different modalities [166–173]. Consequently, some text-to-image works [174–181] explore to use transformer backbones, such as ViT [182], Swinv2 [179], to replace original CNN-based U-Net to predict noise in the reverse process, where the time step t and other conditions are fed to the transformer through adaptive layer normalization [175, 177, 178] or cross attention [174].
+
+Condition Strategy. One effective condition strategy is crucial for the functionality of the diffusion model in the conditional generation. This has motivated numerous works to explore efficient and potent conditional mechanisms for it. Nicol et al. [165] innovatively train an auxiliary classifier to direct the diffusion model, using its gradient to guide image generation toward specific semantics. Another popular line [183, 184] introduces the condition to the score estimation/noise prediction model in a classifier-free manner, such as GLIDE [185], and DALLE-2 [99]. To preserve its unconditional generation capability, a null token ∅ is exploited to replace the condition θ(x, c) in the diffusion model, enabling θ(x) = θ(x, ∅), where c denotes the condition, such as textual feature. Thanks to its advantages, a series of works introduce the classifier-free condition to text-to-image tasks [185–190]. Furthermore, apart from the class labels and textual prompts, the diffusion model can integrate other modal conditions, e.g., images, segmentation maps, latent features, which greatly facilitates its application in various requirements, such as Stable Diffusion [98], ControlNet [161].
+
+3 DIFFUSION MODEL-BASED IMAGE RESTORATION METHODS
+According to whether the diffusion models (DMs) are training-free for IR, we can preliminarily classify the DMbased IR methods into two categories, i.e., supervised DMbased methods [100, 105, 107, 108, 121, 191–194], and zeroshot DM-based methods [112, 114, 115, 195–200]. Particularly, the supervised DM-based IR methods entail training the diffusion model from scratch with paired distorted/clean images of IR datasets. Unlike previous GANbased methods [201–209] that directly take distorted images as input, DM-based IR employ the well-designed conditional mechanism to incorporate the distorted images as guidance during the reverse process. Despite its promising texture generation results, this approach encounters two notable limitations: 1) training the diffusion model from scratch relies on a large quantity of paired training data. 2) collecting paired distorted/clean images in the real world are challenging. In contrast, zero-shot DM-based methods offer an appealing alternative by requiring only distorted images and dispensing with the need for retraining diffusion models. Instead of acquiring the restoration capability from the training datasets of IR, it excavates and exploits the structure and texture priors from the pre-trained diffusion models for image restoration. The core idea stems from the intuition that the pre-trained generative models can be viewed as the structure and texture repository, constructed using amounts of real-world datasets, such as ImageNet [210] and FFHQ [211]. Consequently, an essential challenge faced by zero-shot DM-based IR methods is: how to extract the corresponding perceptual priors while preserving the data structure from distorted images. In the subsequent subsections, we first briefly review the representative supervised DM-based IR method: SR3 [100], and zero-shot DMbased IR method: ILVR [195]. Then we further classify these two types of methods from the perspectives of conditional strategy, diffusion modeling, and framework, which are summarized in Table 1 and Table 2, respectively. In addition, the overall taxonomy of diffusion models is illustrated in Fig. 4
+3.1 SR3 – Representative Supervised DM for IR
+Unlike the pure image generation task that synthesizes images from noise, image restoration seeks to generate high-quality images from the corresponding degraded/lowquality images. Hence, the pivotal challenge of supervised DM-based IR lies in how to effectively incorporate the degraded/low-quality image into the diffusion model as the condition. Let us denote the degraded image as y. The foundational objective of the diffusion models (DMs) for IR is to learn the posterior distribution pθ(xt−1|y, xt) at time step t, such that x0 ∼ q(x|y) and x denotes the corresponding high-quality image. To achieve this, a pioneering supervised DM-based approach, SR3, is introduced with a straightforward condition strategy. Specifically, it directly concatenates the degraded image with the generated image xt at t time step, effectively enabling the conditional image generation for SR.
+As depicted in Fig. 5, SR3 follows the typical DDPM [82] framework and utilizes the U-Net model as the noise pre-
+
+6
+Fig. 5: The Backbone of SR3 network
+dictor. Given the low-resolution (LR) image y, SR3 initially up-samples it to the desired resolution using bicubic interpolation. Subsequently, it concatenates the super-resolved LR image y with the denoised output xt at t time step, serving as the input of the diffusion model to predict the noise for the t − 1 step. When reaching t = 0, the diffusion model can deliver an upsampled high-quality image x0 of y as x0 ≈ x.
+Fig. 6: The Backbone of ILVR network
+3.2 ILVR – Representative Zero-shot DM for IR Although the supervised DM-based IR methods have exhibited remarkable performance, the training process entails substantial computational cost and large-scale paired datasets, which might be prohibitive for some researchers. To circumvent this, zero-shot DM-based IR [110, 195, 212– 214] is proposed to exploit the intrinsic knowledge within the pre-trained diffusion models. Concretely, it is observed that pre-trained diffusion models for image generation, trained with a large number of natural images, encapsulate considerable prior knowledge about rich textures. And thus, these pre-trained diffusion models can be considered as repositories of texture information. The exploration of reusing such prior knowledge for training-free image restoration is an emerging and promising direction in the low-level vision field.
+As the initial work, Choi et al. [195] introduces the iterative latent variable refinement (i.e., ILVR) method, which leverages the unconditional diffusion model to enable the training-free conditional generation for image SR and image translation. The pivotal innovation of ILVR involves substituting the low-frequency components in denoised output with their counterpart from the reference image. This substitution process, illustrated in Fig. 6, ensures structure and semantic consistency between the generated and reference images, thereby facilitating the conditional generation. Particularly, given a reference image y (e.g., the distorted image
+
+7
+
+in IR), at time step t, the ILVR predicts the denoised result for time t − 1 using the following formula:
+
+x′t−1
+
+=
+
+σtz
+
++
+
+1
+
+√ αt
+
+(xt
+
+−
+
+√1 − αt 1 − αt
+
+ϵθ(xt, t))
+
+(11)
+
+where ϵθ(xt, t) represents the noise predicted by the denoising network, and z denotes the standard random Gaussian noise that governs the randomness of the generated image. However, this sampling process inevitably produces inconsistent structures/textures in xt, which necessitates a refinement to align with the structures/textures in reference image y by low-frequency substitution:
+
+xt−1 = x′t−1 + ΦN (yt−1) − ΦN (x′t−1).
+
+(12)
+
+Here, ΦN denotes the low-pass filter designed to bypass the low-frequency component from input, and yt−1 ∼ q(yt−1|y) is the diffused state of y at t − 1 steps. Following ILVR, most zero-shot DM-based IR methods [112–114, 197, 200, 215, 216] predominantly focus on enhancing the refinement strategies within the sampling process, thereby training-free.
+
+3.3 Supervised DM-based IR.
+Motivated by SR3 [100], numerous studies have endeavored to optimize the supervised DM-based IR framework, focusing on enhancing the condition strategy and exploring potential and more efficient generation spaces. With respect to the condition strategy, we categorize these studies into three types based on the conditions: 1) low-quality reference image, 2) pre-processed references, and 3) revising diffusion process. Regarding generation space, the supervised DM-based IR methods can be classified into three distinct groups: image space, residual space, and latent space. If not mentioned, the majority of studies generate the restored images within image space, where the structures and textures are required to be generated directly. In contrast, the residual-space diffusion model focuses on reconstructing the residuals between the low-quality image and its corresponding high-quality image, which simplifies the complexity of generating the whole image. Latent-based methods utilize a well-designed encoder to transform the image into a compact latent space for generation, thereby improving the generation efficiency. This section will elucidate existing studies on supervised DM-based IR in terms of the above three conditional strategies and the last two generation spaces.
+3.3.1 Condition with Low-quality Reference Image
+As highlighted in Sec. 3.1, incorporating distorted images as conditions is indispensable and crucial for supervised DMbased IR. The SR3 method has shown that substantial performance can be achieved through a simple concatenation operation. It utilizes a direct concatenation of low-quality reference images with the denoised result at the t − 1 step as the condition for noise prediction at the t step. With the same condition strategy, Saharial et al. [219] propose a unified diffusion model, termed Palette, for image-to-image translation tasks, which achieves excellent performance on image colorization, inpainting, uncropping, and JPEG artifact removal. Furthermore, they investigate the effects of different optimization objectives for sample diversity and
+
+highlight the pivotal role of self-attention within U-Net for the diffusion model. Despite their effectiveness, the aforementioned methods are constrained since they only support a fixed resolution for IR once trained. To adapt the diffusion model for the real-world IR with an arbitrary size, O¨ zdenizci et al. [104] divide the degraded image and corresponding sampling results xt into several overlapped patches, and then utilize the patch-wise concatenation as the inputs of the diffusion model for noise prediction. Additionally, to address the inconsistency problem caused by different sampling patches in the overlapped region, this work introduces the mean estimated noise for each pixel within the overlapped region. To enhance the quality of generated images, Ho et al. [218] introduce the three-layer cascaded diffusion model based on the SR3 backbone. The first diffusion model is exploited to achieve the class-conditioned low-resolution image generation, and two additional diffusion models are cascaded to super-resolve the low-resolution generated image, resulting in a higher-resolution and more realistic generated image. In addition to the DDPM-based approaches, there is another work [103] that explores the various variants of the continuous diffusion model SDE [84] for the face super-resolution using predictor-corrector sampling.
+Fig. 7: The architecture of pre-processed references, where low-quality image is first processed by a pre-trained restoration network or trainable preprocessing module. The output references could be features or clean image
+3.3.2 Condition with Pre-processed References Even though direct concatenation with the low-quality image shows promising performance, the artifacts in lowquality images inevitably cause harmful effects on the generation of the diffusion model, especially for severe and diverse distortions. To mitigate this issue, several studies strive to enhance the condition by preprocessing low-quality images with either jointly trained modules or pre-trained restoration networks. As depicted in Fig. 7, these works can be grouped into two categories based on the preprocessing strategies, i.e., condition with pre-processed reference image and feature. Pre-processed reference image. To alleviate the side effects of artifacts in low-quality images, CDPMSR [102] exploits existing super-resolution models, e.g., RCAN [232], SwinIR [53], EDSR [233], to enhance the low-quality image, thereby providing a high-quality and more reliable condition for diffusion model. Additionally, it eschews the stochastic sampling during the reverse process in favor of a deterministic denoising process, yielding superior image quality and faster inference. Notably, the pre-processing
+
+8
+TABLE 1: Supervised diffusion model based image restoration models
+
+Models(Papers)
+SR3 [100] SRdiff [101] CDPMSR [102] Res-Diff [217] SDE-SR [103] LDM [98] CDM [218] WeatherDiff [104]
+
+Conference&Year
+TPAMI 2022 Neurocomputing 2022 Arxiv2023 Arxiv2023 SIBGRAPI 2022 CVPR 2022 J.Mach.Learn.Res.2022 TPAMI 2023
+
+DeblurDPM [105] Palette [219]
+
+CVPR 2022 SIGGRAPH 2022
+
+SR3+ [118] DriftRec [220] DiffGAR [221]
+
+Arxiv2023 Arxiv2022 Arxiv2022
+
+DG-DPM [222] IDM [223] DiffIR [224] RainDiffusion [122] InDI [225]
+
+Arxiv2022 CVPR 2023 Arxiv2023 Arxiv2023 TMLR 2023
+
+Yang et al. [226] Adadiff [227] HFS-SDE [228] Xie et al.[229] ShadowDiffusion [230] Refusion [106]
+
+Arxiv2022 Arxiv2022 TMI 2022 Arxiv2023 CVPR 2023 CVPRW 2023
+
+IR-SDE [231]
+
+ICML 2023
+
+DDS2M [109]
+
+Arxiv2023
+
+SUD2 [108] DeS3 [191] DiffBFR [192] Stable-SR [121]
+
+Arxiv2023 Arxiv2022 Arxiv2023 Arxiv2023
+
+PyDiff [107]
+
+Arxiv2023
+
+DiffLL [193]
+
+Arxiv2023
+
+Methods&Insights Channel concatenation in DDPM with LR input
+DDPM with LR encoder information DDPM with Pretrained SR model DDPM with CNN model SDE with concat LR input DDPM in latent space , inpainting
+Cascaded DDPM with condition augmentation DDPM with patch-based sampling for size-agnostic tasks
+Simple DDPM with predict and refine strategy DDPM with Concatenation of input, achieving multiple I2I tasks
+Improved SR3 architecture, data augmentation,real-world SR SDE with adaptive strategy, Blind JPEG restoration DDPM with encoder in Latent space
+DDPM with domain generalization for real-world Deblurring Neural representation for continuous SR DDPM with transformer-structure . Circular DDPM for real-world deraining
+Alternative methods proceed by iteratively restoring the input image of Diffusion model
+DDPM for data pairs synthesis for real-world tasks training Accelerated DDPM with adaptive diffusion priors SDE in high-frequency space DDPM with three added noise distributions
+DDPM with unrolling-inspired diffusive sampling strategy Latent DDPM with compression strategies, large-scale restoration
+Mean-reverting SDE
+DDPM with Variational Spatio-Spectral Module
+DDPM with few training pairs Classifier-driven attention guided DDPM
+DDPM with few training pairs Finetune Text-to-image diffusion with time-awareness and feature
+wrapping module Pyramid diffusion with pyramid resolution style
+Wavelet-based diffusion model with high efficiency
+
+Target Tasks
+
+SR
+
+SR
+
+SR
+
+SR
+
+SR
+
+SR, Inpainting
+
+SR
+
+Deraining, Desnowing, Dehazing
+
+Deblurring
+
+Colorization,Inpainting, Uncropping, JPEG
+
+SR
+
+JPEG Artifacts Removal
+
+Generative Removal
+
+Artifacts
+
+Deblurring
+
+SR
+
+SR, Deblurring
+
+Real World Deraining
+
+Deblurring,SR, Restoration
+
+JPEG
+
+Training Data Synthesis
+
+MRI Reconstruction
+
+MRI Reconstruction
+
+Image Denoising
+
+Image Shadowing Removal
+
+Image Shadow Removal, Dehazing
+
+Deraining, Dehazing, Denoising
+
+Hyperspectral Restoration
+
+Image
+
+Inpainting,Dehazing
+
+Image Shadow Removal
+
+Blind Face Restoration
+
+Real World resolution
+
+Super-
+
+Low-light Image Enhancement
+
+Low-light Image Enhancement
+
+reference image can serve as not only an enhanced condition but also an initially well-restored image. Therefore, ResDiff [217] utilizes a pre-trained CNN to generate a lowfrequency content-abundant image as the initially restored image and exploits the conditional diffusion model to further generate the residuals between the pre-processed distorted image and its corresponding clean image. Pre-processed reference feature. Another popular line is to use the feature of the reference image as the condition for the diffusion model. IDM [223], striving for continuous image super-resolution, first extracts the initial features of the low-resolution image with EDSR [233]. Then, the initial features are downsampled to multiple scales, which are
+
+utilized as the conditions for different upsampling layers in the diffusion model, with the intent of refining the implicit representation. In contrast, ShadowDiffusion [230] leverages a pre-trained transformer backbone to extract the degradation prior (i.e., the degradation-related features) from the distorted reference image. This extracted degradation prior is exploited as the auxiliary to refine the generated shadow mask and serves as the condition for shadow-free image generation.
+3.3.3 Condition by Revising Diffusion Process
+Notably, the above-mentioned supervised DM-based IR methods introduce the conditions by modifying the network
+
+9
+
+Fig. 8: The architecture of IR-SDE [231], where the forward diffusion process approximately models the image degradation processes The final output of the forward process is equal to a low-quality image with random noise
+
+while preserving the diffusion process from DDPM [82]. However, this requires the generation process to start from the noise. To obviate this, some studies condition the diffusion model by modifying the diffusion process, such that the diffused output xT (i.e., the start point during the reverse process) approximates the low-quality image corrupted with few Gaussian noises. As shown in Fig. 8, Luo et al. [231] modify the forward process with mean-reverting SDE to model the unified degradation process of IR as:
+
+dx = θt(µ − x)dt + σtdw,
+
+(13)
+
+where θt and σt are the time-dependent parameters. µ denotes the distorted image and x represents its corresponding high-quality image. With the mean-reverting SDE, this work successfully models the image degradation and restoration processes with the modified forward and reverse processes, respectively. This avoids the generation from pure noise and achieves better restoration performance. Building on IR-SDE [231], the same team introduce the Refusion [106], which further refines IR-SDE [231] by optimizing aspects such as network architecture, noise level, and denoising steps, etc. To reduce the computation cost, Refusion introduces the U-Net compression strategy, thereby enabling efficient sampling in the latent space.
+With the same purpose, Xie et al [229] redefine the diffusion process such that the sampling starts from the noisy image. Taking into account the diversity of noise, they derive three separate diffusion processes for Gaussian, Gamma, and Poisson noise, respectively. In contrast, InDI [225] introduces the continuous diffusion process as:
+
+xt = (1 − t)x + ty,
+
+(14)
+
+where x and y are the high-quality images and their corresponding low-quality counterparts. It can be interpreted as the step-wise interpolation of high-quality and lowquality images at time step t, which decomposes the original single-step prediction of supervised image restoration into several small steps, effectively circumventing the regressionto-the-mean effects often found in conventional supervised image restoration. Different from the diffusion process in the spatial domain, HFS-SDE [228] reformulate the diffusion process for magnetic resonance (MR) reconstruction at frequency space. In this approach, the forward process progressively adds noise into high-frequency space, resulting in the final xT that is composed of high-frequency noise and low-frequency data. During the reverse process, HFS-SDE employs Predictor-Corrector (PC) method [84] for sampling.
+
+Fig. 9: The architecture of Predict and Refine model [105]. The predictor gθ generates the initial prediction of a clean image, while residual information is modeled by diffusion process
+3.3.4 Generate Residuals
+In the supervised DM-based IR, most studies directly generate high-quality images from noise, which necessitates the concurrent generation of structure and textures. However, regenerating the structures/textures already existing in low-quality images can unnecessarily burden the diffusion model and increase extra resource costs. Motivated by this, some representative studies [101, 105, 217, 234, 235] seek to move the generation process from the image space to the residual space. The objective is to generate the residuals between paired high-quality and low-quality images. As the pioneering work, SRDiff [101] is the first to utilize the diffusion model to predict the residual in SR. In contrast, Whang [105] introduces a predict-and-refine strategy for image deblurring tasks. As shown in Fig. 9, this work first predicts an initial deblurring image with the deterministic deblurring network and then generates the residual through a stochastic diffusion model. ResDiff [217] mentioned above also adopts this strategy for SR.
+3.3.5 Diffusion on Latent Space
+To alleviate the training and sampling costs of the diffusion model, StableDiffusion [98] is the first work to implement the DM-based generation in latent space. Particularly, it pre-trains an autoencoding model (i.e., an encoder-decoder architecture) to learn the perceptual space, which is able to preserve the perceptual quality of the reconstructed image while reducing the computational complexity. Utilizing the pre-trained autoencoder, StableDiffusion transforms the image-wise diffusion process to the perceptual space, and then introduces various conditions (e.g., text, segmentation map, and image) into the diffusion model with the crossattention mechanism. Inspired by this, Refusion [106] introduces the latent-wise diffusion model for image restoration to accelerate the training and sampling, which is shown in Fig. 10. In contrast to the above works, where latent space is obtained by compressing the original image, DiffIR [224] exploits the latent-wise diffusion model to generate the compact IR priors, which guides dynamic transformerbased restoration network (DIRformer) to achieve better restoration.
+3.4 Zero-shot DM-based IR.
+Different from supervised DM-based IR, zero-shot DMbased IR strives to achieve training-free and data-free image
+
+10
+TABLE 2: Zero-shot diffusion model based image restoration models
+
+Models(Papers)
+ILVR [195] Repaint [212] CCDF [213]
+
+Conference&Year
+ICCV 2021 CVPR 2022 CVPR 2022
+
+SNIPS [110]
+
+NeurIPS 2021
+
+DDRM [112] JPEG-DDRM [111] DDNM [113]
+
+ICLR 2022 NeurIPS 2022 ICLR 2023
+
+MCG [236],
+
+NeurIPS 2022
+
+DPS [114] BlindDPS [120]
+
+CVPR2023 ICLR 2023
+
+GibbsDDRM [119] Arxiv2023
+
+Dif-Face [237]
+
+ICLR 2023
+
+DR2 [123]
+
+CVPR 2023
+
+DiracDiffusion [200] Arxiv2023
+
+ΠGDM [197]
+
+ICLR 2023
+
+GDP [196]
+
+CVPR 2023
+
+COPAINT [216] SIM-SGM [115] ADIR [117]
+
+Arxiv2023 ICLR 2022 Arxiv2022
+
+Feng et al. [215] Liu et al. [116] DiffPIR [198] RED-Diff [199]
+
+Arxiv2023 Arxiv2023 CVPR 2023 Arxiv2023
+
+Methods&Insights
+
+Target Tasks
+
+Adds projection into sampling Impose projection into sampling with resampling strategy. Adds projection into sampling
+DDPM in Spectral Space with SVD decomposition
+DDPM in Spectral Space with SVD decomposition JPEG restoration based on DDRM framework Pretrained DDPM with Null Space, Time travel strategy
+Pretrained DDPM with manifold constraints
+Pretrained DDPM with Posterior sampling Parallel diffusions for images and kernels, achieving blind Deblurring Pretraiend DDRM with joint posterior sampling for blind deblurring Pretrained DDPM with initialization reverse image for realworld task Pretrained DDPM degradation removal module with enhancement module Incremental reconstruction with ensured data consistency Pseudoinverse-guided Diffusion Models, non-linear tasks
+DDPM with Generative diffusion priors
+DDPM with Bayes framework, Enhance Coherence Pretrained NCSN with matrix decomposition Adaptive diffusion model with CLIP
+Posterior Sampling with Score-Based Priors A latent diffusion guider with a lightness-aware VQVAE model. Integrate plug-and-play method into diffusion Integrate regularization-by-denoising, Improve posterior score estimation
+
+Image-translation, SR
+
+Inpainting
+
+Image-translation, SR, Inpainting, MRI reconstruciton
+
+Deblurring, SR, Compressive sensing
+
+Deblurring, SR
+
+JPEG Restoration
+
+SR, Inpainting, Deblurring. Colorization
+
+Colorization,
+
+CT
+
+reconstruction
+
+SR, Inpainting, Deblurring
+
+Deblurring
+
+Deblurring Vocal dereverberation
+Blind face Restoration
+
+Real-world tasks
+
+Deblurring, Inpainting SR, Inpainting, JPEG Restoration SR, Deblurring, Inpainting, Colorization Inpainting MRI Reconstruction SR, Deblurring,Text-Guided Editing Denoising, Deblurring Colorization SR, Inpainting, Deblurring Inpainting, SR
+
+Fig. 10: An overview of diffusion model used in Refusion [106], the low-quality image is first compressed into latent by an encoder. Then the latent information is modeled by diffusion process.
+restoration. It generally relies on the pre-trained diffusion models designed for generation tasks and incorporates the condition of low-quality images in the sampling process. The core challenges of this task stem from i) how to maintain the data consistency between low-quality images and
+
+generated images, since the pre-trained diffusion models are devoted to preserving the data distribution instead of pixelwise data consistency. ii) how to excavate the perceptual knowledge aligned with low-quality images, which imposes higher requirements on the design of the condition. In this paper, we roughly summarized the zero-shot DM-based IR methods into three categories, i.e., projection, decomposition, and posterior estimation.
+3.4.1 Projection-based Methods.
+To mitigate the primary challenges in zero-shot DM-based IR, the projection-based method has been introduced in some studies [195, 212, 213]. This approach aims to extract inherent structures/textures from low-quality images as complementary to generated images at each step, which can ensure data consistency. For instance, the task of image inpainting involves merely generating the content for the mask region. The unmasked region of the low-quality image
+
+11
+
+can substitute the corresponding part of the denoised image at the t − 1 step, thereby establishing the condition for data consistency during the sampling process. In line with this, RePaint [212] exploits a simple projection for image inpainting task:
+
+xt−1 = m xkt−n1own + (1 − m) xut−n1known,
+
+(15)
+
+where
+
+xkt−n1own
+
+∼
+
+√ N ( α¯ty, 1 −
+
+α¯tI)
+
+is
+
+the
+
+diffused
+
+results
+
+at time step t − 1 by adding noise for masked image y.
+
+xut−n1known is sampled from denoised prediction of diffusion model. In contrast, ILVR [195] employs the low-frequency
+
+projection for image super-resolution. Theoretically, at time
+
+step t − 1, the predicted latent variable xt−1 and yt−1
+
+(i.e., adding noise to low-resolution image y at the t − 1
+
+step in the diffusion process) should share the same low-
+
+frequency components. Consequently, it substitutes the low-
+
+frequency components of xt−1 with its counterpart from
+
+yt−1, ensuring data consistency and establishing an im-
+
+proved condition for the diffusion model. As an advanced
+
+solution, CCDF [213] introduces a unified projection method
+
+as:
+
+xt−1 = Ax′t−1 + b,
+
+(16)
+
+where A and b are set to achieve data consistency. For
+
+instance, in the SR task, the above projection can be instan-
+
+tiated as:
+
+xt−1 = (I − P)x′t−1 + yt−1,
+
+(17)
+
+and then exploit the matrix decomposition in the sampling process to solve the linear reverse problem, which is general for unknown measurement processes.
+With a different purpose, another decomposition strategy, range-null space decomposition is introduced by DDNM [113] to further improve the zero-shot image restoration, where the range space is responsible for the data consistency, and null space is used to improve the reality (i.e., the perceptual quality). Given the noiseless inverse y = Hx, it can be decomposed into:
+
+y = HH†Hx + H(I − H†H)x,
+
+(19)
+
+where H† is the pseudo-inverse of degradation operation H. We can see the range space HH†Hx = Hx = y can ensure data consistency, and null space H(I −H†H)x has no effects on data consistency since H(I − H†H)x = 0. As shown in
+Fig. 11, based on this, DDNM [113] rectifies the prediction of x0 at time step t as: xˆ0|t = H†y + (I − H†H)x0|t, where x0|t can be estimated with the noise prediction at time step t.
+With the rectified xˆ0|t, we can compute the denoised output xt−1 at time step t − 1, which ensures the data consistency
+and serves as a better condition for the next noise prediction.
+Moreover, DDNM also exploits the SVD to solve the linear
+inverse problem with noise, termed DDNM+.
+
+where P is the degradation process of the low-resolution image. Furthermore, this work proves that generation starting from better initialization can boost the speed in the reverse process.
+
+3.4.2 Decomposition-based methods.
+
+It is noteworthy that most image restoration problems can
+
+be regarded as linear reverse problems, which can be posed
+
+as:
+
+y = Hx + z,
+
+(18)
+
+where H is the linear degradation operator and z is a contaminating noise. In this setting, the condition probability p(x|y) cannot be directly estimated since the existence of noise z. To get rid of the noise z, SNIPS [110] and DDRM [112] run the diffusion process in the spectral domain with singular value decomposition (SVD) on the degradation operator H. In particular, SNIPS [110] is based on the annealed Langevian dynamics and derives the conditional score function on the spectral space, which achieves great performance on image deblurring, super-resolution, and compressive sensing tasks. Following SNIPS, DDRM [112] further extends the SVD decomposition to the variational objective of linear reverse problems, which reveals a pre-trained DDPM [82]/DDIM [85] can be the optimal solution for it. Notably, the above works only focus on the linear reverse problem. In contrast, Kawar et al [111] investigate non-linear inverse problems based on the special case of DDRM (i.e., no noise z in the reverse problem), and extend the pseudo-inverse concept to achieve JPEG artifact correction. For the MRI reconstruction, SVD decomposition is not suitable. To overcome this, Song et al. train the unconditional generative model for medical images from scratch
+
+Fig. 11: The architecture of DDNM [113],the forward degradation operator A is decomposed into range-null space to meet the realness and data consistency.
+
+3.4.3 Posterior estimation.
+The projection-based methods have shown superior performance in the inverse problem of image restoration, where a projection-based measurement consistency correction is added after the reverse sampling step of the diffusion model. However, most projection-based works are devoted to the noiseless inverse problems and usually suffer from unsatisfied data consistency, since the projection throws the sample path off the data manifold [236]. To solve the general noisy linear reverse problem, some works [114, 196, 197, 200, 216, 236] aim to estimate the posterior distribution p(x|y) with the unconditional diffusion model based on the Bayes theorem. It is equivalent to estimating the conditional posterior p(xt|y) at each step of the reverse process. Based on the Bayes theorem, it can be derived as:
+
+p(xt|y) = p(y|xt)p(xt)/p(y).
+
+(20)
+
+And the corresponding score function can be estimated as:
+
+∇xt log pt(xt|y) = ∇xt log pt(y|xt) + sθ(x, t), (21)
+
+12
+
+where the sθ(x, t) could be extracted from pre-trained model while the term pt(y|xt) is intractable. From the above equation, we can find that the key factor to achieve better solvers for the inverse problem of image restoration is to accurately estimate the p(y|xt).
+
+xt with its clean estimation xˆ0 in the distance measurement. With the same purpose, Copaint [216] tries to predict the xˆ0 through the one-step estimation by a neural network.
+Instead of modeling intractable distribution p(y|xt), Feng et al. [215] directly estimates the posterior p(xt|y) from a variational perspective. Following DPI [238, 239], they define a family of distributions qθ through RealNVP [240] normalizing flow with parameter θ, which is optimized through a minimal KL-divergence between true posterior and estimated distribution qθ.
+
+Fig. 12: The geometry illustration of MCG [236] and DPS [114] sampling process. Left: MCG method adds extra projection step(red line which is orthogonal to the line of y = A(x)) after each correction step (Pink line), which may fall off from manifold M0 at the final denoising step. Right: DPS method only adds correction step after each diffusion sampling step(Purple line).
+
+As the pioneering works, MCG [236] and DPS [114] approximate the posterior p(y|xt) with p(y|xˆo), and xˆo is the expectation given xt as xˆo = E[xo|xt] [114] with Tweedie’s formula. Concretely, MCG [236] considers the data consistency from the perspective of the data manifold, where the manifold constrained gradient is proposed to let the correction lie on the data manifold. However, as shown in Fig. 12, DPS [114] pinpoint that the projection operation in MCG is harmful to data consistency since it might cause the sampling path off the data manifold. Based on this, DPS [114] discards the projection step in the reverse process and estimate the posterior as:
+
+∇xt log pt(y|xt) ≈ ∇xt log p(y|xˆ0)
+
+≈
+
+−
+
+1 σ2
+
+∇xt
+
+∥y
+
+−
+
+H (xˆ0 (xt ))∥22
+
+(22)
+
+Following the above works, ΠGDM [197] further expands
+the Eq. 22 to the unified form for the linear, non-linear,
+differentiable inverse problem with Moore-Penrose pseudoinverse h† of degradation function h as:
+
+∇xt
+
+log
+
+pt(y|xt)
+
+≈
+
+rt−2((h†(y)
+
+−
+
+h†(h(xˆo)))T
+
+∂xˆo ∂xt
+
+)T
+
+(23)
+
+where rt−2 is set as
+
+σt2 σt2 +1
+
+.
+
+Based
+
+on
+
+the
+
+equation,
+
+ΠGDM
+
+developed its pipeline as Fig. 13.
+
+Different from the above works, some works [196, 216]
+
+attempt to model p(y|xt) with other strategies. It is note-
+
+worthy that the higher conditional probability p(y|xt) is
+
+equivalent to a smaller distance between D(xt) and y [196].
+
+Therefore, GDP [196] proposes a heuristic approximation of
+
+distribution p(y|xt) as follows:
+
+1
+
+p(y|xt) ≈ Z exp(−[sL(D(xt), y) + λQ(xt)]),
+
+(24)
+
+where L and Q denote the distance metric and the quality loss, respectively. Z is a normalization factor and s is the scaling factor that controls the weight of guidance. However, the distance L is hard to be defined since the noise magnitudes in xt and y are different. Thus, they substitute
+
+Fig. 13: The architecture of ΠGDM [197]. During each denoising step, the pseudo-inverse guidance is employed to encourages data consistency between denoising results and degraded image y.
+4 DIFFUSION MODELS FOR BLIND/REAL-WORLD IMAGE RESTORATION
+Although the methods in Sec. 3 have achieved great breakthroughs in image restoration, most of them [100, 101, 104, 112–114, 197, 218, 219] focus on solving the synthetic distortions, which usually perform poorly in the outof-distribution (OOD) real-world/blind degradations. The reasons stem from the inherent challenges of real-world IR: 1) the unknown degradation modes are hard to be identified. 2) collecting distorted/clean image pairs is nontrivial and even unavailable in the real world. To overcome this, previous works [241–248] have attempted to solve it by simulating real-world degradations [72, 241–244, 246], and unsupervised learning [245, 247, 248], etc. Inspired by these, some pioneering works [117, 118, 120, 123, 221] begin to explore how to exploit diffusion models to solve realworld degradations. In this paper, we divided the DM-based blind/real-world IR [108, 109, 118–121, 123, 220–222, 226] into four categories, i.e., distortion simulation [118, 226], kernel estimation [119, 120], domain translation [122, 226], and Distortion-invariant diffusion model [123, 222, 237].
+4.1 Distortion Simulation
+Notably, the real-world distortions are usually blind/unknown, where the distributions are different from the simple synthetic distortions. For supervisedlearning-based IR, this requires the restoration network to have strong generalization capability or the synthetic datasets can cover the real-world distortions. From the causality perspective [249], these two purposes all
+
+13
+
+rely on simulating diverse distortions that are similar to real-world distortions, which we called distortion simulation/augmentation. There are several representative DM-based IR methods [118, 221] utilizing the distortion simulations to improve the robustness of their methods for real-world degradations. The representative method is SR3+ [118], which is based on the diffusion model from SR3 [100] and introduces the second-order degradations simulation of RealESRGAN [72] for the training. Similarly, to simulate the real-world degradation, Yang et al. [226] propose to synthesize the real-world distorted/clean training pairs using diffusion models, where the distorted images are initialized with second-order degradation in RealESRGAN [72].
+
+where domain translation is achieved by the cycle consistency constraint. In particular, two generators construct one cycle path, where one generator aims to translate the distorted image to the distortion-free image, and another generator is utilized to translate the clean image to the distorted image. This enables unsupervised training with unpaired real-world distorted and high-quality images. As the representative work, RainDiffusion [122] proposes to remove the rain with two cooperative branches, where the non-diffusive translation branch aims to utilize the pretrained cycle-consistent generators to produce initial paired clean/rainy images, and diffusive translation branch leverages the multi-scale diffusion models to refine the results.
+
+4.2 Kernel Estimation
+Kernel Estimation is first proposed in blind image restoration [250–255], where the degradation can be modeled as y = (x ∗ k) ↓s +n. Here, k is the degradation kernel, and n is the additive noise. Under this setting, the kernel k can be estimated as the guidance to boost the adaptability of the restoration network. Inspired by this, BlindDPS [120] and GibbsDDRM [119] attempt to solve the blind inverse problem by estimating the unknown degradation kernel in the sampling process. In particular, BlindDPS [120] exploit the DPS [114] architecture and exploit one parallel diffusion model for the degradation kernel estimation. The diffusion model for kernel estimation is pre-trained on synthetic kernels. Unlike BlindDPS, GibbsDDRM [119] achieves the sampling process with partially collapsed Gibbs sampler [256], which samples both kernel parameter and image together from the joint posterior p(xt|k, y).
+4.3 Domain Translation
+In the real world, it is hard to collect distorted/clean image pairs. Although some works attempt to simulate the degradation process of real distorted images, the distribution of the synthesized distortion is still far away from the realworld one. To further solve the Real-world IR problem, a series of works explore the domain translation techniques for image restoration. Domain Translation [257–261] aims to translate the image from one domain to another domain. From the domain translation perspective, synthetic distorted images, real-world distorted images, and highquality images can be regarded as three different domains, that share the same contents.
+The domain translation-based works for DM-based IR can be roughly divided into two categories: 1) The first line [226] aims to simulate more reliable real-world distorted/clean image pairs by translating the low-quality images from the synthetic domain to the real-world domain. In this way, the simulated datasets can enable the restoration network with better restoration capability for real-world degradation. For instance, Yang et al. [226] is the first to exploit the pre-trained diffusion model to synthesize realworld training pairs, where the diffusion model is pretrained with real-world low-quality images, and the translation is achieved by warping the synthetic low-quality image to noise space (i.e., the generation inversion). 2) Another popular line [122] exploits unsupervised learning,
+
+4.4 Distortion-invariant Diffusion Model
+Since the blind distortions are usually diverse and complicated, the diffusion model is required to own the generation capability for these distortions (i.e., the distortioninvariant capability) in the real world. To achieve the distortion-invariant diffusion model, DifFace et al. [237] introduces a pre-trained restoration network, e.g., SRCNN [1] or SwinIR [53], to obtain an initial clean image as a sampling start point xN , where the restoration network is trained with the second-order degradation from RealESRGAN [72], thereby exhibiting good generalization capability and produce the distortion invariant initial clean image for diffusion model. Ren et al. [222] proposes to achieve a distortioninvariant diffusion model with multi-scale degradationinvariant guidance information. They employ distortion augmentation strategies on degraded images to obtain invariant representation with structure information as guidance. In contrast, Wang [123] exploits the low-pass filter to filter the distortion invariant components in the lowquality image since the different real-world distorted images usually share the same structure information. As shown in Fig. 14, they adopt a simple iterative refinement similar to ILVR during the sampling stage. After obtaining the degradation-invariant xˆ0, they use an enhancement module (Powerful CNN-based or transformer-based restoration methods) to further improve the image quality.
+Fig. 14: The architecture of DR2 [123]. It consists degradation removal module and an enhancement module. The input image is first sent to a diffusion process to remove degradation information gradually. The output degradation-free image will be enhanced by a pre-trained face restoration network.
+
+5 EXPERIMENTS
+To ensure the efficient and thorough comparison of different diffusion model-based IR methods, we first summarize the popular datasets, experimental configurations, and evaluation metrics for different tasks. Then we have a comparison of existing benchmarks in several typical image restoration tasks, including image super-resolution, inpainting, deblurring, and JPEG artifacts removal.
+5.1 Datasets and Implementation Details
+Datasets. It is noteworthy that the contents and degradation modes are significantly different across the datasets from different IR tasks. Therefore, we summarize the commonlyused datasets based on IR tasks, including SR, image deblurring, image inpainting, shadow removal, desnowing, draining, and dehazing in Table 8.
+For traditional image SR (i.e., bicubic downsampling), the standard training data is typically composed of DIV2K [45] and Flick2K [262]. However, the performance of the diffusion model is inherently bounded by the dataset size. Therefore, SR3 [118] train diffusion model with ImageNet for natural image SR, and FFHQ [211] for face SR. In the test process, it utilizes the ImageNet 1K [263] for the evaluation of natural image SR and CelebA-HQ for face SR. Depart from that, a series of works also introduce the commonly-used SR testing dataset for evaluation, such as Set5 [46], Set14 [47], BSD100 [264], Manga109 [265], Urban100 [266]. For real-world SR, SR3+ [118] provide two versions of training data, where the first version is composed of DF2K and OST [267] (i.e., DIV2K, Flick2K, and OST300), and the second version contains an extra 61M in-house image and DF2K+OST. For evaluation, the testing data is composed of RealSR [268] and DRealSR [269], obtained by two DSLR cameras with different lenses.
+For image deblurring, the diffusion model-based methods are usually trained with GoPro training dataset [52], and validated on Gopro testing dataset, RealBlur-J [270], REDS [51], and HIDE [271]. In the shadow removal task, ISTD [272] and SRD [273] are utilized for the training and evaluation, where ISTD contains 135 scenes with the shadow mask. For the image dehazing task, three typical datasets are used for evaluation, including Haze-4K [274], Dense-Haze [275], and RESIDE [276]. Among them, Haze4K contains 4, 000 hazy images, Dense-Haze [275] is composed of 33 pairs of out-door hazy and hazy-free images, and RESIDE [276] collected real-world 443950 training images and 5342 testing images. Image Desnowing utilizes three datasets, i.e., CSD [277], Snow100k [278], and SRRS [279]. The datasets in image deraining contain diverse rain types. For example, Rain100H [? ], Rain100L [? ], Rain800 [48], DDN-Data [280] contains amounts of synthesis rain streaks. RainDrop [49] collected 1119 pairs of rainy/clean images with various backgrounds and raindrops. Outdoor-Rain [281] considers the rain accumulation, which provides more reasonable modeling for heavy rainy images. SPA-data [282] constructs large-scale real-world rain streaks by warping the clean image from multiple continuous rainy images. More details about the above datasets can be found in Table 8.
+
+14
+Implementation Details We summarize the implementation details and datasets of supervised algorithms and zero-shot algorithms in Table 9 and Table 10, respectively. For supervised algorithms, we describe the configurations in the training process and testing process, including batch size, training iterations, learning rate, the sampling steps in the training process, and the sampling steps in the inference process. For zero-shotbased methods, we clarify the pre-trained diffusion model, evaluated datasets, and sampling steps in the inference process. The commonly-used data augmentation strategies are composed of rotation and flip operations.
+5.2 Evaluation Metrics
+The objective and subjective metrics play a vital role in measuring and comparing the performances between different algorithms of DM-based IR. In this section, we clarify the commonly-used metrics in image restoration in detail, i.e., PSNR, SSIM [283], LPIPS [284], DISTS [285], FID [286], KID [287], NIQE [288] and PI [289].
+• PSNR, as the most popular metric in image restoration, aims to measure the pixel-wise distance between a distorted image and its corresponding clean image by computing their mean square error(MSE).
+• SSIM [283] is also the traditional image quality assessment (IQA) metric, which intends to satisfy the human visual perception system. Compared with PSNR, it compares the similarity between distorted and clean images from three perspectives: contrast, brightness, and structure. To further improve it, multi-scale information is introduced to SSIM, termed MS-SSIM [290]. In contrast to learning-based IQA metrics, SSIM possesses fast computational speed, while still far from human perception.
+• LPIPS [284] is a full-reference learning-based IQA metric widely applied in perception-oriented image restoration tasks. Instead of utilizing image-wise statistics for quality measurement, it exploits the pre-trained AlexNet as the feature extractor and optimizes the linear layer toward human perception. The lower value LPIPS means the two images are more similar in the perception space.
+• DISTS [285] observes that the texture similarity and structure similarity of two images can be measured by the means and correlation of their features from VGG [291], respectively. Based on this finding, this work performs an SSIM-like distance measurement for texture and structure similarity in the feature space.
+• FID [286] (Fre´chet inception distance) is widely used to measure the fidelity and diversity of generated images, which is the improvement of Inception Score [292]. In contrast to IS, which lacks real-world reference images, FID leverages the features from the coding layer of the inception model to model the multivariate Gaussian distribution for sampling images and compute the Fre´chet distance between the distribution of generated images and reference images.
+• KID [287] and FID exploit the same features from the inception model for quality assessment while owning the different distance measurement strategy (i.e., the
+
+15
+TABLE 3: Quantitative Results of Supervised Models on Super-resolution Task
+
+Models
+
+DIV2K [45]
+
+Urban100 [266]
+
+Time(s/image) Parameters Flops (G)
+
+PSNR SSIM LPIPS FID PSNR SSIM LPIPS FID
+
+Bicubic
+
+25.36 0.643 0.31 108.2 24.26 0.628 0.34 134.3
+
+-
+
+SR3 [100]
+
+26.17 0.682 0.24 111.23 25.18 0.693 0.21 61.15
+
+50.4
+
+SRDiff [101]
+
+26.87 0.694 0.21 110.33 26.49 0.791 0.17 51.37
+
+4.5
+
+ResDIff [217]
+
+27.94 0.723 0.23 107.69 27.43 0.824 0.14 42.35
+
+-
+
+CDPMSR [102] 27.43 0.712 0.19 101.23 26.98 0.801 0.16 39.87
+
+-
+
+IDM [223]
+
+27.13 0.703 0.18 106.32 26.76 0.657 0.13 43.98
+
+59.5
+
+155.3M 13.2M
+116.6M
+
+155.2G 84.22G
+-
+
+TABLE 4: Quantitative Results of Zero-shot Models on Super-resolution Task. Data in bold represents best performance. Here we also compare one supervised method StableSR [121] with zero-shot methods due to its real-world restoration capability
+
+Models
+
+ImageNet 1K
+
+CelebA 1K
+
+Time(s/image) Flops (G)
+
+PSNR SSIM LPIPS FID PSNR SSIM LPIPS FID
+
+Bicubic
+
+25.36 0.643 0.27 108.20 24.26 0.628 0.34 134.29
+
+ILVR [195]
+
+27.40 0.871 0.21 43.76 31.59 0.878 0.22 32.24
+
+SNIPS [110]
+
+24.31 0.684 0.21 124.54 27.34 0.675 0.27 105.19
+
+DDRM [112]
+
+27.38 0.869 0.22 40.75 31.64 0.946 0.19 31.04
+
+DPS [114]
+
+25.88 0.814 0.15 39.24 29.65 0.878 0.18 29.97
+
+DDNM [113]
+
+27.46 0.871 0.15 40.15 31.64 0.945 0.16 28.27
+
+GDP [196]
+
+26.51 0.832 0.14 38.45 28.65 0.876 0.17 27.51
+
+StableSR∗ [121] 25.76 0.842 0.09 25.29 25.34 0.823 0.08 16.12
+
+41.3 31.4 10.1 141.2 15.5 3.1 18.15
+
+1113.75
+1113.75 1113.75 1113.75 1113.76
+-
+
+maximum mean discrepancy (MMD) with a polynomial kernel). In particular, KID is more stable than FID even with few samples. • NIQE [288] is an early no-reference/blind image quality assessment metric, where the quality score is computed with the distance between the natural scene static (NSS) of distorted images and natural images with Multivariate Gaussian Model (MGM). • PI is proposed in PIRM Challenge on perceptual SR [289], aiming to evaluate the perceptual quality of super-resolved images. It is defined as P I = 0.5((10 − Ma) + NIQE), where Ma [293] is a no-reference IQA metric for SR.
+5.3 Experimental Results
+To demonstrate the superiority of different diffusion models, we provide an objective quality comparison for them on multiple tasks. Concretely, we select three commonly investigated IR tasks, including image super-resolution, image deblurring, and image inpainting. The evaluation metrics are composed of PSNR, SSIM [283], FID [286], and LPIPS [284]. To compare the computation cost and network complexity, we also measure the running time, parameters, and flops for diffusion model-based IR methods. The qualitative results of some diffusion models are shown in Fig. 15, Fig. 16, Fig. 17. Results on Image Super-resolution.The experimental results for supervised diffusion model-based IR models on 4x image super-resolution are listed in Table 3, which are
+
+tested on the DIV2K [45] and Urban100 [266] datasets. We find that Resdiff [217] perform exceptionally well on PSNR and SSIM, with a roughly 0.5dB improvement over other diffusion models in terms of PSNR. This is because Resdiff utilizes the diffusion model to generate residual information and uses pre-processed images for conditional generation, thereby ensuring the consistency of the restored image with the high-resolution image at the pixel level. In contrast, IDM [223] and CDPMSR [102] perform well on subjective metrics. They leverage preprocessed images or preprocessed features as conditional input, which are demonstrated to have beneficial impacts on perceptual quality. In terms of model parameters, running time, and computational complexity, SRdiff outperforms IDM and SR3 by a significant margin. The generation of a single image by SRdiff takes 43.5 seconds, costing 84.22 GFlops and 13.2M parameters. This is because SRDiff encodes the low-resolution image into latent space, which reduces the dimension of processing. In addition, it has 100 sampling steps, resulting faster sampling speed than the other two models.
+For zero-shot-based diffusion IR models, the quantitative comparisons are shown in Table 4. We test six open-source diffusion models for 4x super-resolution on two datasets: ImageNet 1K [263] and CelebA 1K [294]. From the table, we can observe that DDRM [112] and DDNM [113] performed well on various metrics, followed by ILVR [195]. This is because DDRM and DDNM consider data consistency with the low-resolution image from a decomposition perspective, while ILVR only ensures low-frequency consistency.
+
+16
+
+Reference
+
+DDRM
+
+DDNM
+
+DPS
+
+GDP
+
+DiffPIR
+
+Fig. 15: Qualitative results of diffusion models on Image Super-resolution
+
+StableSR
+
+Reference
+
+DDRM
+
+DDNM
+
+DPS
+
+GDP
+
+Fig. 16: Qualitative results of diffusion models on Image Deblurring
+
+DiffPIR
+
+DPS [114] and GDP [196] focus more on the perceptual quality of generated images. GDP perform well perceptual metrics on both datasets because it uses an empirical formula rather than Tweedie’s formula for posterior estimation, resulting in some performance improvement relative to DPS. GDP also exhibits the fastest image generation speed, with the reverse sampling steps of 25. The reason for that is it does not need the complex SVD decomposition and computation in DDRM, thereby accelerating image generation. On the other hand, DPS performs corrections after every sampling step (around 1000 steps), making it unable to utilize the DDIM-based sampling method for acceleration. Therefore, generating a single image with DPS takes approximately 141.2 seconds. Results on Image Deblurring. We also evaluate five zeroshot DM-based IR methods on the Gaussian deblurring task using the ImageNet 1K [263] and CelebA 1K [294] datasets. The experimental results are shown in Table ??. We can find that DiffPIR [198] and Dirac-DO [200] achieve competitive performance on PSNR and SSIM, with an average improvement of 1.0 dB to 1.4 dB over DDRM [112] and DDNM [113]. Moreover, Dirac-PO [200] and DiffPIR [198] show superior performance on perceptual metrics. DPS [114] performs well on perceptual metrics, including LIPS and FID, but has a long generation time for each image. DiffPIR utilizes
+
+a plug-and-play sampling method and merges the DDIM sampling strategy to ensure both the fidelity and realism of generated images while speeding up the sampling process. Diracdiffion includes perception-optimized (PO) and distortion-optimized (DO) models, and employs an incremental reconstruction and early stopping method to achieve a perception-distortion trade-off. As a result, both models perform exceptionally well on distortion and perception metrics. Among all the models used, DDRM has the shortest sampling time, averaging under 10 seconds per image, as it only uses 20 sampling steps. In terms of model parameters, all zero-shot DM-based IR methods use a pre-trained model with 552.8M parameters for the ImageNet dataset and 126M parameters for the CelebA dataset. Results on Image Inpainting. We validate the performance of five zero-shot diffusion models on the image inpainting (narrow mask) task, as shown in Table 6. In addition to the three multi-task models, DPS [114], DDRM [112], and DDNM [113], we also add two models, Repaint [212] and Copaint [216], specifically designed for image inpainting. In terms of distortion metrics, similar to the case of superresolution, DDRM and DDNM achieve better performance. In terms of perceptual quality, DPS demonstrates much better perceptual performance on CelebA-HQ than on ImageNet, whereas Repaint and Copaint outperform the other
+
+17
+
+Reference
+
+DDRM
+
+DDNM
+
+DPS
+
+Repaint
+
+Fig. 17: Qualitative results of diffusion models on Image Inpaiting
+
+DiffPIR
+
+TABLE 5: Quantitative Results of Diffusion Models on Image Deblurring Task
+
+Target Gaussian Deblurring
+
+Models
+Deblurred imaged DPS [114]
+DDRM [112] DDNM [113] Dirac-DO [200] Dirac-PO [200] DiffPIR [198]
+
+PSNR 19.56 21.51 24.54 25.37 25.18 24.23 25.26
+
+ImageNet 1K SSIM LPIPS 0.553 0.61 0.516 0.41 0.668 0.39 0.731 0.33 0.719 0.43 0.673 0.34 0.721 0.32
+
+FID 168.20 52.61 71.65 56.54 75.29 53.91 53.21
+
+PSNR 19.95 25.56 27.21 27.25 28.46 26.76 28.35
+
+CelebA 1K SSIM LPIPS 0.578 0.53 0.688 0.25 0.767 0.29 0.782 0.25 0.848 0.31 0.742 0.24 0.832 0.25
+
+FID 164.31 65.67 87.32 62.65 91.32 59.45 58.56
+
+Time(s/image)
+130.1 8.9 16.2
+23.5
+
+Flops (G)
+1113.75 1113.75 1113.75
+1113.78
+
+models. Copaint is superior to the Repaint model, reducing the FID metric by 0.08dB and 1.33dB on CelebA-HQ and ImageNet datasets, respectively. This is because Copaint considers the coherence between the unrevealed and revealed regions from the perspective of Bayesian posterior estimation, which is more theoretically supported than the resampling strategy used in Repaint. At the same time, Copaint also employs the time travel method in DDNM [113] for better restoration quality, but it also increases the computation complexity. In terms of running time, DDRM remains the fastest model for generating a single image due to its low number of sampling steps (with running time almost linearly correlated with NFE). Although CoPaint has a shorter step size of 250 steps compared to DPS, it employs time travel, which increases the sampling runtime to approximately 298 seconds for generating a single image. Similarly, Repaint also requires a similar amount of time for image generation, but CoPaint’s sampling time is slightly faster than that of Repaint.
+Generalization to Unseen Distortion. In this section, we compare the generalization capability between the diffusion model-based IR methods and existing CNN-based and Transformer-based IR methods on Image Super-resolution. The frameworks of these methods are trained using synthetic dataset DIV2K [45] and evaluated on an unseen realworld dataset, i.e., RealSR [268]. As shown in Table 7, on seen degradation, the CNN-based and Transformerbased IR methods can achieve better objective quality on
+
+PSNR/SSIM, while the diffusion-based IR methods can perform promising subjective quality. However, both of them performs exhibited poor performance on the unseen scenario, including PSNR, SSIM, and the perceptual metric LPIPS. Conversely, StableSR methods demonstrate superior generalization capability on unseen scenarios. The reason for that is they exploit the distortion synthetic strategy from RealESRGAN, which aims to simulate real-world degradations.
+Image Restoration with Arbitrary Size. In general, the resolution of generated images from the diffusion model is required to be consistent with the optimization process. This limitation hinders the diffusion model-based image restoration from processing distorted images with arbitrary sizes, especially for high-resolution images, such as 2K, and 4K. An intuitive solution is that we can generate each part of the whole image, and then stitch them into one image. However, it will cause severe mismatching issues and inconsistencies at the edges of each part, stemming from the inherent randomness within the diffusion model. Recently, several papers [104, 121, 196, 222] have proposed severe effective solutions for this problem. In particular, DGDPM [222] uses fully-convolution layers to handle inputs of arbitrary sizes, but the method is computationally expensive due to the large network structure. In contrast, Weatherdiff [104] and GDP [196] both adopt patch-based restoration methods. They extract overlapping patches from input images and input each patch into the diffusion process for
+
+18
+TABLE 6: Quantitative Results of Diffusion Models on Image Inpainting Task
+
+Target Inpainting
+
+Models
+Masked Imaged Repaint [212] DDRM [112] DPS [114] DDNM [113] Copaint [216]
+
+PSNR 14.86 31.87 31.72 30.87 32.06 31.93
+
+ImageNet 1K SSIM LPIPS 0.712 0.37 0.967 0.07 0.966 0.18 0.929 0.23 0.969 0.11 0.976 0.08
+
+FID 79.83 4.31 8.82 28.32 7.89 4.23
+
+PSNR 15.67 35.23 35.73 33.48 35.64 34.97
+
+CelebA-HQ SSIM LPIPS 0.794 0.36 0.982 0.04 0.967 0.16 0.943 0.08 0.982 0.11 0.975 0.04
+
+FID 181.60
+6.19 10.82 5.37 7.54 4.86
+
+Time(s/image)
+353.4 8.8 136.3 16.4 293.8
+
+Parameters -
+552.7M(ImageNet)
+
+Flops (G)
+10736.60 1113.75 1113.75 1113.75 6083.27
+
+TABLE 7: Comparisons of CNN-based(RRDB [295]),transformer-based(SwinIR [53]) and DM-based(SRdiff [101], StableSR [121]) on out of distribution dataset RealSR [268]
+
+Models
+
+DIV2K
+
+RealSR
+
+PSNR(HWC/Y) SSIM(HWC/Y) LPIPS PSNR(HWC/Y) SSIM(HWC/Y) LPIPS
+
+Bicubic SRdiff [101] SwinIR [53] RRDB [295] StableSR [121]
+
+(26.93,28.45) (27.70/29.22) (30.37/31.85) (29.68/31.25) (21.88/23.26)
+
+(0.756,0.778) (0.764/0.786) (0.835/0.853) (0.822/0.841) (0.559/0.573)
+
+0.395 0.116 0.241 0.26 0.26
+
+(26.29,28.03) (26.28/28.01) (26.30,27.96) (26.28/28.01) (21.14,22.69)
+
+(0.768,0.807) (0.768,0.807) (0.770,0.808) (0.769,0.808) (0.627,0.663)
+
+0.437 0.428 0.449 0.445 0.095
+
+denoising. The overlapped parts of patches are averaged in the noise dimension to keep the consistency between different patches. Stable-SR [121] also adopts a patch-based method while it uses a Gaussian filter to smooth the noise in the overlapped parts of patches. We have shown their effectiveness in Fig. 18, where the overlapped regions among different patches are almost indistinguishable.
+6 CHALLENGES AND FUTURE DIRECTIONS
+Although recent researches have achieved remarkable progress on diffusion model-based IR, there are still some challenges to extending them to the practical application since their limited robustness, model complexity, running efficiency, and restoration capability. To further improve the development of image restoration, we summarize the primary challenges and propose the potential directions for solving them in this section.
+6.1 Sampling Efficiency
+It is noteworthy that sampling efficiency is one typical challenge for the diffusion model, where the few sampling steps will cause limited generation fidelity. This inherent problem of the diffusion model damages the training and inference speed of image restoration. As shown in Table 3, SR3 [100] needs to take about 50 seconds to restore one image with the size of 224 × 224, which is largely slower than the existing IR methods. previous works on diffusion models have attempted to improve the sampling efficiency from four perspectives: 1) modeling the diffusion process with a non-Markov Chain, such as DDIM [85]. 2) designing efficient ODE solvers, e.g., DPM-solver. 3) leveraging the knowledge distillation to reduce sampling steps [157–160], and 4) introducing the cross-modality priors with condition
+
+mechanism [116, 117, 121]. Under the above progresses, the sampling steps for the diffusion model are largely reduced to 10 ∼ 20 steps, which also serves for more fast image restoration. In particular, DDRM [112] reduces the inference speed to 8 seconds for one 224 × 224 of the image with the sampling strategy of DDIM [85].
+Despite that, the above strategies are not specific to image restoration tasks. Differently, considering the lowquality image in IR contains abundant structural and textual information, some works [106, 220, 231] achieve image restoration by sampling from the low-quality image instead of pure noise, which obviates the extra sampling steps in the original DDPM. Regardless of the large process, it still has a large gap from the real-time application, which is urgently required to be solved. It will be a potential direction to speed up the diffusion model-based IR by improving the sampling efficiency.
+6.2 Model Compression
+Model size is also the significant factor impacting the computational cost, limiting the real-time application of diffusion model-based image restoration (IR), such as mobile devices. In particular, DDPM [82] and SR3 [100] have 113.7M and 155.3M parameters, respectively, substantially exceeding previous CNN-based [34, 35, 232, 296–300] or Transformer-based IR backbones [10, 16, 22, 53–55, 301]. To mitigate this, diffusion model compression is a potential but under-explored research direction toward efficient IR. Model compression [302], with the goal of reducing computational cost while maintaining task performance, has achieved great breakthroughs from four perspectives: including 1) model pruning, with the aim of removing the unimportant parameters by estimating the importance score of each parameter, 2) model quantization targets for
+
+19
+
+Weatherdiff(958x1438)
+
+Stable-SR (512x512) Fig. 18: Qualitative results of restored images at arbitrary size
+
+reducing the bit-depth of the floating-point parameters for storage or computing, 3) knowledge distillation is proposed to transfer the knowledge from the complex teacher model to the simple and efficient student model, and 4) low-rank decomposition is devoted to decomposing the parameter tensor into multiple low-rank tensors. On basis of these, some works have taken a step forward to investigate the model compression of the diffusion model. Kim et al. [303] introduce the block-removed knowledge distillation for the diffusion model, which constructs the student model by removing some residual and attention blocks from the UNet architecture. Fang et al. [304] pinpoint that not all diffusion steps contribute to the generation process, and then, exploit partial diffusion steps to estimate the important and unimportant weights for parameter pruning with Taylor expansion. Additionally, there are pioneering works [305– 308] that take the model quantization for the diffusion model to accelerate the sampling process. Although such progress, few works explore how to design the model compression for diffusion model-based IR, which is expected to be developed for real-time application.
+6.3 Distortion Simulation and Estimation
+Real-world/blind IR is a challenging yet significant task, with the goal of addressing the unknown and intricate degradations encountered in the real world. Unlike synthetic degradation, where the distortion is predefined and paired training samples are available, collecting the paired real-world distorted/clean pairs is non-trivial, thereby preventing the training with supervised learning. To address this limitation, unsupervised learning has been introduced to leverage unpaired real-world distorted/clean images. However, this learning paradigm usually yields an unsat-
+
+isfied texture consistency between the restored image and the low-quality image. In contrast, distortion simulation serves as another efficient strategy to maintain supervised learning by simulating real-world degradations. Typically, RealESGRAN [72] and SR3+ [118] are the representative work to explore the hand-crafted second-order degradations for Real-world IR. Notwithstanding, the hand-crafted distortion simulation is hard to cover all the degradations in the real world. To mitigate this, some works are inspired by domain translation, and introduce the GAN/diffusion model to translate the synthetic distorted image to the realworld one or translate the real-world distorted image to the synthetic one. The former intends to simulate the real-world training pairs for supervised learning [226], while the latter aims to directly utilize the IR network trained with synthetic images [122].
+Another crucial challenge for real-world/blind IR stems from distortion estimation, which involves explicitly/implicitly identifying the distortion types or levels. In this work, we summarize the utilization of distortion estimation from two perspectives: 1) distortion adaptive learning and 2) solving the inverse problem in IR. From the first perspective, a notable example is kernel prediction for blind IR [120], where the estimated kernel/representation is used to guide the adaptation of the pre-trained IR model to the unknown degradation. Inspired by this, if we can estimate the distortion type or degree in an explicit/implicit manner, we can achieve the unified IR framework based on distortion adaptive learning. For the second perspective, as stated in Sec. 3.4, lots of zero-shot diffusion model-based IR methods are based on the modelling of linear reverse problem. This poses the requirements for the identifying of degradation mode, which is necessary for the consistency
+
+20
+
+constrain in diffusion model. Therefore, most of them are devoted into the synthetic distortions since the distortion mode in real world are hard to be identify. One distortion estimation technique is urgently developed to extend the zero-shot diffusion model-based IR to the real-world application.
+6.4 Distortion Invariant Learning
+Recently, we have witnessed the fast evolution of diffusion model-based IR for specific degradation. However, it inevitably suffers from unsatisfied robustness when applied to unseen distortion types and degrees. This raises a foundational question: How to achieve consistent image restoration across diverse distortion types and levels? To achieve this, we propose one direction termed distortion invariant learning (DIL) [309], aiming to enable the IR model to be generalized to unknown and diverse degradations. The principle of DIL is to learn the representation that is invariant under various degradation modes and preserve enough structure and textual information for reconstruction.
+Inspired by domain generalization (DG) [310–314], we can present some potential methods to achieve DIL for IR by regarding each distortion mode as one domain. In the DG field, there are three typical methods to learn the domain invariant feature, including domain alignment [315– 319], data augmentation [320–323], and meta-learning [324– 327]. In particular, domain alignment aims to align the representations of source and target domains through minimizing contrastive loss [328], Maximum Mean Discrepancy (MMD), or adversarial learning, etc. Data augmentation is exploited to extend the domain diversity and consistency, which enables the model to obtain the domain-invariant capability. Meta-learning aims to learn the domain invariant representation by aligning the gradient between different domains, which is from the optimization perspective. By regarding the distortion mode as one specific domain, we can obtain several strategies to achieve distortion invariant learning: 1) we can exploit the encoder-decoder architecture for IR and align the representations from different distorted images before the decoder. 2) the second strategy can learn the distortion invariant representation from distortion augmentation, i.e., simulating various distortions in the real world as much as possible. 3) optimize the empirical risk minimization in IR with meta-learning like [309].
+For diffusion model based image restoration, the model is usually composed of two components, noise predictor and condition module. Therefore, we can achieve distortion invariant learning from two perspectives: 1) learning the distortion invariant noise predictor and 2) distortion invariant condition. Obviously, once we implement the distortion invariant condition, we can leave the noise predictor invariant in supervised IR or exploit the pre-trained diffusion model in zero-shot IR. Based on this, some pioneering works attempt to redesign the condition module to achieve the distortion invariant condition, e.g., DifFace [237] and DR2 [123]. Notably, the distortion invariant condition also relies on distortion invariant learning for better conditions, which still entails lots of effort for evolution in future work.
+
+6.5 Framework Design
+As the foundation of image restoration, how to design an effective and powerful IR framework is an ongoing and significant question. We can notice that the most recent diffusion model-based IR methods [100, 101, 112–114, 196, 197, 219] are designed based on the U-Net architecture from DDPM [82], and pursue better frameworks from three perspectives, i.e., the condition strategy [10, 112, 114, 212, 231], generation space [98, 106, 224], noise predictor [224], respectively. The condition of the diffusion model in IR aims to introduce the structure and textual information from lowquality images. In the early work, SR3 directly select lowquality images as a condition with the concatenation. To improve the condition, some works [102, 191, 217, 223, 230] improve the condition by designing pre-processing networks, such as feature extractors and pre-trained restoration networks. From the generation space, the framework is usually designed from four spaces, including image space, residual space, latent space, and frequency space. Among them, pixel-wise space can preserve more spatial structure and textual information, which can generate highquality images [102, 217, 223] or residuals [101, 217], while owning higher computational cost and parameters. In contrast, latent space generation requires fewer computational costs. However, one well-designed encoder and decoder are crucial for latent space generation to make the tradeoff between efficiency and fidelity. Frequency space has been widely applied in image restoration, including wavelet transform, Fourier transform, etc. Compared with imagewise space, frequency space is more good at capturing the global contextual information, where the low-frequency refers to the structural information and the high-frequency represents the texture and style information. Following the DDPM [82], in most works, the noise predictor is based on the U-Net architecture. For supervised diffusion modelbased IR, the modification of the noise predictor is usually achieved by increasing the number of residual blocks in the U-Net or adjusting the channel multipliers at different resolutions , such as SR3. Few works are devoted to investigating how to design brand-new architectures based on transformers for the noise predictor in diffusion modelbased IR. Furthermore, how to design the unified and foundational architecture like the painter [329] for diffusion model-based IR tasks is urgently required to be explored.
+7 CONCLUSIONS
+This work presents a comprehensive review of recent popular diffusion models for IR, excavating their substantial generative capability to enhance structure and texture restoration. Initially, we illustrate the definition and evolution of the diffusion model. Subsequently, we provide a systematic categorization of existing works from the perspectives of training strategy and degradation scenario. Concretely, we group existing works into three prominent flows: supervised DM-based IR, zero-shot DM-based IR, and DM-based blind/real-world IR. For each flow, we provide the finegrained taxonomy based on the techniques and delicately describe their advantages and disadvantages. For evaluation, we summarize the commonly-used datasets and evaluation metrics for DM-based IR. And we compare the open-
+
+21
+
+sourced SOTA methods with distortion and perceptual metrics on three typical tasks, including image SR, deblurring, and inpainting. To overcome the potential challenges in DMbased IR, we highlight five potential directions expected to be explored in the future.
+8 ACKNOWLEDGEMENTS
+We would like to sincerely appreciate Prof. Chen Chang Loy from MMLab@NTU for his valuable suggestions and assistance on this paper, which greatly improved the quality of our work.
+REFERENCES
+[1] C. Dong, C. C. Loy, K. He, and X. Tang, “Learning a deep convolutional network for image superresolution,” in Computer Vision–ECCV 2014: 13th European Conference, Zurich, Switzerland, September 6-12, 2014, Proceedings, Part IV 13. Springer, 2014, pp. 184– 199.
+[2] J. Kim, J. K. Lee, and K. M. Lee, “Accurate image super-resolution using very deep convolutional networks,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2016, pp. 1646–1654.
+[3] B. Lim, S. Son, H. Kim, S. Nah, and K. Mu Lee, “Enhanced deep residual networks for single image super-resolution,” in Proceedings of the IEEE conference on computer vision and pattern recognition workshops, 2017, pp. 136–144.
+[4] T. Dai, J. Cai, Y. Zhang, S.-T. Xia, and L. Zhang, “Second-order attention network for single image super-resolution,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2019, pp. 11 065–11 074.
+[5] C. Ledig, L. Theis, F. Husza´r, J. Caballero, A. Cunningham, A. Acosta, A. Aitken, A. Tejani, J. Totz, Z. Wang et al., “Photo-realistic single image superresolution using a generative adversarial network,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2017, pp. 4681–4690.
+[6] X. Wang, K. Yu, S. Wu, J. Gu, Y. Liu, C. Dong, Y. Qiao, and C. Change Loy, “Esrgan: Enhanced superresolution generative adversarial networks,” in Proceedings of the European conference on computer vision (ECCV) workshops, 2018, pp. 0–0.
+[7] Z. Lu, J. Li, H. Liu, C. Huang, L. Zhang, and T. Zeng, “Transformer for single image super-resolution,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 457–466.
+[8] Z. Lu, H. Liu, J. Li, and L. Zhang, “Efficient transformer for single image super-resolution,” arXiv preprint arXiv:2108.11084, 2021.
+[9] X. Chen, X. Wang, J. Zhou, and C. Dong, “Activating more pixels in image super-resolution transformer. arxiv 2022,” arXiv preprint arXiv:2205.04437.
+[10] D. Zhang, F. Huang, S. Liu, X. Wang, and Z. Jin, “Swinfir: Revisiting the swinir with fast fourier convolution and improved training for image superresolution,” arXiv preprint arXiv:2208.11247, 2022.
+[11] S. Nah, T. Hyun Kim, and K. Mu Lee, “Deep multiscale convolutional neural network for dynamic scene
+
+deblurring,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2017, pp. 3883– 3891. [12] O. Kupyn, V. Budzan, M. Mykhailych, D. Mishkin, and J. Matas, “Deblurgan: Blind motion deblurring using conditional adversarial networks,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2018, pp. 8183–8192. [13] T. M. Nimisha, A. Kumar Singh, and A. N. Rajagopalan, “Blur-invariant deep learning for blinddeblurring,” in Proceedings of the IEEE international conference on computer vision, 2017, pp. 4752–4760. [14] S. Zhao, Z. Zhang, R. Hong, M. Xu, Y. Yang, and M. Wang, “Fcl-gan: A lightweight and real-time baseline for unsupervised blind image deblurring,” in Proceedings of the 30th ACM International Conference on Multimedia, 2022, pp. 6220–6229. [15] K. Kim, S. Lee, and S. Cho, “Mssnet: Multi-scale-stage network for single image deblurring,” in Computer Vision–ECCV 2022 Workshops: Tel Aviv, Israel, October 23–27, 2022, Proceedings, Part II. Springer, 2023, pp. 524–539. [16] S. W. Zamir, A. Arora, S. Khan, M. Hayat, F. S. Khan, and M.-H. Yang, “Restormer: Efficient transformer for high-resolution image restoration,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 5728–5739. [17] F.-J. Tsai, Y.-T. Peng, Y.-Y. Lin, C.-C. Tsai, and C.-W. Lin, “Stripformer: Strip transformer for fast image deblurring,” in Computer Vision–ECCV 2022: 17th European Conference, Tel Aviv, Israel, October 23–27, 2022, Proceedings, Part XIX. Springer, 2022, pp. 146–162. [18] K. Dabov, A. Foi, V. Katkovnik, and K. Egiazarian, “Image denoising by sparse 3-d transform-domain collaborative filtering,” IEEE Transactions on image processing, vol. 16, no. 8, pp. 2080–2095, 2007. [19] K. Zhang, W. Zuo, Y. Chen, D. Meng, and L. Zhang, “Beyond a gaussian denoiser: Residual learning of deep cnn for image denoising,” IEEE transactions on image processing, vol. 26, no. 7, pp. 3142–3155, 2017. [20] Y. Chen and T. Pock, “Trainable nonlinear reaction diffusion: A flexible framework for fast and effective image restoration,” IEEE transactions on pattern analysis and machine intelligence, vol. 39, no. 6, pp. 1256– 1272, 2016. [21] D. Valsesia, G. Fracastoro, and E. Magli, “Deep graphconvolutional image denoising,” IEEE Transactions on Image Processing, vol. 29, pp. 8226–8237, 2020. [22] C.-M. Fan, T.-J. Liu, and K.-H. Liu, “Sunet: swin transformer unet for image denoising,” in 2022 IEEE International Symposium on Circuits and Systems (ISCAS). IEEE, 2022, pp. 2333–2337. [23] X. Liu, Y. Hong, Q. Yin, and S. Zhang, “Dnt: Learning unsupervised denoising transformer from single noisy image,” in Proceedings of the 4th International Conference on Image Processing and Machine Vision, 2022, pp. 50–56. [24] C. Tian, M. Zheng, W. Zuo, B. Zhang, Y. Zhang, and D. Zhang, “Multi-stage image denoising with the wavelet transform,” Pattern Recognition, vol. 134, p. 109050, 2023.
+
+22
+
+[25] D. Zhang, F. Zhou, Y. Jiang, and Z. Fu, “Mmbsn: Self-supervised image denoising for real-world with multi-mask based on blind-spot network,” arXiv preprint arXiv:2304.01598, 2023.
+[26] J. Xie, L. Xu, and E. Chen, “Image denoising and inpainting with deep neural networks,” Advances in neural information processing systems, vol. 25, 2012.
+[27] D. Pathak, P. Krahenbuhl, J. Donahue, T. Darrell, and A. A. Efros, “Context encoders: Feature learning by inpainting,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2016, pp. 2536– 2544.
+[28] J. Yu, Z. Lin, J. Yang, X. Shen, X. Lu, and T. S. Huang, “Generative image inpainting with contextual attention,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2018, pp. 5505–5514.
+[29] L. Zhao, Q. Mo, S. Lin, Z. Wang, Z. Zuo, H. Chen, W. Xing, and D. Lu, “Uctgan: Diverse image inpainting based on unsupervised cross-space translation,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2020, pp. 5741–5750.
+[30] T. Yu, R. Feng, R. Feng, J. Liu, X. Jin, W. Zeng, and Z. Chen, “Inpaint anything: Segment anything meets image inpainting,” arXiv preprint arXiv:2304.06790, 2023.
+[31] W. Li, Z. Lin, K. Zhou, L. Qi, Y. Wang, and J. Jia, “Mat: Mask-aware transformer for large hole image inpainting,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2022, pp. 10 758–10 768.
+[32] C. Dong, Y. Deng, C. C. Loy, and X. Tang, “Compression artifacts reduction by a deep convolutional network,” in Proceedings of the IEEE international conference on computer vision, 2015, pp. 576–584.
+[33] P. Svoboda, M. Hradis, D. Barina, and P. Zemcik, “Compression artifacts removal using convolutional neural networks,” arXiv preprint arXiv:1605.00366, 2016.
+[34] M. Ehrlich, L. Davis, S.-N. Lim, and A. Shrivastava, “Quantization guided jpeg artifact correction,” in Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part VIII 16. Springer, 2020, pp. 293–309.
+[35] J. Jiang, K. Zhang, and R. Timofte, “Towards flexible blind jpeg artifacts removal,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2021, pp. 4997–5006.
+[36] X. Jiang, W. Tan, R. Cheng, S. Zhou, and B. Yan, “Learning parallax transformer network for stereo image jpeg artifacts removal,” in Proceedings of the 30th ACM International Conference on Multimedia, 2022, pp. 6072–6082.
+[37] X. Wang, X. Fu, Y. Zhu, and Z.-J. Zha, “Jpeg artifacts removal via contrastive representation learning,” in Computer Vision–ECCV 2022: 17th European Conference, Tel Aviv, Israel, October 23–27, 2022, Proceedings, Part XVII. Springer, 2022, pp. 615–631.
+[38] X. Jiang, W. Tan, Q. Lin, C. Ma, B. Yan, and L. Shen, “Multi-modality deep network for jpeg artifacts reduction,” arXiv preprint arXiv:2305.02760, 2023.
+[39] G. Chantas, N. P. Galatsanos, R. Molina, and A. K.
+
+Katsaggelos, “Variational bayesian image restoration with a product of spatially weighted total variation image priors,” IEEE transactions on image processing, vol. 19, no. 2, pp. 351–362, 2009. [40] J. Mairal, G. Sapiro, and M. Elad, “Learning multiscale sparse representations for image and video restoration,” Multiscale Modeling & Simulation, vol. 7, no. 1, pp. 214–241, 2008. [41] Z. Xu and J. Sun, “Image inpainting by patch propagation using patch sparsity,” IEEE transactions on image processing, vol. 19, no. 5, pp. 1153–1165, 2010. [42] K. I. Kim and Y. Kwon, “Single-image superresolution using sparse regression and natural image prior,” IEEE transactions on pattern analysis and machine intelligence, vol. 32, no. 6, pp. 1127–1133, 2010. [43] W. Dong, L. Zhang, G. Shi, and X. Li, “Nonlocally centralized sparse representation for image restoration,” IEEE transactions on Image Processing, vol. 22, no. 4, pp. 1620–1630, 2012. [44] U. Schmidt and S. Roth, “Shrinkage fields for effective image restoration,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2014, pp. 2774–2781. [45] E. Agustsson and R. Timofte, “Ntire 2017 challenge on single image super-resolution: Dataset and study,” in The IEEE Conference on Computer Vision and Pattern Recognition (CVPR) Workshops, July 2017. [46] M. Bevilacqua, A. Roumy, C. Guillemot, and M. L. Alberi-Morel, “Low-complexity single-image superresolution based on nonnegative neighbor embedding,” 2012. [47] R. Zeyde, M. Elad, and M. Protter, “On single image scale-up using sparse-representations,” in Curves and Surfaces: 7th International Conference, Avignon, France, June 24-30, 2010, Revised Selected Papers 7. Springer, 2012, pp. 711–730. [48] H. Zhang, V. Sindagi, and V. M. Patel, “Image deraining using a conditional generative adversarial network,” IEEE transactions on circuits and systems for video technology, vol. 30, no. 11, pp. 3943–3956, 2019. [49] R. Qian, R. T. Tan, W. Yang, J. Su, and J. Liu, “Attentive generative adversarial network for raindrop removal from a single image,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2018, pp. 2482–2491. [50] H. Zhang and V. M. Patel, “Density-aware single image de-raining using a multi-stream dense network,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2018, pp. 695–704. [51] S. Nah, S. Baik, S. Hong, G. Moon, S. Son, R. Timofte, and K. M. Lee, “Ntire 2019 challenge on video deblurring and super-resolution: Dataset and study,” in CVPR Workshops, June 2019. [52] S. Nah, T. Hyun Kim, and K. Mu Lee, “Deep multiscale convolutional neural network for dynamic scene deblurring,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2017, pp. 3883– 3891. [53] Z. Liu, Y. Lin, Y. Cao, H. Hu, Y. Wei, Z. Zhang, S. Lin, and B. Guo, “Swin transformer: Hierarchical vision transformer using shifted windows,” in Proceedings of
+
+23
+
+the IEEE/CVF international conference on computer vision, 2021, pp. 10 012–10 022. [54] Z. Liu, H. Hu, Y. Lin, Z. Yao, Z. Xie, Y. Wei, J. Ning, Y. Cao, Z. Zhang, L. Dong et al., “Swin transformer v2: Scaling up capacity and resolution,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2022, pp. 12 009–12 019. [55] Z. Wang, X. Cun, J. Bao, W. Zhou, J. Liu, and H. Li, “Uformer: A general u-shaped transformer for image restoration,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 17 683–17 693. [56] A. Krizhevsky, I. Sutskever, and G. E. Hinton, “Imagenet classification with deep convolutional neural networks,” Communications of the ACM, vol. 60, no. 6, pp. 84–90, 2017. [57] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin, “Attention is all you need,” Advances in neural information processing systems, vol. 30, 2017. [58] D. P. Kingma and M. Welling, “Auto-encoding variational bayes,” arXiv preprint arXiv:1312.6114, 2013. [59] A. Van Den Oord, N. Kalchbrenner, and K. Kavukcuoglu, “Pixel recurrent neural networks,” in International conference on machine learning. PMLR, 2016, pp. 1747–1756. [60] A. Van den Oord, N. Kalchbrenner, L. Espeholt, O. Vinyals, A. Graves et al., “Conditional image generation with pixelcnn decoders,” Advances in neural information processing systems, vol. 29, 2016. [61] T. Salimans, A. Karpathy, X. Chen, and D. P. Kingma, “Pixelcnn++: Improving the pixelcnn with discretized logistic mixture likelihood and other modifications,” arXiv preprint arXiv:1701.05517, 2017. [62] D. Rezende and S. Mohamed, “Variational inference with normalizing flows,” in International conference on machine learning. PMLR, 2015, pp. 1530–1538. [63] G. Papamakarios, T. Pavlakou, and I. Murray, “Masked autoregressive flow for density estimation,” Advances in neural information processing systems, vol. 30, 2017. [64] A. Creswell, T. White, V. Dumoulin, K. Arulkumaran, B. Sengupta, and A. A. Bharath, “Generative adversarial networks: An overview,” IEEE signal processing magazine, vol. 35, no. 1, pp. 53–65, 2018. [65] T. Karras, T. Aila, S. Laine, and J. Lehtinen, “Progressive growing of gans for improved quality, stability, and variation,” arXiv preprint arXiv:1710.10196, 2017. [66] J. Zhao, M. Mathieu, and Y. LeCun, “Energybased generative adversarial network,” arXiv preprint arXiv:1609.03126, 2016. [67] A. Dosovitskiy and T. Brox, “Generating images with perceptual similarity metrics based on deep networks,” Advances in neural information processing systems, vol. 29, 2016. [68] X. Yu and F. Porikli, “Ultra-resolving face images by discriminative generative networks,” in Computer Vision–ECCV 2016: 14th European Conference, Amsterdam, The Netherlands, October 11-14, 2016, Proceedings, Part V. Springer, 2016, pp. 318–333. [69] J. Johnson, A. Alahi, and L. Fei-Fei, “Perceptual losses
+
+for real-time style transfer and super-resolution,” in Computer Vision–ECCV 2016: 14th European Conference, Amsterdam, The Netherlands, October 11-14, 2016, Proceedings, Part II 14. Springer, 2016, pp. 694–711. [70] J. Bruna, P. Sprechmann, and Y. LeCun, “Superresolution with deep convolutional sufficient statistics,” arXiv preprint arXiv:1511.05666, 2015. [71] W. Zhang, Y. Liu, C. Dong, and Y. Qiao, “Ranksrgan: Generative adversarial networks with ranker for image super-resolution,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2019, pp. 3096–3105. [72] X. Wang, L. Xie, C. Dong, and Y. Shan, “Real-esrgan: Training real-world blind super-resolution with pure synthetic data,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2021, pp. 1905– 1914. [73] K. Zhang, J. Liang, L. Van Gool, and R. Timofte, “Designing a practical degradation model for deep blind image super-resolution,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2021, pp. 4791–4800. [74] E. Schonfeld, B. Schiele, and A. Khoreva, “A u-net based discriminator for generative adversarial networks,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2020, pp. 8207– 8216. [75] P. Isola, J.-Y. Zhu, T. Zhou, and A. A. Efros, “Imageto-image translation with conditional adversarial networks,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2017, pp. 1125–1134. [76] K. Simonyan and A. Zisserman, “Very deep convolutional networks for large-scale image recognition,” arXiv preprint arXiv:1409.1556, 2014. [77] T. Karras, S. Laine, M. Aittala, J. Hellsten, J. Lehtinen, and T. Aila, “Analyzing and improving the image quality of stylegan,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2020, pp. 8110–8119. [78] Z. Luo, Y. Huang, S. Li, L. Wang, and T. Tan, “Learning the degradation distribution for blind image superresolution,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 6063–6072. [79] X. Xu, P. Wei, W. Chen, Y. Liu, M. Mao, L. Lin, and G. Li, “Dual adversarial adaptation for cross-device real-world image super-resolution,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 5667–5676. [80] Y. Wang, F. Perazzi, B. McWilliams, A. SorkineHornung, O. Sorkine-Hornung, and C. Schroers, “A fully progressive approach to single-image superresolution,” in Proceedings of the IEEE conference on computer vision and pattern recognition workshops, 2018, pp. 864–873. [81] J. Sohl-Dickstein, E. Weiss, N. Maheswaranathan, and S. Ganguli, “Deep unsupervised learning using nonequilibrium thermodynamics,” in International Conference on Machine Learning. PMLR, 2015, pp. 2256–2265. [82] J. Ho, A. Jain, and P. Abbeel, “Denoising diffusion
+
+24
+
+probabilistic models,” Advances in Neural Information Processing Systems, vol. 33, pp. 6840–6851, 2020. [83] Y. Song and S. Ermon, “Generative modeling by estimating gradients of the data distribution,” Advances in neural information processing systems, vol. 32, 2019. [84] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole, “Score-based generative modeling through stochastic differential equations,” arXiv preprint arXiv:2011.13456, 2020. [85] J. Song, C. Meng, and S. Ermon, “Denoising diffusion implicit models,” arXiv preprint arXiv:2010.02502, 2020. [86] Q. Zhang, J. Song, X. Huang, Y. Chen, and M.-Y. Liu, “Diffcollage: Parallel generation of large content with diffusion models,” arXiv preprint arXiv:2303.17076, 2023. [87] V. Singh, S. Jandial, A. Chopra, S. Ramesh, B. Krishnamurthy, and V. N. Balasubramanian, “On conditioning the input noise for controlled image generation with diffusion models,” arXiv preprint arXiv:2205.03859, 2022. [88] V. Popov, I. Vovk, V. Gogoryan, T. Sadekova, and M. Kudinov, “Grad-tts: A diffusion probabilistic model for text-to-speech,” in International Conference on Machine Learning. PMLR, 2021, pp. 8599–8608. [89] A. Levkovitch, E. Nachmani, and L. Wolf, “Zero-shot voice conditioning for denoising diffusion tts models,” arXiv preprint arXiv:2206.02246, 2022. [90] U. Singer, A. Polyak, T. Hayes, X. Yin, J. An, S. Zhang, Q. Hu, H. Yang, O. Ashual, O. Gafni et al., “Makea-video: Text-to-video generation without text-video data,” arXiv preprint arXiv:2209.14792, 2022. [91] C.-H. Lin, J. Gao, L. Tang, T. Takikawa, X. Zeng, X. Huang, K. Kreis, S. Fidler, M.-Y. Liu, and T.-Y. Lin, “Magic3d: High-resolution text-to-3d content creation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 300– 309. [92] L. Zhang and M. Agrawala, “Adding conditional control to text-to-image diffusion models,” arXiv preprint arXiv:2302.05543, 2023. [93] X. Xu, Z. Wang, E. Zhang, K. Wang, and H. Shi, “Versatile diffusion: Text, images and variations all in one diffusion model,” arXiv preprint arXiv:2211.08332, 2022. [94] S. Gu, D. Chen, J. Bao, F. Wen, B. Zhang, D. Chen, L. Yuan, and B. Guo, “Vector quantized diffusion model for text-to-image synthesis,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 10 696–10 706. [95] C. Mou, X. Wang, L. Xie, J. Zhang, Z. Qi, Y. Shan, and X. Qie, “T2i-adapter: Learning adapters to dig out more controllable ability for text-to-image diffusion models,” arXiv preprint arXiv:2302.08453, 2023. [96] Zˇ . Babnik, P. Peer, and V. Sˇtruc, “Diffiqa: Face image quality assessment using denoising diffusion probabilistic models,” arXiv preprint arXiv:2305.05768, 2023. [97] A. Blattmann, R. Rombach, H. Ling, T. Dockhorn, S. W. Kim, S. Fidler, and K. Kreis, “Align your latents: High-resolution video synthesis with latent diffusion models,” in Proceedings of the IEEE/CVF Conference
+
+on Computer Vision and Pattern Recognition, 2023, pp. 22 563–22 575. [98] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer, “High-resolution image synthesis with latent diffusion models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 10 684–10 695. [99] A. Ramesh, P. Dhariwal, A. Nichol, C. Chu, and M. Chen, “Hierarchical text-conditional image generation with clip latents,” arXiv preprint arXiv:2204.06125, 2022. [100] C. Saharia, J. Ho, W. Chan, T. Salimans, D. J. Fleet, and M. Norouzi, “Image super-resolution via iterative refinement,” IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022. [101] H. Li, Y. Yang, M. Chang, S. Chen, H. Feng, Z. Xu, Q. Li, and Y. Chen, “Srdiff: Single image superresolution with diffusion probabilistic models,” Neurocomputing, vol. 479, pp. 47–59, 2022. [102] A. Niu, K. Zhang, T. X. Pham, J. Sun, Y. Zhu, I. S. Kweon, and Y. Zhang, “Cdpmsr: Conditional diffusion probabilistic models for single image superresolution,” arXiv preprint arXiv:2302.12831, 2023. [103] M. Dos Santos, R. Laroca, R. O. Ribeiro, J. Neves, H. Proenc¸a, and D. Menotti, “Face super-resolution using stochastic differential equations,” in 2022 35th SIBGRAPI Conference on Graphics, Patterns and Images (SIBGRAPI), vol. 1. IEEE, 2022, pp. 216–221. [104] O. O¨ zdenizci and R. Legenstein, “Restoring vision in adverse weather conditions with patch-based denoising diffusion models,” IEEE Transactions on Pattern Analysis and Machine Intelligence, 2023. [105] J. Whang, M. Delbracio, H. Talebi, C. Saharia, A. G. Dimakis, and P. Milanfar, “Deblurring via stochastic refinement,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 16 293–16 303. [106] Z. Luo, F. K. Gustafsson, Z. Zhao, J. Sjo¨ lund, and T. B. Scho¨ n, “Refusion: Enabling large-size realistic image restoration with latent-space diffusion models,” arXiv preprint arXiv:2304.08291, 2023. [107] D. Zhou, Z. Yang, and Y. Yang, “Pyramid diffusion models for low-light image enhancement,” arXiv preprint arXiv:2305.10028, 2023. [108] M. A. Chan, S. I. Young, and C. A. Metzler, “Sud 2: Supervision by denoising diffusion models for image reconstruction,” arXiv preprint arXiv:2303.09642, 2023. [109] Y. Miao, L. Zhang, L. Zhang, and D. Tao, “Dds2m: Self-supervised denoising diffusion spatio-spectral model for hyperspectral image restoration,” arXiv preprint arXiv:2303.06682, 2023. [110] B. Kawar, G. Vaksman, and M. Elad, “Snips: Solving noisy inverse problems stochastically,” Advances in Neural Information Processing Systems, vol. 34, pp. 21 757–21 769, 2021. [111] B. Kawar, J. Song, S. Ermon, and M. Elad, “Jpeg artifact correction using denoising diffusion restoration models,” arXiv preprint arXiv:2209.11888, 2022. [112] B. Kawar, M. Elad, S. Ermon, and J. Song, “Denoising diffusion restoration models,” arXiv preprint arXiv:2201.11793, 2022.
+
+25
+
+[113] Y. Wang, J. Yu, and J. Zhang, “Zero-shot image restoration using denoising diffusion null-space model,” arXiv preprint arXiv:2212.00490, 2022.
+[114] H. Chung, J. Kim, M. T. Mccann, M. L. Klasky, and J. C. Ye, “Diffusion posterior sampling for general noisy inverse problems,” arXiv preprint arXiv:2209.14687, 2022.
+[115] Y. Song, L. Shen, L. Xing, and S. Ermon, “Solving inverse problems in medical imaging with score-based generative models,” arXiv preprint arXiv:2111.08005, 2021.
+[116] H. Liu, J. Xing, M. Xie, C. Li, and T.-T. Wong, “Improved diffusion-based image colorization via piggybacked models,” arXiv preprint arXiv:2304.11105, 2023.
+[117] S. Abu-Hussein, T. Tirer, and R. Giryes, “Adir: Adaptive diffusion for image reconstruction,” arXiv preprint arXiv:2212.03221, 2022.
+[118] H. Sahak, D. Watson, C. Saharia, and D. Fleet, “Denoising diffusion probabilistic models for robust image super-resolution in the wild,” arXiv preprint arXiv:2302.07864, 2023.
+[119] N. Murata, K. Saito, C.-H. Lai, Y. Takida, T. Uesaka, Y. Mitsufuji, and S. Ermon, “Gibbsddrm: A partially collapsed gibbs sampler for solving blind inverse problems with denoising diffusion restoration,” arXiv preprint arXiv:2301.12686, 2023.
+[120] H. Chung, J. Kim, S. Kim, and J. C. Ye, “Parallel diffusion models of operator and image for blind inverse problems,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 6059–6069.
+[121] J. Wang, Z. Yue, S. Zhou, K. C. Chan, and C. C. Loy, “Exploiting diffusion prior for real-world image super-resolution,” arXiv preprint arXiv:2305.07015, 2023.
+[122] M. Wei, Y. Shen, Y. Wang, H. Xie, and F. L. Wang, “Raindiffusion: When unsupervised learning meets diffusion models for real-world image deraining,” arXiv preprint arXiv:2301.09430, 2023.
+[123] Z. Wang, Z. Zhang, X. Zhang, H. Zheng, M. Zhou, Y. Zhang, and Y. Wang, “Dr2: Diffusion-based robust degradation remover for blind face restoration,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 1704–1713.
+[124] L. Dinh, D. Krueger, and Y. Bengio, “Nice: Non-linear independent components estimation,” arXiv preprint arXiv:1410.8516, 2014.
+[125] J. Ho, X. Chen, A. Srinivas, Y. Duan, and P. Abbeel, “Flow++: Improving flow-based generative models with variational dequantization and architecture design,” in International Conference on Machine Learning. PMLR, 2019, pp. 2722–2730.
+[126] R. T. Chen, Y. Rubanova, J. Bettencourt, and D. K. Duvenaud, “Neural ordinary differential equations,” Advances in neural information processing systems, vol. 31, 2018.
+[127] W. Grathwohl, R. T. Chen, J. Bettencourt, I. Sutskever, and D. Duvenaud, “Ffjord: Free-form continuous dynamics for scalable reversible generative models,” arXiv preprint arXiv:1810.01367, 2018.
+[128] L. Maaløe, M. Fraccaro, V. Lie´vin, and O. Winther, “Biva: A very deep hierarchy of latent variables for
+
+generative modeling,” Advances in neural information processing systems, vol. 32, 2019. [129] D. Lee, C. Kim, S. Kim, M. Cho, and W.-S. Han, “Autoregressive image generation using residual quantization,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 11 523–11 532. [130] T. Karras, S. Laine, and T. Aila, “A style-based generator architecture for generative adversarial networks,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2019, pp. 4401–4410. [131] D. Berthelot, T. Schumm, and L. Metz, “Began: Boundary equilibrium generative adversarial networks,” arXiv preprint arXiv:1703.10717, 2017. [132] J. Li, X. Liang, Y. Wei, T. Xu, J. Feng, and S. Yan, “Perceptual generative adversarial networks for small object detection,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2017, pp. 1222–1230. [133] Y. Bai, Y. Zhang, M. Ding, and B. Ghanem, “Sodmtgan: Small object detection via multi-task generative adversarial network,” in Proceedings of the European Conference on Computer Vision (ECCV), 2018, pp. 206–221. [134] H. Zhang, I. Goodfellow, D. Metaxas, and A. Odena, “Self-attention generative adversarial networks,” in International conference on machine learning. PMLR, 2019, pp. 7354–7363. [135] J.-Y. Zhu, T. Park, P. Isola, and A. A. Efros, “Unpaired image-to-image translation using cycle-consistent adversarial networks,” in Proceedings of the IEEE international conference on computer vision, 2017, pp. 2223– 2232. [136] J. Kim, M. Kim, H. Kang, and K. Lee, “U-gat-it: Unsupervised generative attentional networks with adaptive layer-instance normalization for image-to-image translation,” arXiv preprint arXiv:1907.10830, 2019. [137] B. Zhang, S. Gu, B. Zhang, J. Bao, D. Chen, F. Wen, Y. Wang, and B. Guo, “Styleswin: Transformer-based gan for high-resolution image generation,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2022, pp. 11 304–11 314. [138] G. Huang and A. H. Jafari, “Enhanced balancing gan: Minority-class image generation,” Neural computing and applications, vol. 35, no. 7, pp. 5145–5154, 2023. [139] G. Parisi, “Correlation functions and computer simulations,” Nuclear Physics B, vol. 180, no. 3, pp. 378–384, 1981. [140] U. Grenander and M. I. Miller, “Representations of knowledge in complex systems,” Journal of the Royal Statistical Society: Series B (Methodological), vol. 56, no. 4, pp. 549–581, 1994. [141] J. Sohl-Dickstein, E. Weiss, N. Maheswaranathan, and S. Ganguli, “Deep unsupervised learning using nonequilibrium thermodynamics,” in International Conference on Machine Learning. PMLR, 2015, pp. 2256–2265. [142] A. Hyva¨rinen, “Some extensions of score matching,” Computational statistics & data analysis, vol. 51, no. 5, pp. 2499–2512, 2007. [143] A. Hyva¨rinen and P. Dayan, “Estimation of non-
+
+26
+
+normalized statistical models by score matching.” Journal of Machine Learning Research, vol. 6, no. 4, 2005. [144] A. Q. Nichol and P. Dhariwal, “Improved denoising diffusion probabilistic models,” in International Conference on Machine Learning. PMLR, 2021, pp. 8162–8171. [145] Y. Song and S. Ermon, “Improved techniques for training score-based generative models,” Advances in neural information processing systems, vol. 33, pp. 12 438– 12 448, 2020. [146] D. Kingma, T. Salimans, B. Poole, and J. Ho, “Variational diffusion models,” Advances in neural information processing systems, vol. 34, pp. 21 696–21 707, 2021. [147] M. W. Lam, J. Wang, R. Huang, D. Su, and D. Yu, “Bilateral denoising diffusion models,” arXiv preprint arXiv:2108.11514, 2021. [148] T. Chen, “On the importance of noise scheduling for diffusion models,” arXiv preprint arXiv:2301.10972, 2023. [149] F. Bao, C. Li, J. Zhu, and B. Zhang, “Analytic-dpm: an analytic estimate of the optimal reverse variance in diffusion probabilistic models,” arXiv preprint arXiv:2201.06503, 2022. [150] A. Jolicoeur-Martineau, R. Piche´-Taillefer, R. T. d. Combes, and I. Mitliagkas, “Adversarial score matching and improved sampling for image generation,” arXiv preprint arXiv:2009.05475, 2020. [151] C. Lu, Y. Zhou, F. Bao, J. Chen, C. Li, and J. Zhu, “Dpm-solver: A fast ode solver for diffusion probabilistic model sampling in around 10 steps,” arXiv preprint arXiv:2206.00927, 2022. [152] Q. Zhang and Y. Chen, “Fast sampling of diffusion models with exponential integrator,” arXiv preprint arXiv:2204.13902, 2022. [153] C. Lu, Y. Zhou, F. Bao, J. Chen, C. Li, and J. Zhu, “Dpm-solver++: Fast solver for guided sampling of diffusion probabilistic models,” arXiv preprint arXiv:2211.01095, 2022. [154] T. Karras, M. Aittala, T. Aila, and S. Laine, “Elucidating the design space of diffusion-based generative models,” arXiv preprint arXiv:2206.00364, 2022. [155] Z. Lyu, X. Xu, C. Yang, D. Lin, and B. Dai, “Accelerating diffusion models via early stop of the diffusion process,” arXiv preprint arXiv:2205.12524, 2022. [156] H. Zheng, P. He, W. Chen, and M. Zhou, “Truncated diffusion probabilistic models,” stat, vol. 1050, p. 7, 2022. [157] E. Luhman and T. Luhman, “Knowledge distillation in iterative generative models for improved sampling speed,” arXiv preprint arXiv:2101.02388, 2021. [158] C. Meng, R. Rombach, R. Gao, D. Kingma, S. Ermon, J. Ho, and T. Salimans, “On distillation of guided diffusion models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 14 297–14 306. [159] T. Salimans and J. Ho, “Progressive distillation for fast sampling of diffusion models,” arXiv preprint arXiv:2202.00512, 2022. [160] Z. Zhou and S. Tulsiani, “Sparsefusion: Distilling view-conditioned diffusion for 3d reconstruction,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 12 588–12 597.
+
+[161] L. Zhang and M. Agrawala, “Adding conditional control to text-to-image diffusion models,” arXiv preprint arXiv:2302.05543, 2023.
+[162] H. Zheng, W. Nie, A. Vahdat, K. Azizzadenesheli, and A. Anandkumar, “Fast sampling of diffusion models via operator learning,” arXiv preprint arXiv:2211.13449, 2022.
+[163] R. Huang, M. W. Lam, J. Wang, D. Su, D. Yu, Y. Ren, and Z. Zhao, “Fastdiff: A fast conditional diffusion model for high-quality speech synthesis,” arXiv preprint arXiv:2204.09934, 2022.
+[164] Z. Wang, Y. Jiang, H. Zheng, P. Wang, P. He, Z. Wang, W. Chen, and M. Zhou, “Patch diffusion: Faster and more data-efficient training of diffusion models,” arXiv preprint arXiv:2304.12526, 2023.
+[165] P. Dhariwal and A. Nichol, “Diffusion models beat gans on image synthesis,” Advances in Neural Information Processing Systems, vol. 34, pp. 8780–8794, 2021.
+[166] H. Luo, L. Ji, B. Shi, H. Huang, N. Duan, T. Li, J. Li, T. Bharti, and M. Zhou, “Univl: A unified video and language pre-training model for multimodal understanding and generation,” arXiv preprint arXiv:2002.06353, 2020.
+[167] C. Sun, A. Myers, C. Vondrick, K. Murphy, and C. Schmid, “Videobert: A joint model for video and language representation learning,” in Proceedings of the IEEE/CVF international conference on computer vision, 2019, pp. 7464–7473.
+[168] J. Lu, D. Batra, D. Parikh, and S. Lee, “Vilbert: Pretraining task-agnostic visiolinguistic representations for vision-and-language tasks,” Advances in neural information processing systems, vol. 32, 2019.
+[169] J. Yang, J. Duan, S. Tran, Y. Xu, S. Chanda, L. Chen, B. Zeng, T. Chilimbi, and J. Huang, “Vision-language pre-training with triple contrastive learning,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 15 671–15 680.
+[170] B. Shi, W.-N. Hsu, K. Lakhotia, and A. Mohamed, “Learning audio-visual speech representation by masked multimodal cluster prediction,” arXiv preprint arXiv:2201.02184, 2022.
+[171] C. Sun, F. Baradel, K. Murphy, and C. Schmid, “Learning video representations using contrastive bidirectional transformer,” arXiv preprint arXiv:1906.05743, 2019.
+[172] H. Zhang, P. Zhang, X. Hu, Y.-C. Chen, L. Li, X. Dai, L. Wang, L. Yuan, J.-N. Hwang, and J. Gao, “Glipv2: Unifying localization and vision-language understanding,” Advances in Neural Information Processing Systems, vol. 35, pp. 36 067–36 080, 2022.
+[173] A. Nagrani, S. Yang, A. Arnab, A. Jansen, C. Schmid, and C. Sun, “Attention bottlenecks for multimodal fusion,” Advances in Neural Information Processing Systems, vol. 34, pp. 14 200–14 213, 2021.
+[174] F. Bao, S. Nie, K. Xue, Y. Cao, C. Li, H. Su, and J. Zhu, “All are worth words: A vit backbone for diffusion models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 22 669–22 679.
+[175] S. Sheynin, O. Ashual, A. Polyak, U. Singer, O. Gafni, E. Nachmani, and Y. Taigman, “Knn-diffusion: Image
+
+27
+
+generation via large-scale retrieval,” arXiv preprint arXiv:2204.02849, 2022. [176] Z. Tang, S. Gu, J. Bao, D. Chen, and F. Wen, “Improved vector quantized diffusion models,” arXiv preprint arXiv:2205.16007, 2022. [177] X. Yang, S.-M. Shih, Y. Fu, X. Zhao, and S. Ji, “Your vit is secretly a hybrid discriminative-generative diffusion model,” arXiv preprint arXiv:2208.07791, 2022. [178] S. Gu, D. Chen, J. Bao, F. Wen, B. Zhang, D. Chen, L. Yuan, and B. Guo, “Vector quantized diffusion model for text-to-image synthesis,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 10 696–10 706. [179] R. Li, W. Li, Y. Yang, H. Wei, J. Jiang, and Q. Bai, “Swinv2-imagen: Hierarchical vision transformer diffusion models for text-to-image generation,” arXiv preprint arXiv:2210.09549, 2022. [180] S. Chai, L. Zhuang, and F. Yan, “Layoutdm: Transformer-based diffusion model for layout generation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 18 349–18 358. [181] S. Pan, T. Wang, R. L. Qiu, M. Axente, C.-W. Chang, J. Peng, A. B. Patel, J. Shelton, S. A. Patel, J. Roper et al., “2d medical image synthesis using transformer-based denoising diffusion probabilistic model,” Physics in Medicine & Biology, vol. 68, no. 10, p. 105004, 2023. [182] A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai, T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly et al., “An image is worth 16x16 words: Transformers for image recognition at scale,” arXiv preprint arXiv:2010.11929, 2020. [183] X. Liu, D. H. Park, S. Azadi, G. Zhang, A. Chopikyan, Y. Hu, H. Shi, A. Rohrbach, and T. Darrell, “More control for free! image synthesis with semantic diffusion guidance,” in Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision, 2023, pp. 289–299. [184] J. Ho and T. Salimans, “Classifier-free diffusion guidance,” arXiv preprint arXiv:2207.12598, 2022. [185] A. Nichol, P. Dhariwal, A. Ramesh, P. Shyam, P. Mishkin, B. McGrew, I. Sutskever, and M. Chen, “Glide: Towards photorealistic image generation and editing with text-guided diffusion models,” arXiv preprint arXiv:2112.10741, 2021. [186] N. Ruiz, Y. Li, V. Jampani, Y. Pritch, M. Rubinstein, and K. Aberman, “Dreambooth: Fine tuning textto-image diffusion models for subject-driven generation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 22 500–22 510. [187] C. Saharia, W. Chan, S. Saxena, L. Li, J. Whang, E. L. Denton, K. Ghasemipour, R. Gontijo Lopes, B. Karagol Ayan, T. Salimans et al., “Photorealistic text-to-image diffusion models with deep language understanding,” Advances in Neural Information Processing Systems, vol. 35, pp. 36 479–36 494, 2022. [188] G. Kim, T. Kwon, and J. C. Ye, “Diffusionclip: Textguided diffusion models for robust image manipulation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp.
+
+2426–2435. [189] O. Avrahami, T. Hayes, O. Gafni, S. Gupta, Y. Taig-
+man, D. Parikh, D. Lischinski, O. Fried, and X. Yin, “Spatext: Spatio-textual representation for controllable image generation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 18 370–18 380. [190] A. Ramesh, M. Pavlov, G. Goh, S. Gray, C. Voss, A. Radford, M. Chen, and I. Sutskever, “Zero-shot text-to-image generation,” in International Conference on Machine Learning. PMLR, 2021, pp. 8821–8831. [191] Y. Jin, W. Yang, W. Ye, Y. Yuan, and R. T. Tan, “Shadowdiffusion: Diffusion-based shadow removal using classifier-driven attention and structure preservation,” arXiv preprint arXiv:2211.08089, 2022. [192] “Diffbfr: Bootstrapping diffusion model towards blind face restoration,” arXiv preprint arXiv:2305.04517, 2023. [193] H. Jiang, A. Luo, S. Han, H. Fan, and S. Liu, “Lowlight image enhancement with wavelet-based diffusion models,” arXiv preprint arXiv:2306.00306, 2023. [194] Z. Chen, Y. Zhang, D. Liu, B. Xia, J. Gu, L. Kong, and X. Yuan, “Hierarchical integration diffusion model for realistic image deblurring,” arXiv preprint arXiv:2305.12966, 2023. [195] J. Choi, S. Kim, Y. Jeong, Y. Gwon, and S. Yoon, “Ilvr: Conditioning method for denoising diffusion probabilistic models,” arXiv preprint arXiv:2108.02938, 2021. [196] B. Fei, Z. Lyu, L. Pan, J. Zhang, W. Yang, T. Luo, B. Zhang, and B. Dai, “Generative diffusion prior for unified image restoration and enhancement,” arXiv preprint arXiv:2304.01247, 2023. [197] J. Song, A. Vahdat, M. Mardani, and J. Kautz, “Pseudoinverse-guided diffusion models for inverse problems,” in International Conference on Learning Representations, 2023. [198] Y. Zhu, K. Zhang, J. Liang, J. Cao, B. Wen, R. Timofte, and L. Van Gool, “Denoising diffusion models for plug-and-play image restoration,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 1219–1229. [199] M. Mardani, J. Song, J. Kautz, and A. Vahdat, “A variational perspective on solving inverse problems with diffusion models,” arXiv preprint arXiv:2305.04391, 2023. [200] Z. Fabian, B. Tinaz, and M. Soltanolkotabi, “Diracdiffusion: Denoising and incremental reconstruction with assured data-consistency,” arXiv preprint arXiv:2303.14353, 2023. [201] Y. Yuan, S. Liu, J. Zhang, Y. Zhang, C. Dong, and L. Lin, “Unsupervised image super-resolution using cycle-in-cycle generative adversarial networks,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops, 2018, pp. 701–710. [202] P. Li, Z. Li, X. Pang, H. Wang, W. Lin, and W. Wu, “Multi-scale residual denoising gan model for producing super-resolution cta images,” Journal of Ambient Intelligence and Humanized Computing, pp. 1–10, 2022. [203] T. Yang, P. Ren, X. Xie, and L. Zhang, “Gan prior embedded network for blind face restoration in the
+
+28
+
+wild,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2021, pp. 672– 681. [204] K. C. Chan, X. Wang, X. Xu, J. Gu, and C. C. Loy, “Glean: Generative latent bank for large-factor image super-resolution,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2021, pp. 14 245–14 254. [205] D. Roich, R. Mokady, A. H. Bermano, and D. CohenOr, “Pivotal tuning for latent-based editing of real images,” ACM Transactions on Graphics (TOG), vol. 42, no. 1, pp. 1–13, 2022. [206] X. Pan, X. Zhan, B. Dai, D. Lin, C. C. Loy, and P. Luo, “Exploiting deep generative prior for versatile image restoration and manipulation,” IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 44, no. 11, pp. 7474–7489, 2021. [207] H. Tampubolon, A. Setyoko, and F. Purnamasari, “Snpe-srgan: Lightweight generative adversarial networks for single-image super-resolution on mobile using snpe framework,” in Journal of Physics: Conference Series, vol. 1898, no. 1. IOP Publishing, 2021, p. 012038. [208] T. M. Dinh, A. T. Tran, R. Nguyen, and B.-S. Hua, “Hyperinverter: Improving stylegan inversion via hypernetwork,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 11 389–11 398. [209] J. Wang, W. Zhou, G.-J. Qi, Z. Fu, Q. Tian, and H. Li, “Transformation gan for unsupervised image synthesis and representation learning,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2020, pp. 472–481. [210] O. Russakovsky, J. Deng, H. Su, J. Krause, S. Satheesh, S. Ma, Z. Huang, A. Karpathy, A. Khosla, M. Bernstein et al., “Imagenet large scale visual recognition challenge,” International journal of computer vision, vol. 115, pp. 211–252, 2015. [211] T. Karras, S. Laine, and T. Aila, “A style-based generator architecture for generative adversarial networks,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2019, pp. 4401–4410. [212] A. Lugmayr, M. Danelljan, A. Romero, F. Yu, R. Timofte, and L. Van Gool, “Repaint: Inpainting using denoising diffusion probabilistic models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), June 2022, pp. 11 461– 11 471. [213] H. Chung, B. Sim, and J. C. Ye, “Come-closer-diffusefaster: Accelerating conditional diffusion models for inverse problems through stochastic contraction,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 12 413–12 422. [214] Z. Zhang, Z. Zhao, and Z. Lin, “Unsupervised representation learning from pre-trained diffusion probabilistic models,” Advances in Neural Information Processing Systems, vol. 35, pp. 22 117–22 130, 2022. [215] B. T. Feng, J. Smith, M. Rubinstein, H. Chang, K. L. Bouman, and W. T. Freeman, “Score-based diffusion models as principled priors for inverse imaging,” arXiv preprint arXiv:2304.11751, 2023.
+
+[216] G. Zhang, J. Ji, Y. Zhang, M. Yu, T. Jaakkola, and S. Chang, “Towards coherent image inpainting using denoising diffusion implicit models,” arXiv preprint arXiv:2304.03322, 2023.
+[217] S. Shang, Z. Shan, G. Liu, and J. Zhang, “Resdiff: Combining cnn and diffusion model for image superresolution,” arXiv preprint arXiv:2303.08714, 2023.
+[218] J. Ho, C. Saharia, W. Chan, D. J. Fleet, M. Norouzi, and T. Salimans, “Cascaded diffusion models for high fidelity image generation.” J. Mach. Learn. Res., vol. 23, no. 47, pp. 1–33, 2022.
+[219] C. Saharia, W. Chan, H. Chang, C. Lee, J. Ho, T. Salimans, D. Fleet, and M. Norouzi, “Palette: Image-toimage diffusion models,” in ACM SIGGRAPH 2022 Conference Proceedings, 2022, pp. 1–10.
+[220] S. Welker, H. N. Chapman, and T. Gerkmann, “Driftrec: Adapting diffusion models to blind image restoration tasks,” arXiv preprint arXiv:2211.06757, 2022.
+[221] Y. Yin, L. Huang, Y. Liu, and K. Huang, “Diffgar: Model-agnostic restoration from generative artifacts using image-to-image diffusion models,” arXiv preprint arXiv:2210.08573, 2022.
+[222] M. Ren, M. Delbracio, H. Talebi, G. Gerig, and P. Milanfar, “Image deblurring with domain generalizable diffusion models,” arXiv preprint arXiv:2212.01789, 2022.
+[223] S. Gao, X. Liu, B. Zeng, S. Xu, Y. Li, X. Luo, J. Liu, X. Zhen, and B. Zhang, “Implicit diffusion models for continuous super-resolution,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 10 021–10 030.
+[224] B. Xia, Y. Zhang, S. Wang, Y. Wang, X. Wu, Y. Tian, W. Yang, and L. Van Gool, “Diffir: Efficient diffusion model for image restoration,” arXiv preprint arXiv:2303.09472, 2023.
+[225] M. Delbracio and P. Milanfar, “Inversion by direct iteration: An alternative to denoising diffusion for image restoration,” arXiv preprint arXiv:2303.11435, 2023.
+[226] T. Yang, P. Ren, L. Zhang et al., “Synthesizing realistic image restoration training pairs: A diffusion approach,” arXiv preprint arXiv:2303.06994, 2023.
+[227] S. U. Dar, S¸. O¨ ztu¨ rk, Y. Korkmaz, G. Elmas, M. O¨ zbey, A. Gu¨ ngo¨ r, and T. C¸ ukur, “Adaptive diffusion priors for accelerated mri reconstruction,” arXiv preprint arXiv:2207.05876, 2022.
+[228] C. Cao, Z.-X. Cui, S. Liu, D. Liang, and Y. Zhu, “High-frequency space diffusion models for accelerated mri,” arXiv preprint arXiv:2208.05481, 2022.
+[229] Y. Xie, M. Yuan, B. Dong, and Q. Li, “Diffusion model for generative image denoising,” arXiv preprint arXiv:2302.02398, 2023.
+[230] L. Guo, C. Wang, W. Yang, S. Huang, Y. Wang, H. Pfister, and B. Wen, “Shadowdiffusion: When degradation prior meets diffusion model for shadow removal,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 14 049–14 058.
+[231] Z. Luo, F. K. Gustafsson, Z. Zhao, J. Sjo¨ lund, and T. B. Scho¨ n, “Image restoration with meanreverting stochastic differential equations,” arXiv preprint arXiv:2301.11699, 2023.
+
+29
+
+[232] Y. Zhang, K. Li, K. Li, L. Wang, B. Zhong, and Y. Fu, “Image super-resolution using very deep residual channel attention networks,” in Proceedings of the European conference on computer vision (ECCV), 2018, pp. 286–301.
+[233] B. Lim, S. Son, H. Kim, S. Nah, and K. Mu Lee, “Enhanced deep residual networks for single image super-resolution,” in Proceedings of the IEEE conference on computer vision and pattern recognition workshops, 2017, pp. 136–144.
+[234] Q. Gao and H. Shan, “Cocodiff: a contextual conditional diffusion model for low-dose ct image denoising,” in Developments in X-Ray Tomography XIV, vol. 12242. SPIE, 2022.
+[235] K. Karchev, N. A. Montel, A. Coogan, and C. Weniger, “Strong-lensing source reconstruction with denoising diffusion restoration models,” arXiv preprint arXiv:2211.04365, 2022.
+[236] H. Chung, B. Sim, D. Ryu, and J. C. Ye, “Improving diffusion models for inverse problems using manifold constraints,” arXiv preprint arXiv:2206.00941, 2022.
+[237] Z. Yue and C. C. Loy, “Difface: Blind face restoration with diffused error contraction,” arXiv preprint arXiv:2212.06512, 2022.
+[238] H. Sun and K. L. Bouman, “Deep probabilistic imaging: Uncertainty quantification and multi-modal solution characterization for computational imaging,” in Proceedings of the AAAI Conference on Artificial Intelligence, vol. 35, no. 3, 2021, pp. 2628–2637.
+[239] H. Sun, K. L. Bouman, P. Tiede, J. J. Wang, S. Blunt, and D. Mawet, “α-deep probabilistic inference (αdpi): efficient uncertainty quantification from exoplanet astrometry to black hole feature extraction,” The Astrophysical Journal, vol. 932, no. 2, p. 99, 2022.
+[240] L. Dinh, J. Sohl-Dickstein, and S. Bengio, “Density estimation using real nvp,” arXiv preprint arXiv:1605.08803, 2016.
+[241] Y. Wang, J. Ming, X. Jia, J. H. Elder, and H. Lu, “Blind image super-resolution with degradation-aware adaptation,” in Proceedings of the Asian Conference on Computer Vision, 2022, pp. 894–910.
+[242] J. Zhang, T. Xu, J. Li, S. Jiang, and Y. Zhang, “Singleimage super resolution of remote sensing images with real-world degradation modeling,” Remote Sensing, vol. 14, no. 12, p. 2895, 2022.
+[243] J. Liang, H. Zeng, and L. Zhang, “Efficient and degradation-adaptive network for real-world image super-resolution,” in Computer Vision–ECCV 2022: 17th European Conference, Tel Aviv, Israel, October 23–27, 2022, Proceedings, Part XVIII. Springer, 2022, pp. 574– 591.
+[244] K. Purohit, M. Suin, A. Rajagopalan, and V. N. Boddeti, “Spatially-adaptive image restoration using distortion-guided networks,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2021, pp. 2309–2319.
+[245] W. Wang, H. Zhang, Z. Yuan, and C. Wang, “Unsupervised real-world super-resolution: A domain adaptation perspective,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2021, pp. 4318–4327.
+
+[246] K. Zhang, J. Liang, L. Van Gool, and R. Timofte, “Designing a practical degradation model for deep blind image super-resolution,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2021, pp. 4791–4800.
+[247] A. Lugmayr, M. Danelljan, and R. Timofte, “Unsupervised learning for real-world super-resolution,” in 2019 IEEE/CVF International Conference on Computer Vision Workshop (ICCVW). IEEE, 2019, pp. 3408–3416.
+[248] Y. Wang, X. Yan, F. L. Wang, H. Xie, W. Yang, M. Wei, and J. Qin, “Ucl-dehaze: Towards real-world image dehazing via unsupervised contrastive learning,” arXiv preprint arXiv:2205.01871, 2022.
+[249] X. Li, B. Li, X. Jin, C. Lan, and Z. Chen, “Learning distortion invariant representation for image restoration from a causality perspective,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 1714–1724.
+[250] D. G. Tzikas, A. C. Likas, and N. P. Galatsanos, “Variational bayesian sparse kernel-based blind image deconvolution with student’s-t priors,” IEEE transactions on image processing, vol. 18, no. 4, pp. 753–764, 2009.
+[251] L. Huang and Y. Xia, “Joint blur kernel estimation and cnn for blind image restoration,” Neurocomputing, vol. 396, pp. 324–345, 2020.
+[252] S. Vasu, V. R. Maligireddy, and A. Rajagopalan, “Nonblind deblurring: Handling kernel uncertainty with cnns,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, 2018, pp. 3272–3281.
+[253] J. P. Oliveira, M. A. Figueiredo, and J. M. BioucasDias, “Parametric blur estimation for blind restoration of natural images: Linear motion and out-of-focus,” IEEE Transactions on Image Processing, vol. 23, no. 1, pp. 466–477, 2013.
+[254] J. Jiang, K. Zhang, and R. Timofte, “Towards flexible blind jpeg artifacts removal,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2021, pp. 4997–5006.
+[255] R. Zhou and S. Susstrunk, “Kernel modeling superresolution on real low-resolution images,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2019, pp. 2433–2443.
+[256] D. A. Van Dyk and T. Park, “Partially collapsed gibbs samplers: Theory and methods,” Journal of the American Statistical Association, vol. 103, no. 482, pp. 790–796, 2008.
+[257] A. Anoosheh, E. Agustsson, R. Timofte, and L. Van Gool, “Combogan: Unrestrained scalability for image domain translation,” in Proceedings of the IEEE conference on computer vision and pattern recognition workshops, 2018, pp. 783–790.
+[258] J. Lin, Y. Wang, T. He, and Z. Chen, “Learning to transfer: Unsupervised meta domain translation,” arXiv preprint arXiv:1906.00181, 2019.
+[259] C. Chu and R. Wang, “A survey of domain adaptation for neural machine translation,” arXiv preprint arXiv:1806.00258, 2018.
+[260] D. Saunders, “Domain adaptation and multi-domain adaptation for neural machine translation: A survey,” Journal of Artificial Intelligence Research, vol. 75, pp. 351–424, 2022.
+
+30
+
+[261] A. Lugmayr, M. Danelljan, and R. Timofte, “Unsupervised learning for real-world super-resolution,” in 2019 IEEE/CVF International Conference on Computer Vision Workshop (ICCVW). IEEE, 2019, pp. 3408–3416.
+[262] Y. Wang, L. Wang, J. Yang, W. An, and Y. Guo, “Flickr1024: A large-scale dataset for stereo image super-resolution,” in Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops, 2019, pp. 0–0.
+[263] O. Russakovsky, J. Deng, H. Su, J. Krause, S. Satheesh, S. Ma, Z. Huang, A. Karpathy, A. Khosla, M. Bernstein, A. C. Berg, and L. Fei-Fei, “ImageNet Large Scale Visual Recognition Challenge,” International Journal of Computer Vision (IJCV), vol. 115, no. 3, pp. 211–252, 2015.
+[264] D. Martin, C. Fowlkes, D. Tal, and J. Malik, “A database of human segmented natural images and its application to evaluating segmentation algorithms and measuring ecological statistics,” in Proceedings Eighth IEEE International Conference on Computer Vision. ICCV 2001, vol. 2. IEEE, 2001, pp. 416–423.
+[265] Y. Matsui, K. Ito, Y. Aramaki, A. Fujimoto, T. Ogawa, T. Yamasaki, and K. Aizawa, “Sketch-based manga retrieval using manga109 dataset,” Multimedia Tools and Applications, vol. 76, pp. 21 811–21 838, 2017.
+[266] J.-B. Huang, A. Singh, and N. Ahuja, “Single image super-resolution from transformed self-exemplars,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2015, pp. 5197–5206.
+[267] X. Wang, K. Yu, C. Dong, and C. C. Loy, “Recovering realistic texture in image super-resolution by deep spatial feature transform,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2018, pp. 606–615.
+[268] J. Cai, H. Zeng, H. Yong, Z. Cao, and L. Zhang, “Toward real-world single image super-resolution: A new benchmark and a new model,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2019, pp. 3086–3095.
+[269] P. Wei, Z. Xie, H. Lu, Z. Zhan, Q. Ye, W. Zuo, and L. Lin, “Component divide-and-conquer for realworld image super-resolution,” in Computer Vision– ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part VIII 16. Springer, 2020, pp. 101–117.
+[270] J. Rim, H. Lee, J. Won, and S. Cho, “Real-world blur dataset for learning and benchmarking deblurring algorithms,” in Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XXV 16. Springer, 2020, pp. 184– 201.
+[271] Z. Shen, W. Wang, X. Lu, J. Shen, H. Ling, T. Xu, and L. Shao, “Human-aware motion deblurring,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2019, pp. 5572–5581.
+[272] J. Wang, X. Li, and J. Yang, “Stacked conditional generative adversarial networks for jointly learning shadow detection and shadow removal,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, 2018, pp. 1788–1797.
+[273] L. Qu, J. Tian, S. He, Y. Tang, and R. W. Lau, “Deshad-
+
+ownet: A multi-context embedding deep network for shadow removal,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, 2017, pp. 4067–4075. [274] Y. Liu, L. Zhu, S. Pei, H. Fu, J. Qin, Q. Zhang, L. Wan, and W. Feng, “From synthetic to real: Image dehazing collaborating with unlabeled real data,” in Proceedings of the 29th ACM international conference on multimedia, 2021, pp. 50–58. [275] C. O. Ancuti, C. Ancuti, M. Sbert, and R. Timofte, “Dense-haze: A benchmark for image dehazing with dense-haze and haze-free images,” in 2019 IEEE international conference on image processing (ICIP). IEEE, 2019, pp. 1014–1018. [276] B. Li, W. Ren, D. Fu, D. Tao, D. Feng, W. Zeng, and Z. Wang, “Benchmarking single-image dehazing and beyond,” IEEE Transactions on Image Processing, vol. 28, no. 1, pp. 492–505, 2019. [277] S. Golodetz, T. Cavallari, N. A. Lord, V. A. Prisacariu, D. W. Murray, and P. H. Torr, “Collaborative largescale dense 3d reconstruction with online inter-agent pose optimisation,” IEEE transactions on visualization and computer graphics, vol. 24, no. 11, pp. 2895–2905, 2018. [278] Y.-F. Liu, D.-W. Jaw, S.-C. Huang, and J.-N. Hwang, “Desnownet: Context-aware deep network for snow removal,” IEEE Transactions on Image Processing, vol. 27, no. 6, pp. 3064–3073, 2018. [279] W.-T. Chen, H.-Y. Fang, J.-J. Ding, C.-C. Tsai, and S.-Y. Kuo, “Jstasr: Joint size and transparency-aware snow removal algorithm based on modified partial convolution and veiling effect removal,” in Computer Vision– ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XXI 16. Springer, 2020, pp. 754–770. [280] X. Fu, J. Huang, D. Zeng, Y. Huang, X. Ding, and J. Paisley, “Removing rain from single images via a deep detail network,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2017, pp. 3855–3863. [281] R. Li, L.-F. Cheong, and R. T. Tan, “Heavy rain image restoration: Integrating physics model and conditional adversarial learning,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2019, pp. 1633–1642. [282] T. Wang, X. Yang, K. Xu, S. Chen, Q. Zhang, and R. W. Lau, “Spatial attentive single-image deraining with a high quality real rain dataset,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2019, pp. 12 270–12 279. [283] Z. Wang, A. C. Bovik, H. R. Sheikh, and E. P. Simoncelli, “Image quality assessment: from error visibility to structural similarity,” IEEE transactions on image processing, vol. 13, no. 4, pp. 600–612, 2004. [284] R. Zhang, P. Isola, A. A. Efros, E. Shechtman, and O. Wang, “The unreasonable effectiveness of deep features as a perceptual metric,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2018, pp. 586–595. [285] K. Ding, K. Ma, S. Wang, and E. P. Simoncelli, “Image quality assessment: Unifying structure and texture
+
+31
+
+similarity,” IEEE transactions on pattern analysis and machine intelligence, vol. 44, no. 5, pp. 2567–2581, 2020. [286] M. Heusel, H. Ramsauer, T. Unterthiner, B. Nessler, and S. Hochreiter, “Gans trained by a two time-scale update rule converge to a local nash equilibrium,” Advances in neural information processing systems, vol. 30, 2017. [287] M. Bin´ kowski, D. J. Sutherland, M. Arbel, and A. Gretton, “Demystifying mmd gans,” arXiv preprint arXiv:1801.01401, 2018. [288] A. Mittal, R. Soundararajan, and A. C. Bovik, “Making a “completely blind” image quality analyzer,” IEEE Signal processing letters, vol. 20, no. 3, pp. 209–212, 2012. [289] Y. Blau, R. Mechrez, R. Timofte, T. Michaeli, and L. Zelnik-Manor, “The 2018 pirm challenge on perceptual image super-resolution,” in Proceedings of the European Conference on Computer Vision (ECCV) Workshops, 2018, pp. 0–0. [290] Z. Wang, E. P. Simoncelli, and A. C. Bovik, “Multiscale structural similarity for image quality assessment,” in The Thrity-Seventh Asilomar Conference on Signals, Systems & Computers, 2003, vol. 2. Ieee, 2003, pp. 1398–1402. [291] K. Simonyan and A. Zisserman, “Very deep convolutional networks for large-scale image recognition,” arXiv preprint arXiv:1409.1556, 2014. [292] S. Barratt and R. Sharma, “A note on the inception score,” arXiv preprint arXiv:1801.01973, 2018. [293] C. Ma, C.-Y. Yang, X. Yang, and M.-H. Yang, “Learning a no-reference quality metric for single-image superresolution,” Computer Vision and Image Understanding, vol. 158, pp. 1–16, 2017. [294] Z. Liu, P. Luo, X. Wang, and X. Tang, “Deep learning face attributes in the wild,” in Proceedings of the IEEE international conference on computer vision, 2015, pp. 3730–3738. [295] Y. Zhang, Y. Tian, Y. Kong, B. Zhong, and Y. Fu, “Residual dense network for image super-resolution,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2018, pp. 2472–2481. [296] B. Li, X. Liu, P. Hu, Z. Wu, J. Lv, and X. Peng, “Allin-one image restoration for unknown corruption,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2022, pp. 17 452–17 462. [297] X. Li, S. Sun, Z. Zhang, and Z. Chen, “Multi-scale grouped dense network for vvc intra coding,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops, 2020, pp. 158–159. [298] X. Li, X. Jin, J. Lin, S. Liu, Y. Wu, T. Yu, W. Zhou, and Z. Chen, “Learning disentangled feature representation for hybrid-distorted image restoration,” in Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XXIX 16. Springer, 2020, pp. 313–329. [299] X. Li, X. Jin, T. Yu, S. Sun, Y. Pang, Z. Zhang, and Z. Chen, “Learning omni-frequency region-adaptive representations for real image super-resolution,” in Proceedings of the AAAI Conference on Artificial Intelligence, vol. 35, no. 3, 2021, pp. 1975–1983. [300] X. Li, X. Jin, J. Fu, X. Yu, B. Tong, and Z. Chen,
+
+“Few-shot real image restoration via distortionrelation guided transfer learning,” arXiv preprint arXiv:2111.13078, 2021. [301] B. Li, X. Li, Y. Lu, S. Liu, R. Feng, and Z. Chen, “Hst: Hierarchical swin transformer for compressed image super-resolution,” in European Conference on Computer Vision. Springer, 2022, pp. 651–668. [302] Z. Li, H. Li, and L. Meng, “Model compression for deep neural networks: A survey,” Computers, vol. 12, no. 3, p. 60, 2023. [303] B.-K. Kim, H.-K. Song, T. Castells, and S. Choi, “On architectural compression of text-to-image diffusion models,” arXiv preprint arXiv:2305.15798, 2023. [304] G. Fang, X. Ma, and X. Wang, “Structural pruning for diffusion models,” arXiv preprint arXiv:2305.10924, 2023. [305] X. Li, L. Lian, Y. Liu, H. Yang, Z. Dong, D. Kang, S. Zhang, and K. Keutzer, “Q-diffusion: Quantizing diffusion models,” arXiv preprint arXiv:2302.04304, 2023. [306] Y. He, L. Liu, J. Liu, W. Wu, H. Zhou, and B. Zhuang, “Ptqd: Accurate post-training quantization for diffusion models,” arXiv preprint arXiv:2305.10657, 2023. [307] Y. Shang, Z. Yuan, B. Xie, B. Wu, and Y. Yan, “Posttraining quantization on diffusion models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 1972–1981. [308] C. Wang, Z. Wang, X. Xu, Y. Tang, J. Zhou, and J. Lu, “Towards accurate data-free quantization for diffusion models,” arXiv preprint arXiv:2305.18723, 2023. [309] X. Li, B. Li, X. Jin, C. Lan, and Z. Chen, “Learning distortion invariant representation for image restoration from a causality perspective,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 1714–1724. [310] K. Zhou, Z. Liu, Y. Qiao, T. Xiang, and C. C. Loy, “Domain generalization: A survey,” IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022. [311] I. Gulrajani and D. Lopez-Paz, “In search of lost domain generalization,” arXiv preprint arXiv:2007.01434, 2020. [312] D. Li, Y. Yang, Y.-Z. Song, and T. Hospedales, “Learning to generalize: Meta-learning for domain generalization,” in Proceedings of the AAAI conference on artificial intelligence, vol. 32, no. 1, 2018. [313] J. Wang, C. Lan, C. Liu, Y. Ouyang, T. Qin, W. Lu, Y. Chen, W. Zeng, and P. Yu, “Generalizing to unseen domains: A survey on domain generalization,” IEEE Transactions on Knowledge and Data Engineering, 2022. [314] Q. Dou, D. Coelho de Castro, K. Kamnitsas, and B. Glocker, “Domain generalization via modelagnostic learning of semantic features,” Advances in neural information processing systems, vol. 32, 2019. [315] Z. Wang, M. Loog, and J. van Gemert, “Respecting domain relations: Hypothesis invariance for domain generalization,” in 2020 25th International Conference on Pattern Recognition (ICPR), 2021, pp. 9756–9763. [316] Y. Li, X. Tian, M. Gong, Y. Liu, T. Liu, K. Zhang, and D. Tao, “Deep domain generalization via conditional invariant adversarial networks,” in Proceedings of the European Conference on Computer Vision (ECCV),
+
+32
+
+September 2018. [317] R. Shao, X. Lan, J. Li, and P. C. Yuen, “Multi-
+adversarial discriminative deep domain generalization for face presentation attack detection,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), June 2019. [318] S. Motiian, M. Piccirilli, D. A. Adjeroh, and G. Doretto, “Unified deep supervised domain adaptation and generalization,” in Proceedings of the IEEE International Conference on Computer Vision (ICCV), Oct 2017. [319] S. Zhao, M. Gong, T. Liu, H. Fu, and D. Tao, “Domain generalization via entropy regularization,” Advances in Neural Information Processing Systems, vol. 33, pp. 16 096–16 107, 2020. [320] Z. Xu, D. Liu, J. Yang, C. Raffel, and M. Niethammer, “Robust and generalizable visual representation learning via random convolutions,” arXiv preprint arXiv:2007.13003, 2020. [321] K. Zhou, Y. Yang, T. Hospedales, and T. Xiang, “Deep domain-adversarial image generation for domain generalisation,” in Proceedings of the AAAI conference on artificial intelligence, vol. 34, no. 07, 2020, pp. 13 025– 13 032. [322] K. Zhou, Y. Yang, Y. Qiao, and T. Xiang, “Domain generalization with mixstyle,” arXiv preprint arXiv:2104.02008, 2021. [323] M. Mancini, Z. Akata, E. Ricci, and B. Caputo, “Towards recognizing unseen categories in unseen domains,” in European Conference on Computer Vision. Springer, 2020, pp. 466–483. [324] B. Wang, M. Lapata, and I. Titov, “Meta-learning for domain generalization in semantic parsing,” arXiv preprint arXiv:2010.11988, 2020. [325] Y. Jia, J. Zhang, S. Shan, and X. Chen, “Single-side domain generalization for face anti-spoofing,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2020, pp. 8484–8493. [326] M. M. Rahman, C. Fookes, M. Baktashmotlagh, and S. Sridharan, “Correlation-aware adversarial domain adaptation and generalization,” Pattern Recognition, vol. 100, p. 107124, 2020. [327] I. Albuquerque, J. Monteiro, M. Darvishi, T. H. Falk, and I. Mitliagkas, “Generalizing to unseen domains via distribution matching,” arXiv preprint arXiv:1911.00804, 2019. [328] F. Wang and H. Liu, “Understanding the behaviour of contrastive loss,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2021, pp. 2495–2504. [329] X. Wang, W. Wang, Y. Cao, C. Shen, and T. Huang, “Images speak in images: A generalist painter for incontext visual learning,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 6830–6839. [330] Y. Zhang, F. Yu, S. Song, P. Xu, A. Seff, and J. Xiao, “Large-scale scene understanding challenge: Room layout estimation,” in CVPR Workshop, 2015. [331] S. Gu, A. Lugmayr, M. Danelljan, M. Fritsche, J. Lamour, and R. Timofte, “Div8k: Diverse 8k resolution image dataset,” in 2019 IEEE/CVF International Conference on Computer Vision Workshop (ICCVW). IEEE, 2019,
+
+pp. 3512–3516. [332] R. Franzen, “Kodak lossless true color image suite,”
+source: http://r0k. us/graphics/kodak, vol. 4, no. 2, p. 9, 1999. [333] D. Martin, C. Fowlkes, D. Tal, and J. Malik, “A database of human segmented natural images and its application to evaluating segmentation algorithms and measuring ecological statistics,” in Proceedings Eighth IEEE International Conference on Computer Vision. ICCV 2001, vol. 2. IEEE, 2001, pp. 416–423. [334] L. Zhang, X. Wu, A. Buades, and X. Li, “Color demosaicking by local directional interpolation and nonlocal adaptive thresholding,” Journal of Electronic imaging, vol. 20, no. 2, pp. 023 016–023 016, 2011. [335] F. Yu, A. Seff, Y. Zhang, S. Song, T. Funkhouser, and J. Xiao, “Lsun: Construction of a large-scale image dataset using deep learning with humans in the loop,” arXiv preprint arXiv:1506.03365, 2015. [336] A. Lo´ pez-Cifuentes, M. Escudero-Vinolo, J. Besco´ s, and A´ . Garc´ıa-Mart´ın, “Semantic-aware scene recognition,” Pattern Recognition, vol. 102, p. 107256, 2020. [337] G. B. Huang, M. Mattar, T. Berg, and E. LearnedMiller, “Labeled faces in the wild: A database forstudying face recognition in unconstrained environments,” in Workshop on faces in’Real-Life’Images: detection, alignment, and recognition, 2008. [338] T. Karras, T. Aila, S. Laine, and J. Lehtinen, “Progressive growing of gans for improved quality, stability, and variation,” arXiv preprint arXiv:1710.10196, 2017. [339] Y. Choi, Y. Uh, J. Yoo, and J.-W. Ha, “Stargan v2: Diverse image synthesis for multiple domains,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2020, pp. 8188–8197. [340] X. Fu, J. Huang, D. Zeng, Y. Huang, X. Ding, and J. Paisley, “Removing rain from single images via a deep detail network,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), July 2017. [341] W. Yang, R. T. Tan, J. Feng, J. Liu, Z. Guo, and S. Yan, “Deep joint rain detection and removal from a single image,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2017, pp. 1357– 1366. [342] B. Zhou, A. Lapedriza, A. Khosla, A. Oliva, and A. Torralba, “Places: A 10 million image database for scene recognition,” IEEE Transactions on Pattern Analysis and Machine Intelligence, 2017. [343] H. Le and D. Samaras, “Shadow removal via shadow image decomposition,” in Proceedings of the IEEE/CVF International Conference on Computer Vision, 2019, pp. 8578–8587. [344] J. Zbontar, F. Knoll, A. Sriram, T. Murrell, Z. Huang, M. J. Muckley, A. Defazio, R. Stern, P. Johnson, M. Bruno et al., “fastmri: An open dataset and benchmarks for accelerated mri,” arXiv preprint arXiv:1811.08839, 2018.
+
+33
+
+TABLE 8: Summary of widely used datasets in different diffusion model-based image restoration tasks
+
+Task
+
+Dataset
+
+Year
+
+Training
+
+Testing
+
+Short Description
+
+Image Super-resolution
+
+DIV2K [45] Flickr2K [262] Set5 [46] Set14 [47] BSD100 [264] Manga109 [265] Urban100 [266] OST300 [330] DIV8K [331] RealSR [268] DRealSR [269]
+
+2017 2017 2012 2012 2001 2015 2015 2018 2019 2019 2020
+
+800 2650
+1304 565 884
+
+100
+
+2K resolutions
+
+-
+
+2K resolutions
+
+5
+
+Classic 5 images
+
+14
+
+Classic 14 images
+
+100
+
+Objects, Natural images
+
+109
+
+109 manga volumes
+
+100
+
+100 urban scenes
+
+300
+
+Outdoor scenes
+
+100
+
+8k resolution for large scale factor
+
+30
+
+Real world images for SR
+
+83
+
+Large-scale dataset
+
+Image Deblurring Image Denoising Image Classification Face Generation(Recognition) Shadow Removal Image Desnowing Image Deraining
+Image Dehazing
+
+GoPro [52] HIDE [271] RealBlur [270] Kodak [332] CBSD68 [333] McMaster [334] ImageNet [210] ImageNet1K [263] LSUN [335] Places365 [336] LFW [337] FFHQ [211] Celeba-HQ [338] AFHQ [339] CelebA [294] ISTD [272] SRD [273] CSD [277] Snow100k [278] SRRS [279] RainDrop [49] Outdoor-Rain [281] DDN-data [340] SPA-data [282] Rain-100H [341] Rain-100L [341] Haze-4K [274] Dense-Haze [275] RESIDE [276]
+
+2017 2019 2020 1999 2001 2011 2010 2020 2015 2019 2008 2019 2018 2020 2015 2018 2017 2021 2017 2020 2018 2019 2017 2019 2017 2017 2021 2019 2019
+
+2103 6397 3758
+1,281,167 120,000 to 3,000,000(each category) 1.8 million 13233 70000 30000 15000 202599 1330 2680 8000 50000 15000(paired)+1000(unpaired) 1119 9000 9100 295000 1800 200 4000 33 443950
+
+1111 2025 980
+24 68 18 100,000 1000 1000(each category) 36000 540 408 2000 50000 1500 4900 1000 100 100 5342
+
+Blurred images at 1280x720 Blurry and sharp image pairs
+182 different scenes Resolution=768x512 Images with different noisy levels Crop size=500x500 1000 object classes 1000 image subset of ImageNet 10 scene categories(Classification)
+434 scene classes Images from web with 1080 people
+Various faces at 1024x1024 High quality faces at 1024x1024
+Animal faces at 512x512 Resolution at 178x218
+135 scenes with shadow mask images Large scale dataset for shadow removal
+Large scale dataset for desnowing Own 1369 realistic snowy images
+Real scenarios from Internet Various scenes and raindrops
+Outdoor rainy images Real-world clean/rainy image pairs
+Various natural rain scenes Five rain streaks Five rain streaks
+Attached with associated images Out-door hazy scenes
+Real-world hazy images
+
+APPENDIX A DATASETS
+Table 8 summarizes the datasets used for different IR tasks, including SR, image inpainting, deblurring, denoising, shadow removal, image desnowing, image draining and image dehazing. It is composed of the released year, the number of training samples and testing samples, and short description.
+
+ble 10, respectively. For supervised DM-based IR, we clarify the training dataset, testing dataset, and some crucial implementation details, including batch size, iterations, learning rate, and the number of sampling steps in the training and inference stages. For zero-shot DM-based IR, we summarize the implementation details from the perspectives of testing datasets, pre-trained models, and sampling steps.
+
+APPENDIX B IMPLEMENTATION DETAILS
+We summarize the implementation details of supervised and zero-shot DM-based IR methods in Table 9, and Ta-
+
+34
+
+TABLE 9: Implementation details of supervised diffusion model-based methods. BS, Iters, LR, Step-T, and Steps-I denote the batch size, training iterations, learning rate, and the number of sampling steps in the training and inference stages, respectively.
+
+Target Tasks Methods
+
+Training Datasets
+
+Testing Datasets
+
+Implementaion Details BS Iters LR Steps-T Steps-I
+
+SR3 [100] SRDiff [101]
+CDPMSR [102] Super-resolution
+SR3+ [118]
+Resdiff [217]
+SDE-SR [103] CDM [218] IDM [223]
+
+FFHQ [211], ImageNet [210] CelebA [294], DIV2K [45]+Flickr2K [262]
+DIV2K [45]
+DIV2K [45],Flick2K [262],OST300 [330] Collected 61M images FFHQ, DIV2K
+FFHQ [211] LSUN [335] FFHQ [211], DIV2K [45]
+
+CelebA-HQ [338],ImageNet 1k [263] Dev split, DIV2K(100 test) [45]
+Set5 [46], Set14 [47], Urban100 [266], BSD100 [264], Manga109 [265]
+RealSR [268], DRealSR [269]
+Celeba(5000) [294] DIV2K(100) [45],Urban100(20) [266]
+CelebA [294] LSUN [335] DIV2K(100) [45], LSUN [335]
+
+32 1M 1e-4 2000 2000 16 400K 2e-4 100 100
+16 300K 1e-4 1000 100
+
+256 1.5M - 2000 256
+
+4 250k 1e-4 1000 -
+
+- 1M 2e-4 2000 1024 40k 1e-4 2000
+64 1.5M 1e-4 2000
+
+2000 100 2000
+
+LDM [98]
+
+IR
+
+Palette [219]
+
+DiffIR [224]
+
+ImageNet [210] ImageNet [210],Places2 [342]
+Places-Standard [336],DIV2K [45] CelebA-HQ [338],Flickr2K [262]
+
+ImageNet 1K [263] imagenet- ctest10k [210] places10k [342]
+
+32 1M 1e-4 2000 512 500K 1e-4 2000
+
+CelebA [294], Set5 [46], Set14 [47], Urban100 [266] 30 - 2e-4 4
+
+Shadowdiffusion [230] ISTD [272], ISTD+ [343], SRD [273]
+
+Shadow Removal DeS3 [191]
+
+SRD [273]
+
+Refusion [106]
+
+Flickr1024 [262] (Random 800 images)
+
+ISTD-test [272], ISTD+test [343], SRD-test [273] SRD [273]
+Flickr1024 [262] (Select 112 images)
+
+- - 3e-5 1000 - - - 1000 8 500K 3e-4 100
+
+2000 1000
+4
+25 25 100
+
+Deblur-DPM [105] Image Deblurring
+DG-DPM [222] WeatherDiff [104] Image Deraining RainDiffusion [122]
+
+GoPro [52] GoPro [52]
+Snow100k [278],Rain-drop [49] Outdoor-rain [281]
+Rain200H [? ], Rain200L [? ] Rain800 [48], DDN-Data [340]
+
+HIDE [271] RealBlur-J [270], REDS [51], HIDE [271]
+Outdoor-rain(test) [281] Snow100k(test) [278], RainDrop-A [49]
+Rain200H [? ], Rain200L [? ] Rain800 [48], DDN-Data [280]
+
+32 - 1e-4 2000 10-500 256 60k 1e-4 1000 20-1000
+64 2000k 2e-5 - 10,50
+
+4 - 2e-5 -
+
+-
+
+TABLE 10: Implementation details used in zero-shot diffusion model-based methods
+
+Methods
+
+Training Datasets
+
+Datasets
+
+Inference Steps
+
+RED-Diff [199]
+
+Pretrained on ImageNet [210]
+
+ImageNet 1K [263]
+
+1000
+
+Rapaint [212]
+
+Pretrained on CelebA-HQ [338] and ImageNet [210]
+
+CelebA-HQ [338], ImageNet [210]
+
+250
+
+CoPaint [216]
+
+Pretrained on ImageNet [210], CelebA-HQ [338]
+
+CelebA-HQ [338],ImageNet [210]
+
+250
+
+ILVR [195]
+
+Pretrained on FFHQ [211],AFHQ [339], LSUN[335], Places365 [336]
+
+Images from the website
+
+250
+
+CCDF [213]
+
+Pretrained on FFHQ [211], AFHQ [339] , fastMRI knee [344] FFHQ [211], AFHQ [339], fastMRI knee [344]
+
+20
+
+SNIPS [110]
+
+Pretrained NSCN on CelebA [294],
+
+CelebA [294], LSUN [335]
+
+500
+
+DDRM [112]
+
+Pretrained on CelebA-HQ [338], LSUN [335], ImageNet [210] FFHQ [211], ImageNet 1K [263],LSUN [335]
+
+20
+
+DDNM [113]
+
+Pretrained on ImageNet [210], CelebA-HQ [338]
+
+ImageNet 1K [263] CelebA [294]
+
+100
+
+Bahjat Kawar et.al [111]
+
+Pretrained on ImageNet [210]
+
+ImageNet 1K [263]
+
+20
+
+MCG [236]
+
+Pretrained on FFHQ [211],ImageNet [210]
+
+FFHQ [211],LSUN [335]
+
+1000
+
+DPS [114]
+
+Pretrained on ImageNet [210]
+
+FFHQ [211], ImageNet 1K [263]
+
+1000
+
+GibbsDDRM [119]
+
+Pretrained on FFHQ [211], AFHQ [339]
+
+FFHQ [211], AFHQ [339]
+
+50
+
+DifFace [237]
+
+Pretrained on FFHQ [211], ImageNet [210]
+
+Celeba-HQ [338]
+
+250
+
+Dirac-Diffusion [200]
+
+SDE-VP trained on CelebA [294] , ImageNet [210]
+
+CelebA [294], ImageNet [263]
+
+100
+
+IIGDM [197]
+
+Diffusion model trained on ImageNet [210]
+
+ImageNet [263]
+
+100
+
+ADIR [117]
+
+Pretrained on ImageNet [210]
+
+DIV2K [45]
+
+1,000
+

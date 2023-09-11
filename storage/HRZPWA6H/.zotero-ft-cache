@@ -1,0 +1,237 @@
+Solving the Weather4cast Challenge via Visual Transformers for 3D Images
+
+arXiv:2212.02456v1 [cs.CV] 5 Dec 2022
+
+Yury Belousov∗ University of Geneva
+Switzerland Yury.Belousov@unige.ch
+
+Sergey Polezhaev∗ Neiro AI USA
+sergey.polezhaev@outlook.com
+
+Brian Pulfer∗ University of Geneva
+Switzerland Brian.Pulfer@unige.ch
+
+Abstract
+Accurately forecasting the weather is an important task, as many real-world processes and decisions depend on future meteorological conditions. The NeurIPS 2022 challenge entitled Weather4cast poses the problem of predicting rainfall events for the next eight hours given the preceding hour of satellite observations as a context. Motivated by the recent success of transformer-based architectures in computer vision, we implement and propose two methodologies based on this architecture to tackle this challenge. We ﬁnd that ensembling different transformers with some baseline models achieves the best performance we could measure on the unseen test data. Our approach has been ranked 3rd in the competition.
+1 Introduction
+The ability to predict the weather is of great importance in a variety of ﬁelds and applications where decision-making processes need to account for and heavily rely on upcoming meteorological conditions. Some examples include the transportation, energy, and agriculture industries [1, 2]. However, it is challenging to accurately predict the weather in the future, especially when the weather condition changes rapidly and unexpectedly. In addition to the traditional time-series data (e.g., air temperature, wind speed, precipitation, etc.), it also requires the consideration of the geographic context. The weather forecast in one region may have a strong correlation with that of other nearby regions [3]. For example, heavy snow in the northeast of China may be related to light rain in the southwest of China. Weather forecasting requires the consideration of not only temporal correlations but also spatial correlations.
+While recently a great amount of work has been focusing on weather nowcasting [1, 4], many socio-economic needs must be aware of future weather conditions that span several hours, and not just a couple. The Weather4cast challenge [5] ﬁlls this gap by providing competitors with a tough challenge: predict rainfall events for the future eight hours given the preceding hour as a context.
+In particular, the aim of the 2022 edition of the Weather4cast competition is to predict future highresolution rainfall events from lower-resolution satellite radiances. While radar data is more precise, accurate, and of higher resolution than satellite data, they are expensive to obtain and not available in many parts of the world. We thus want to learn how to predict these high-value rain rates from
+∗Equal contribution
+36th Conference on Neural Information Processing Systems (NeurIPS 2022).
+
+radiation measured by geostationary satellites. Competition participants should predict rainfall locations for the next 8 hours in 32 time slots from an input sequence of 4 time slots of the preceding hour. The input sequence consists of four 11-band spectral satellite images. These 11 channels show slightly noisy satellite radiances covering so-called visible (VIS), water vapor (WV), and infrared (IR) bands. Each satellite image covers a 15-minute period and its pixels correspond to a spatial area of about 12km x 12km. The prediction output is a sequence of 32 images representing rain rates from ground-radar reﬂectivities. Output images also have a temporal resolution of 15 minutes but have a higher spatial resolution, with each pixel corresponding to a spatial area of about 2km × 2km. So in addition to predicting the weather in the future, participants also have to deal with a super-resolution task due to the coarser spatial resolution of the satellite data.
+In contrast to the previous competition [6], there is only one target variable — rainfall events. The rainfall events data provided by the Operational Program for Exchange of Weather Radar Information (OPERA)1 and the satellite images are given by European Organisation for the Exploitation of Meteorological Satellites (EUMETSAT)2.
+Motivated by the recent success of transformer-based architectures for vision [7, 8], we decide to investigate them for the given task. In particular, we conduct experiments with the SWIN-UNETR transformer [9] and an adaptation of the VIVIT [10] model. Our results allow us to achieve 3rd place in the challenge and suggest that this is certainly an interesting research direction to pursue in future work.
+2 Experiments
+We present our experiments in four sub-sections. We ﬁrst give a general overview of the architectureindependent concepts that can be applied to any model for this challenge. We then propose improvements to the baseline model provided with the challenge. Finally, we introduce our own approaches which interpret the task 4D input as a 2D video with a time dimension or as a 3D medical image with time as a depth dimension.
+2.1 Model-independent conﬁgurations
+Loss The selection of a proper loss function could be crucial for training. We try to optimize using the target competition’s metric IoU, a combination of Dice [11] and Focal [12] losses as well as a standard binary cross-entropy loss.
+Dataset A discrepancy between the training and validation samples may result in a sub-optimal model choice. For instance, for one of the regions (roxi_0007) in 2020, the mean and maximum rain rates in training and validation sets differ by almost a factor of two (2.53 × 10−2 and 6.78 × 10−2 for training, 4.79 × 10−2 and 11.3 × 10−2 for validation). To tackle this mismatch it is possible to treat the full validation set as part of the training one, increasing its size only by 840 samples or less than 1% (from 228 928 to 229 768 samples). Another possible solution is to calculate the difference mask and multiply it by the probabilities, thereby calibrating the model and making it less certain in places where rainfall prevailed in the training split and vice-versa.
+Threshold When deciding the output class for a prediction of the model we need to choose a threshold value for its output above which the region is classiﬁed as rainy and vice-versa. The default value of 0.5 could be sub-optimal, especially in the case of such an unbalanced dataset. We experimented with different threshold values ranging from 0.2 to 0.7.
+Optimizer Following the previous winning solution [13], we conduct experiments with the AdaBelief [14] other than just the AdamW [15] optimizer.
+Temporal shift In order to speciﬁcally emphasize that the model predictions are time sequential, it is possible to predict the time deltas starting from the second time step. Speciﬁcally t0 = t0, ti =
+1https://www.eumetnet.eu/activities/observations-programme/current-activities/ opera/
+2https://www.eumetsat.int/
+2
+
+ti−1 + ti for i ≥ 1, where ti is a raw model’s delta prediction from time i − 1 to i and ti is the ﬁnal prediction.
+2.2 BASELINE improvements
+We explore several ways of improving the ofﬁcial baseline. These include using an attention grid [16], changing the activation from RELU to RRELU [17], normalization from batch [18] to instance [19], and replacing transpose convolution with upsample and regular convolution [20].
+2.3 VIVIT
+Interpreting the challenge as a video-to-video classiﬁcation task, we consider methods that perform well on video classiﬁcation and video-to-video synthesis. Among all, we decide to focus on VIVIT [10] and evaluate its performance.
+Our VIVIT model applies two transformers: ﬁrst, it uses a transformer on the spatial dimensions of the input, concatenating batch size and temporal dimension on the batch dimension. Then, for each sample of the batch, it uses the 4 obtained class tokens (from the 4 images constituting the training sample) to model the temporal information (extracting the time dimension out of the batch dimension) through a second transformer, which gives rise to a new ﬁnal classiﬁcation token for each sequence of images (i.e. input).
+The ﬁnal classiﬁcation token needs to be used to obtain the ﬁnal prediction, which is of much higher dimensionality. To this end, we reshape the token to obtain a squared tensor with height and width dimensions, and then we use linear interpolation to upscale the classiﬁcation token to the desired spatial output size. A ﬁnal convolution is applied to obtain the number of desired prediction steps.
+2.4 SWIN-UNETR transformer
+In this challenge, following the formulation, data points can be interpreted as 3D-shaped tensors instead. One of the few other ﬁelds where 3D data is common is Medical image processing. For this reason, we consider applying state-of-the-art techniques from the medical image analysis task. One of the recent successful and promising works dedicated to MRI image analysis is SWIN-UNETR [9]. In this work, authors combined the UNETR [21] architecture which performed well on different medical image segmentation tasks, and SWIN [22] transformers. SWIN is a hierarchical vision transformer and UNETR is built upon the U-Net-like architecture combined with vision transformers.
+3D-shaped tensors with 4 channels are given as input to the SWIN-encoder. Firstly, this data is processed to create non-overlapping patches and then windowed for computing the self-attention. Later, these feature representations are fed to a convolutional decoder at several resolutions via skip connections. To adapt this architecture for the weather prediction task, several techniques are being explored: data transformation, upsampling, and channel convolution.
+Data transformation To use SWIN-UNETR architecture almost "as-is", the training data needs to be transformed somehow. The model is not capable to do channel up-sampling and it is assumed that the input and output spatial dimensions are the same. Also since a size 2 and stride 2 pooling operation is applied 5 times in the original architecture, all spatial dimensions of the input image must be divisible by 32.
+To overcome these issues, the height and width of the images are interpolated to size 256. Similarly, 4 time channels are repeated using PyTorch’s [23] repeat_interleave operation to get 32 channels. Intuitively, this approach ﬁts well to the task as, in fact, the model needs upsampling only because of the inconsistencies of the input and target formats and isn’t strongly required to learn weights of any upsample operation. This approach is used in all SWIN-UNETR experiments unless otherwise speciﬁed.
+Upsample Another approach to overcome discrepancies between the original SWIN-UNETR task and the weather prediction task is to modify the network architecture. In this experiment, we feed the data using its original shape to the network (except the height and width dimensions that were interpolated to 256) and change the last 2 layers of the SWIN encoder so they have an identical number
+3
+
+Hour: 0. Mean rain ratio: 0.7100 Hour: 1. Mean rain ratio: 0.6975 Hour: 2. Mean rain ratio: 0.6530 Hour: 3. Mean rain ratio: 0.5829
+rain
+
+Hour: 4. Mean rain ratio: 0.4777 Hour: 5. Mean rain ratio: 0.3840 Hour: 6. Mean rain ratio: 0.2411 Hour: 7. Mean rain ratio: 0.1275
+
+no rain
+
+Figure 1: Example of model predictions for region roxi_0004 in 2020. Each subplot’s title contains a number of hours from the start of the prediction as well as an average rain ratio at the current time slot. The ﬁgure clearly shows the rain front gradually leaving this region as time passes.
+of input and output channels. Also, the convolutional decoder is altered so the last ConvTranspose layers are up-sampling sequentially to the desired output size of 32.
+Channel convolution We also experiment with other ways of using the SWIN-UNETR architecture without modifying it. In particular, we substitute the repeat_interleave operation with a convolution block, while everything else remains unchanged with respect to the method described in Data transformation. The convolution module consists of 2 Convolutional layers: the ﬁrst one has 4 input channels and 32 output channels with kernel size 3, and for the second one input and output channels are 32 with the same kernel size of 3. RRELU activation and Instance Normalization are applied after these 2 layers.
+Gradient checkpointing, mixed precision Some experiments require a comparatively large amount of GPU memory to train, therefore to be able to ﬁt more training samples on the GPU we use gradient checkpointing. Also, mixed precision is used for the same purpose. Both methods don’t affect model convergence heavily.
+3 Results
+3.1 Evaluation
+In the core challenge, a model should predict the probability of rainfall events, trained on data across 7 regions and 2 years. The shape of an input to a model is (11, 4, 252, 252), where 11 is the number of bands spectral satellite images, 4 is the time dimension (1 preceding hour × 4 step, i.e. evenly divided into slots of 15 minutes each) and 252 × 252 is the shape of a satellite region. Each prediction should have the following shape: (32, 252, 252), where 32 is the time dimension (8 next hours × 4 step with the same time discretization) and 252 × 252 is the shape of a rainfall region. Although the dimensions of the regions for input and output are the same, the spatial resolution of the satellite images is about six times lower than the resolution of the ground radar. This means that the entire rainfall ground radar region resembles only a 42 × 42 center’s patch in the coarser satellite resolution, making this task a super-resolution task too. The remaining area should provide additional information to allow a model to predict rainfall not only for the current moment but also for the near future. An example of a model’s prediction for one of the regions is shown in Figure 1 (with a time step of one hour, meaning that there are three more predictions between adjacent images that have not been displayed to save space). In total, there were 60 different predictions for each region, totaling 60 × 7 regions × 2 years = 840 predictions per submission in total.
+4
+
+Table 1: Submissions to the test leaderboard. The ofﬁcial BASELINE is in italic. Bold font is used to highlight the overall best mean performance per column.
+
+Model type
+
+Loss
+
+Submission name
+
+Total mean 2019 mean 2020 mean
+
+BASELINE
+
+bce
+
+ofﬁcial BASELINE
+
+IoU
+
+Epoch 25
+
+bce
+
+Epoch 23
+
+bce
+
+train all. Epoch 24
+
+bce
+
+train all. Epoch 53
+
+bce
+
+improved, train all. Epoch 15
+
+bce w/o convtranspose, train all. Epoch 33
+
+0.213 0.190 0.213 0.222 0.166 0.245 0.246
+
+0.241 0.210 0.243 0.252 0.185 0.274 0.267
+
+0.184 0.171 0.183 0.192 0.147 0.217 0.225
+
+SWIN-UNETR
+
+IoU dice focal
+bce bce bce bce bce bce bce
+
+Epoch 2 Epoch 2 Epoch 3 Epoch 3. 0.2 threshold Epoch 3. 0.65 threshold 16bit training. Epoch 3 train all. Epoch 4 channel conv. Epoch 1 upsample. Epoch 1
+
+0.190 0.210 0.252 0.227 0.194 0.252 0.249 0.244 0.224
+
+0.206 0.228 0.262 0.248 0.204 0.253 0.261 0.258 0.256
+
+0.174 0.192 0.241 0.207 0.183 0.250 0.237 0.230 0.192
+
+VIVIT
+
+bce
+
+VIVIT base
+
+0.193
+
+0.213
+
+0.173
+
+take best prediction per region
+
+0.291
+
+0.303
+
+0.278
+
+3.2 Metric
+The core metric used in this challenge is the intersection over union, which is deﬁned as: IoU(P, G) = |P ∩ G|
+where P and G are the predicted and ground truth rainfall events, respectively. |P ∪ G| For the second stage of the competition, the rain rate threshold was changed from 0 to 0.2, which is meteorologically more meaningful but increases the sparsity of the events to be predicted, making it a harder challenge and resulting in lower scores on the leaderboard.
+3.3 Test core partition
+The test section was available for one month. The teams were not limited by the total number of submissions, however, there was a limit of 5 concurrent submissions. The submissions’ scores for this part are shown in the Table 1. Due to the format of the competition and the time and resource limits, a full ablation study, as well as a complete examination of each of the improvements individually, remains open for future research. However, even from the current results, some conclusions can be made:
+• Counter-intuitively, optimizing the target metric (IoU) directly leads to worse results, and this holds true for both baseline and SWIN-UNETR-based models. Using other loss functions, such as a combination of Dice [11] and Focal [12] losses, also does not improve performance. The best results were obtained using binary cross-entropy loss, with the weight of positive examples computed from the training set.
+5
+
+Table 2: Submissions to the heldout leaderboard. The ofﬁcial BASELINE is in italic. Bold font is used to highlight the overall best mean performance per column.
+
+Submission name
+
+Total mean 2019 mean 2020 mean
+
+ofﬁcial BASELINE BASELINE bce improved. Epoch 15
+SWIN-UNETR bce. Epoch 3 majority vote
+
+0.255 0.270 0.281 0.300
+
+0.259 0.261 0.283 0.296
+
+0.251 0.278 0.280 0.303
+
+take best prediction per region
+
+0.302
+
+0.301
+
+0.303
+
+• Adding a validation dataset slightly improves the overall metric, but comes at the cost of making the validation metric inconsistent. Thus, it is no longer possible to rely on this score for model selection or early stopping, which may lead to overﬁtting.
+• Baseline improvements from subsection 2.2 tend to boost results. • VIVIT model is less competitive than the SWIN-UNETR counterpart. We suspect this has
+to do with how the ﬁnal classiﬁcation token, which gives a high-level representation of the observed state, is used to obtain the ﬁnal prediction. • We do not observe much difference in terms of the ﬁnal score when training with 16-bit precision. • Both lowering or increasing the threshold for rain detection results in poorer performance. • Surprisingly, the simplest approach with repeat_interleave shows itself to be the best for the SWIN-UNETR transformer. • While modifying the network architecture for SWIN-UNETR performs well for some of the regions, it requires much more GPU memory for training and is considered too computationally expensive to conduct more experiments with it. • Both the SWIN-UNETR transformer and improved baseline perform signiﬁcantly better than the ofﬁcial baseline. • On average, the improved baseline performs better for the year 2019 while SWIN-UNETR is superior in 2020.
+3.4 Heldout core partition
+The heldout section was available only for 4 days with a limit of 3 submissions per team in total, making the choice of model and weights a crucial issue. The submissions’ scores for the heldout split are shown in the Table 2. Once again, both the SWIN-UNETR transformer and improved baseline perform particularly better than the ofﬁcial baseline.
+3.5 Majority vote
+One way of solving the problem of choosing the optimal model is the majority voting approach. Namely, predictions of different models are generated, and the ﬁnal prediction for each pixel is determined by the most frequent option. That is, if most models predict that it will rain at a given place at a given moment, that will be the ﬁnal prediction and vice-versa. We use the improved baseline and the SWIN-UNETR transformer versions with repeat_interleave and channel_conv, trained with AdamW and AdaBelief optimizers. This method signiﬁcantly outperforms each of the models individually.
+3.6 Best prediction per region
+As not only one overall metric but also values per region are shown to participants, a straightforward way to improve the score is to take the best predictions for each region individually and combine them into a new submission. This approach is shown in the last row of both Table 1 and Table 2, and it reaches the 3rd place on the test leaderboard and the ex-aequo 3rd place on the heldout leaderboard.
+6
+
+4 Conclusion
+In this paper, we presented how we tackled the Weather4Cast competition. We ﬁrst introduce a set of conﬁgurations that can be applied and enhance results for almost any model as well as baseline-speciﬁc improvements. We then propose two approaches based on Vision Transformers: the interpretation of the input as a video or as a 3D medical image and the use of problem-speciﬁc VIVIT or SWIN-UNETR Transformer respectively. As in previous years, we report that ensembling different trained models yield the most competitive results. Our selected algorithm has placed ex-aequo 3rd in the competition ﬁnals, which suggests that the use of transformers for weather prediction is a promising research direction that needs more investigation.
+The code for our solution is available at https://github.com/bruce-willis/ weather4cast-2022.
+
+References
+
+[1] Suman Ravuri, Karel Lenc, Matthew Willson, Dmitry Kangin, Remi Lam, Piotr Mirowski, Megan Fitzsimons, Maria Athanassiadou, Sheleem Kashem, Sam Madge, Rachel Prudden, Amol Mandhane, Aidan Clark, Andrew Brock, Karen Simonyan, Raia Hadsell, Niall Robinson, Ellen Clancy, Alberto Arribas, and Shakir Mohamed. Skilful precipitation nowcasting using deep generative models of radar. Nature, 597(7878):672–677, sep 2021. doi: 10.1038/ s41586-021-03854-z. URL https://doi.org/10.1038%2Fs41586-021-03854-z.
+
+[2] Lasse Espeholt, Shreya Agrawal, Casper Sønderby, Manoj Kumar, Jonathan Heek, Carla Bromberg, Cenk Gazen, Rob Carver, Marcin Andrychowicz, Jason Hickey, Aaron Bell, and Nal Kalchbrenner. Deep learning for twelve hour precipitation forecasts. Nature Communications, 13(1):5145, Sep 2022. ISSN 2041-1723. doi: 10.1038/s41467-022-32483-x. URL https: //doi.org/10.1038/s41467-022-32483-x.
+
+[3] Ioana Colfescu. Teleconnections: how the weather of one region can change an-
+
+other, April 2019.
+
+URL https://www.yourweather.co.uk/news/trending/
+
+teleconnections-how-weather-in-different-regions-changes-together.html.
+
+Section: Trending.
+
+[4] Shreya Agrawal, Luke Barrington, Carla Bromberg, John Burge, Cenk Gazen, and Jason Hickey. Machine learning for precipitation nowcasting from radar images. arXiv preprint arXiv:1912.12132, 2019.
+
+[5] Pedro Herruzo, Aleksandra Gruca, Llorenç Lliso, Xavier Calbet, Pilar Rípodas, Sepp Hochreiter, Michael Kopp, and David P. Kreil. High-resolution multi-channel weather forecasting – ﬁrst insights on transfer learning from the weather4cast competitions 2021. In 2021 IEEE International Conference on Big Data (Big Data), pages 5750–5757, 2021. doi: 10.1109/BigData52589.2021.9672063.
+
+[6] Aleksandra Gruca, Pedro Herruzo, Pilar Rípodas, Andrzej Kucik, Christian Briese, Michael K. Kopp, Sepp Hochreiter, Pedram Ghamisi, and David P. Kreil. CDCEO’21 - First Workshop on Complex Data Challenges in Earth Observation, page 4878–4879. Association for Computing Machinery, New York, NY, USA, 2021. ISBN 9781450384469. URL https://doi.org/10. 1145/3459637.3482044.
+
+[7] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, and Illia Polosukhin. Attention is all you need, 2017. URL https://arxiv. org/abs/1706.03762.
+
+[8] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby. An image is worth 16x16 words: Transformers for image recognition at scale, 2020. URL https://arxiv.org/abs/2010.11929.
+
+[9] Ali Hatamizadeh, Vishwesh Nath, Yucheng Tang, Dong Yang, Holger R Roth, and Daguang Xu. Swin unetr: Swin transformers for semantic segmentation of brain tumors in mri images. In International MICCAI Brainlesion Workshop, pages 272–284. Springer, 2022.
+
+7
+
+[10] Anurag Arnab, Mostafa Dehghani, Georg Heigold, Chen Sun, Mario Lucˇic´, and Cordelia Schmid. Vivit: A video vision transformer. In Proceedings of the IEEE/CVF International Conference on Computer Vision, pages 6836–6846, 2021.
+[11] Fausto Milletari, Nassir Navab, and Seyed-Ahmad Ahmadi. V-net: Fully convolutional neural networks for volumetric medical image segmentation. In 2016 fourth international conference on 3D vision (3DV), pages 565–571. IEEE, 2016.
+[12] Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Dollár. Focal loss for dense object detection. In Proceedings of the IEEE international conference on computer vision, pages 2980–2988, 2017.
+[13] Jussi Leinonen. Improvements to short-term weather prediction with recurrent-convolutional networks. In 2021 IEEE International Conference on Big Data (Big Data), pages 5764–5769. IEEE, 2021.
+[14] Juntang Zhuang, Tommy Tang, Yifan Ding, Sekhar C Tatikonda, Nicha Dvornek, Xenophon Papademetris, and James Duncan. Adabelief optimizer: Adapting stepsizes by the belief in observed gradients. Advances in neural information processing systems, 33:18795–18806, 2020.
+[15] Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101, 2017.
+[16] Ozan Oktay, Jo Schlemper, Loic Le Folgoc, Matthew Lee, Mattias Heinrich, Kazunari Misawa, Kensaku Mori, Steven McDonagh, Nils Y Hammerla, Bernhard Kainz, et al. Attention u-net: Learning where to look for the pancreas. arXiv preprint arXiv:1804.03999, 2018.
+[17] Bing Xu, Naiyan Wang, Tianqi Chen, and Mu Li. Empirical evaluation of rectiﬁed activations in convolutional network. arXiv preprint arXiv:1505.00853, 2015.
+[18] Sergey Ioffe and Christian Szegedy. Batch normalization: Accelerating deep network training by reducing internal covariate shift. In International conference on machine learning, pages 448–456. PMLR, 2015.
+[19] Dmitry Ulyanov, Andrea Vedaldi, and Victor Lempitsky. Instance normalization: The missing ingredient for fast stylization. arXiv preprint arXiv:1607.08022, 2016.
+[20] Augustus Odena, Vincent Dumoulin, and Chris Olah. Deconvolution and checkerboard artifacts. Distill, 2016. doi: 10.23915/distill.00003. URL http://distill.pub/2016/ deconv-checkerboard.
+[21] Ali Hatamizadeh, Yucheng Tang, Vishwesh Nath, Dong Yang, Andriy Myronenko, Bennett Landman, Holger R Roth, and Daguang Xu. Unetr: Transformers for 3d medical image segmentation. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision, pages 574–584, 2022.
+[22] Ze Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng Zhang, Stephen Lin, and Baining Guo. Swin transformer: Hierarchical vision transformer using shifted windows. In Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV), 2021.
+[23] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas Kopf, Edward Yang, Zachary DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chintala. Pytorch: An imperative style, highperformance deep learning library. In Advances in Neural Information Processing Systems 32, pages 8024–8035. Curran Associates, Inc., 2019. URL http://papers.neurips.cc/paper/ 9015-pytorch-an-imperative-style-high-performance-deep-learning-library. pdf.
+8
+

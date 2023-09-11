@@ -1,0 +1,78 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2306.14895
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 26 Jun 2023]
+Title: Large Multimodal Models: Notes on CVPR 2023 Tutorial
+Authors: Chunyuan Li
+Download a PDF of the paper titled Large Multimodal Models: Notes on CVPR 2023 Tutorial, by Chunyuan Li
+Download PDF
+
+    Abstract: This tutorial note summarizes the presentation on ``Large Multimodal Models: Towards Building and Surpassing Multimodal GPT-4'', a part of CVPR 2023 tutorial on ``Recent Advances in Vision Foundation Models''. The tutorial consists of three parts. We first introduce the background on recent GPT-like large models for vision-and-language modeling to motivate the research in instruction-tuned large multimodal models (LMMs). As a pre-requisite, we describe the basics of instruction-tuning in large language models, which is further extended to the multimodal space. Lastly, we illustrate how to build the minimum prototype of multimodal GPT-4 like models with the open-source resource, and review the recently emerged topics. 
+
+Comments: 	27 pages, 24 figures; Tutorial website: this https URL
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2306.14895 [cs.CV]
+  	(or arXiv:2306.14895v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2306.14895
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Chunyuan Li [ view email ]
+[v1] Mon, 26 Jun 2023 17:59:31 UTC (16,509 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Large Multimodal Models: Notes on CVPR 2023 Tutorial, by Chunyuan Li
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2306
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

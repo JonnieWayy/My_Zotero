@@ -1,0 +1,690 @@
+arXiv:2210.10542v1 [cs.CV] 19 Oct 2022
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+Thomas Lucas*, Fabien Baradel*, Philippe Weinzaepfel, and Gre´gory Rogez
+NAVER LABS Europe https://europe.naverlabs.com/research/computer-vision/posegpt
+Abstract. We address the problem of action-conditioned generation of human motion sequences. Existing work falls into two categories: forecast models conditioned on observed past motions, or generative models conditioned on action labels and duration only. In contrast, we generate motion conditioned on observations of arbitrary length, including none. To solve this generalized problem, we propose PoseGPT, an auto-regressive transformer-based approach which internally compresses human motion into quantized latent sequences. An autoencoder first maps human motion to latent index sequences in a discrete space, and vice-versa. Inspired by the Generative Pretrained Transformer (GPT), we propose to train a GPT-like model for next-index prediction in that space; this allows PoseGPT to output distributions on possible futures, with or without conditioning on past motion. The discrete and compressed nature of the latent space allows the GPT-like model to focus on long-range signal, as it removes low-level redundancy in the input signal. Predicting discrete indices also alleviates the common pitfall of predicting averaged poses, a typical failure case when regressing continuous values, as the average of discrete targets is not a target itself. Our experimental results show that our proposed approach achieves state-of-the-art results on HumanAct12, a standard but small scale dataset, as well as on BABEL, a recent large scale MoCap dataset, and on GRAB, a human-object interactions dataset.
+Fig. 1: Method Overview. PoseGPT generates a human motion sequence, conditioned on an action label, a duration T , and optionally on an observed past human motion. A GPT-like [54] model G sequentially predicts discrete latent indices, which are decoded using a decoder D into a generated human motion. When conditioning also on past human motion, the input human motion is encoded with E and quantized using qp.q into the discrete latent space.
+*Equal contribution. Accepted as a conference paper at ECCV’22
+
+2
+
+T. Lucas, et al.
+
+1 Introduction
+
+Generating realistic and controllable human motion is still an open research question despite decades of efforts in this domain [6,7]. In this work, we tackle the task of actionconditioned generation of realistic human motion sequences of varying length, with or without observation of past motion. Most of the effort in human motion synthesis has been focused on future motion prediction, typically conditioned on a sequence of past frames [30,10,4,71,72]; however, this requirement is a limiting constraint. In particular applications to virtual reality or character control [32,61] ideally should not require real world observations. And indeed, recent works [51,28] have shown that deep models can handle the highly multi-modal nature of human motion sequences, without conditioning on the past to narrow it down. Nevertheless, many possible applications of human motion modeling do require conditioning. In particular, vision based human-robot interactions may require robots to observe humans and predict likely future movements to successfully avoid them or interact with them. Therefore, we propose a class of models flexible enough to approach the more general problem of motion generation conditioned on observations of arbitrary length, including none.
+Auto-regressive generative models [47,46] are natural candidates to handle this task. By factorizing distributions over the time dimension, they can be conditioned on past sequences of arbitrary length. However when applied to human motion sequences their potential is limited in at least two ways by the nature of the data. First, they are costly and inefficient to train on data captured at high frame rates, e.g. 30 frames per second (fps), in particular when using state-of-the-art transformer architectures. Second, longterm future is highly multi-modal; in a continuous target space this leads to average unrealistic predictions and, in turn, to error drift when sampling from auto-regressive models. Indeed, related previous works that have proposed auto-regressive approaches (based on LSTMs [23] and GRUs [44]), have shown that they are subject to error drift and prone to regress unrealistic average poses.
+Therefore, we propose to compress human motion into a space that is lower dimensional and discrete, to reduce input redundancy. This allows training an auto-regressive model using discrete targets rather than to regress in a continuous space, such that the average of targets is not a valid output itself. We propose an auto-encoder transformerbased network which maps the human motion to a low dimensional space, discretized using a quantization bottleneck [48], and vice versa. Importantly, we ensure that the causal structure of the time dimension is kept in the latent representations such that it respects the arrow of the time (i.e. only the past influences the present). To do so we rely on causal attention in the encoder. This is crucial to enable conditioning of our model on observed past motions of arbitrary length, unlike in [51].
+Then, we employ an auto-regressive GPT-like model to capture human motion directly in the learned discrete space. Transformer models have become the de-facto architecture for language tasks [67,54,53] and are increasingly adopted in computer vision [16,21]. This requires adaptations to deal with continuous and locally redundant data, which is not well suited to the quadratic computational cost induced by the lack of inductive prior in transformers. The input data used in this work falls into this category: we employ parametric 3D models [50,41] which represent human motion as a sequence of human 3D meshes, a continuous, high-dimensional and redundant rep-
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+3
+
+resentation. Our proposed discretization of the human motion alleviates the need for the auto-regressive model to capture low-level signal and enables it to concentrate on long-range relations. Indeed, while the space of human body model parameters [50] is high-dimensional and sparse – random samples are unlikely to be realistic – the quantization step concentrates useful regions into a finite set of points. In particular, random sequences in that space produce locally realistic sequences that lack temporal coherence. The GPT-like component of our method, called PoseGPT, is trained to predict a distribution over the next index in the discrete space. This allows probabilistic modeling of possible futures, with or without conditioning on past motion.
+Motion capture (MoCap) datasets with action labels are costly to create [33,64]. We have been able to learn models from several orders of magnitude more data than prior art [51,28], owing to the recent availability of the BABEL [52] dataset, and also relying on the smaller HumanAct12 for fair comparison with previous works. In addition, we propose an evaluation protocol which we believe aggregates the best practices from prior art [51] and from the generative image modeling literature [45,9,59,42]. It is based on three principles; first, sample quality is evaluated using metrics based on classifiers, inspired from the GAN literature. Second, we strive to account for over-fitting together with sample quality. Indeed, sample quality metrics typically compare synthetic data to train data, without employing a validation set, which rewards over-fitting. While this is harmless when working with plentiful and complex data that deep models are unlikely to over-fit, we show that is not the case with small human motion datasets such as HumanAct12. Finally, we report likelihood based metrics to evaluate mode coverage. Indeed, while it is notoriously difficult to measure diversity from samples alone [45,59], that is in principle not the case for models that allow likelihood computations on test data. Using these principles we show that our proposed approach outperforms existing ones while being more flexible.
+
+2 Related work
+Human motion forecasting. Predicting future human poses given a past motion is a topic of interest in human motion analysis [6,7]. The first successful methods were based on statistical models [12,24], with most recent work relying on deep learning based methods [27,36]. In particular image generation methods such as GANs [27] and VAEs [36] have been extended to human motion forecasting [29,40,10]. In DLow [71], a pretrained model is employed to enforce diversity in the predicted motions. In Cao et al. [15], the scene context is also taken into account to predict future human motion. However they both show limitations when it comes to predicting long-term future horizons; in particular they tend to predict average poses, which is a known issue for methods trained by predicting continuous values [26]. In contrast, we propose a method able to predict future motion without error drift by quantizing motions. Human motion synthesis. The task of human motion synthesis, given a class query, was first tackled with a focus on simple and cyclic human actions such as walking [65,63]. More recently, a lot of focus has been devoted to human pose and motion generation conditioned on a rich query representation such as a short textual descrip-
+
+4
+
+T. Lucas, et al.
+
+tion [40,2,25,3,5,20] or an audio representation such as music [39,38]. Class labels can be seen as a coarse case of textual descriptions; they bring less information about the motion than detailed descriptions, but are simpler to acquire and use. A few recent propositions have tackled 3D human motion generation given action classes [51,28,56], and in particular ACTOR [51] shows impressive results at generating human motion for non-periodic actions. However only small scale-datasets were available at the time [28,76,75]. The generated human motions are always front view, and the trajectories in the training data lack diversity. In [56], action sequences are modeled by conditioning predictions at each time frame on the last; this performs well for short sequences but does not allow conditioning on observations of arbitrary length. To go beyond these limitations, we develop a method trained on large-scale datasets, with long-tailed class distributions such as the recently released BABEL [52]. Our method can optionally be conditioned on past observations of arbitrary length, and obtains state-of-the-art performance. Most similar to ours, the concurrent work in [60] also relies on a quantization step and a GPT model for successfully learning dance motion conditioned on music.
+Pose representation. Human body representations are often expressed as skeleton representations, where a known kinematic structure is available. Most work in human modeling, ranging from human pose estimation [73,58,69,1] to human pose modeling [31,26], have used this type of representations for a while. However recent works are moving toward 3D body shape models [41,50,8,37] which are more realistic and enable more powerful applications such as augmented and virtual reality. Representing the 3D human body, and in particular the pose, is not straightforward. One can express a human pose as a set of 3D joint locations in the Euclidean space or as a set of bone angles encoding the rotations necessary to obtain the pose. However the lack of continuity in the space of rotation representations is a commonly observed issue [13,74] for deep learning methods. There has not been convergence towards a unified human pose representation format so far. In this work, we do not explicitly enforce any human pose representation but rather propose a model that can learn to embed and quantize any representation to a discrete latent space learned by the model.
+Generative modeling. Deep generative models can be broadly classified in two categories: maximum-likelihood based models, trained to maximize the likelihood of generating training data, and adversarial models [27] trained to maximize the quality of generated images as evaluated by a discriminator model. In the maximum-likelihood based literature, which is most relevant to our work, there are two dominant paradigms to handle the highly multi-modal nature of perceptual data. The first family is that of variational auto-encoders (VAEs) [36,57], which relies on an encoder, and the second that of autoregressive models [47,17] which relies on the chain rule decomposition of high-dimensional data. Both paradigms are leveraged in our work: in the first stage of our approach we adapt a flavour of auto-encoders called VQVAEs [66], which uses quantized latent variables, to our problem. In the second stage, we train a transformer based auto-regressive model to sequentially predict discrete latent sequences. Similar recipes have been applied to high-resolution image generation in [19,55,22], to video prediction [70,68] and to speech modeling in [18]. Note that while GANs generally display an impressive aptitude to generate high quality samples [14], they are not well suited to the task of human future pose/motion prediction. Indeed, they suffer from
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+5
+
+Fig. 2: Discrete latent representation for human motion. The encoder E maps a human motion p to a latent representation zˆ which is then quantized using a codebook Z. The decoder D reconstructs the human motion pˆ from the quantized latent sequence zq.
+mode-collapse [59], i.e., the inability to cover the full variability of the training data. This ability is critical for example for applications such as human-robot interactions where likely modes of the distribution of possible futures must not be ignored. Thus, this class of models is not a good candidate on its own.
+3 The PoseGPT model
+In this section we describe PoseGPT,* our proposed approach for generative modeling of human pose sequences. First, we present how we compress human motion to a discrete space, and reconstruct motion from it (Section 3.1). Second, we introduce a GPT-like model trained for next-index probabilistic prediction in that space (Section 3.2).
+3.1 Learning a discrete latent space representation
+Human actions defined by body-motions can be characterized by the rotations of body parts, disentangled from the body shape. This allows the generation of motions with actors of different morphology. For this, we rely on parametric differential body models – SMPL [41] and SMPL-X [50] – which disentangle body parts rotations from body shape; a human motion p of length T is represented as a sequence of body poses and translations of the root joints: p “ tpθ1, δ1q, . . . , pθT , δT qu where θ and δ represent the body pose and the translation respectively. We use an encoder E and a quantization operator q to encode pose sequences and a decoder D to reconstruct pˆ “ DpqpEppqq. We use causal attention mechanisms to maintain a temporally coherent latent space and neural discrete representation learning [48] for quantization. An overview of the training procedure is shown in Figure 2.
+Causal latent space. The encoder first represents human motion sequences as a latent sequence representation zˆ “ tzˆ1, . . . , zˆTd u “ Eppq where Td ď T is the temporal dimension of the latent sequence. By default, we require that our latent representation respects the arrow of time, i.e., that for any t ď Td, tzˆ1, . . . , zˆtu depends only on tp1, . . . , ptt¨T {Tduu; such as illustrated in Figure 3. For this, we rely on transformers
+*See https://github.com/naver/PoseGPT for implementation details
+
+6
+
+T. Lucas, et al.
+
+Fig. 3: Conditioning on past with causal attention. Masking attention maps in the encoder leads to models that can be conditioned on past observations. Masking the attention maps in the decoder as well allows models that can make on-line predictions.
+
+with causal attention; it avoids any inductive prior besides causality, by modeling interactions between all inputs using self-attention [67], modified to respect the arrow of time. Intermediate representations are mapped using three feature-wise linear projections, into query Q P RNˆdk , key K P RNˆdk and value V P RNˆdv ; in addition, a causal mask is defined as Ci,j “ ´8 ¨ i ą j ` i ď j , and the output is computed as:
+
+  \Attn (Q,K,V) = \softmax \left (\frac {QK^{\top }\cdot C}{\sqrt {d_k}}\right )V \in \RR ^{N\times d_v}. 
+
+(1)
+
+The causal mask ensures that all entries below the diagonal of the attention matrix do not contribute to the final output and thus that the arrow of time is respected. This is crucial to allow conditioning on past observations when sampling from the model: if latent variables depend on the full sequence, they are impossible to compute from past observations alone.
+
+Quantizing the latent space. To build an efficient latent representation of human mo-
+tion sequences, we then rely on a discrete codebook of learned temporal representations; more precisely a latent space sequence zˆ P RTdˆnz is mapped to a sequence of codebook entries zq P ZTd , where Z is a set of C codes of dimension nz. Equivalently, this can be summarized as a sequence of Td indices corresponding to the code entries in the codebook. A given sequence p is approximately reconstructed by pˆ “ Dpzqq where zq is obtained by encoding zˆ “ Epxq P RTdˆnz and mapping each temporal element of
+this tensor with qp¨q to its closest codebook entry zk:
+
+ˆ
+
+˙
+
+zq “ qpzˆq :“ arg min }zˆt ´ zk} P RTdˆnz
+
+(2)
+
+zk PZ
+
+pˆ “ Dpzqq “ D pqpEppqqq .
+
+(3)
+
+Equation (3) is non differentiable; the standard way to backpropagate through it is to rely on the straight-through gradient estimator, which during the backward pass simply approximates the quantization step as an identity function by copying the gradients from the decoder to the encoder [11]. Thus the encoder, decoder and codebook can be trained by optimizing:
+
+  \mathcal {L}_{\text {VQ}}(\encoder , \decoder , \codebook ) = \Vert \bm {p} - \hat {\bm {p}} \Vert ^2 + \Vert \text {sg}[\encoder (\bm {p})] - \quantizedcode \Vert _2^2 + \beta \Vert \text {sg}[\quantizedcode ] - \encoder (\bm {p}) \Vert _2^2,  (4)
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+7
+
+Fig. 4: Future motion prediction. In the discrete latent space, an auto-regressive transformer model G predicts the next latent index given previous ones. We condition on a human action label, a sequence duration and optionally on an observed motion.
+with sgr¨s the stop-gradient operator. The term }sgrzqs ´ Eppq}22, dubbed the “commitment loss” [48], has been shown necessary to stable training.
+Product quantization. To increase the flexibility of the discrete representations learned by the encoder E, we propose using product quantization [34]: each element zˆi P Rnz in the sequence of latent representation is cut into K chunks pzˆi1, . . . , zˆiK q P Rnz{KˆK , and each chunk is discretized separately using K different codebooks tZ1, . . . , ZKu. The size of the discrete space learned increases exponentially with K, for a total of CTd¨K combinations. We empirically validate the utility of using product quantization in our experiments. Instead of one index target per time step, product quantization produces K targets. To capture relations between them, we propose a prediction head that models the K factors sequentially rather than in parallel, called ‘auto-regressive’ head and evaluated in Section 3.2; see the supplementary material for more details.
+3.2 Learning a density model in the discrete latent space
+The latent representation zq “ qpEppqq P RTdˆnz produced by composing the encoder E and the quantization operator qp¨q can be represented as the sequence of codebook indices of the encodings, i P t0, . . . , |Z| ´ 1uTd , by replacing each code by its index in the codebook Z, i.e., it “ k such that pzqqt “ zk. Indices of i can be mapped back to the corresponding codebook entries and decoded to a sequence pˆ “ Dpzi1 , . . . , ziTd q.
+Learning to predict next pose index. As a second step to our method, we propose to learn a prior distribution over learned latent code sequences. A motion sequence p of the human action a is encoded into pitq1..Td . We then formulate the problem of latent sequence generation as auto-regressive index prediction; for this we keep the natural temporal ordering, which can be interpreted as time due to the use of causal attention in the encoder. We train a transformer model [67] denoted G – well suited to discrete sequential data – using maximum-likelihood estimation, similar in spirit to GPT [54].
+Given iăj, the action a and the sequence length T , the transformer outputs a softmax distribution over the next indices, i.e., pGpij|iăj, a, T q, the likelihood of the latent
+
+8
+
+T. Lucas, et al.
+
+Fig. 5: Samples generated from scratch. Samples generated without any observed motion for the action labels ‘jumping’ (top) and for the action ‘dancing’ (bottom). Note: Times flows from left to right (i.e., the blue texture corresponds to the first frame and the red texture to the last frame).
+
+sequence
+
+is
+
+pGpiq
+
+“
+
+ś
+j
+
+pGpij
+
+|iăj ,
+
+a,
+
+T
+
+q
+
+and
+
+the
+
+model
+
+is
+
+trained
+
+to
+
+minimize:
+
+  \mathcal {L}_{\text {GPT}} = \mathbb {E}_{\bm {i}} \left [ - \sum _j \log p_{G}(i_j \vert \bm {i_{< j}}, a , T) \right ]. 
+
+(5)
+
+An overview of the training procedure is shown in Figure 4 and, in the supplementary material, we discuss different input sequence embeddings for processing by the GPT. Sampling human motion. Human motion is generated sequentially by sampling from ppsi|săi, a, T q to obtain a sequence of pose indices z˜ given an action and sequence length, and decoding it into a sequence of pose p˜ “ Dpz˜q (see Figure 5 for samples).
+
+4 Experiments
+We experiment with two parametric 3D models: SMPL [41] for comparison to state-ofthe-art approaches, and SMPL-X [50] to enable control of the face and hands. We now present the three datasets considered for evaluation; architectural and implementation details are in the supplementary material. HumanAct12 allows comparison to prior art [51,28], but its small size and the absence of train/val/test splits are limiting. It contains 1191 videos and SMPL pose parameters, 12 action classes and a single action per video. The poses, automatically optimized from estimated 3D joints, are noisier than annotations from capture environments. BABEL [52] is a subset of AMASS [43], a large collection of MoCap data captured in controlled environments for high quality annotations. It contains 28K sequences (43 hours of motion in total); sequence length varies from 3 seconds to several minutes and there are 120 manually annotated human actions in total. The action distribution is very long-tailed so we use only the 60 most common actions as proposed by the authors. In short, BABEL is over 40 times bigger than HumanAct12, has a train/val/test split, no noise in the SMPL parameters and a rich variety of human actions; we believe this makes it a dataset of choice to move forward.
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+9
+
+GRAB [62] contains whole-body SMPL-X of people grasping objects, with 11 persons performing 29 motions with 51 different rigid objects, for a total of 1500 sequences of 8 seconds on average, with 7 persons for training and 2 for testing.
+
+pve (Ó)
+60
+
+T Td
+FID (Ó)
+
+24
+1
+
+8
+RT (Ò)
+
+4
+
+0.95
+
+RS (Ò)
+0.66
+
+50 3.5
+
+0.9
+
+0.64
+
+40
+
+0.85
+
+3
+
+30
+
+0.8
+
+2.5
+
+20
+
+0.75
+
+200 400 600 800
+
+200 400 600 800
+
+200 400 600 800
+
+Code capacity (bits) Code capacity (bits) Capacity (bits)
+
+0.62
+0.6
+200 400 600 800
+Capacity (bits)
+
+Fig. 6: Latent space design. We define models for T {Td P t2, 4, 8u by varying K and C and present results as a function of the capacity of latent sequence.
+
+4.1 Evaluation metrics
+
+Generative models can be evaluated through generated data; a perfect set of samples contains data that is as realistic and as diverse as real unseen test data. These aspects are not always trivial to quantify, and we now discuss how they are measured in practice. Sample quality evaluation. The dominant approach [51,28] to measure sample quality relies on pretrained classifiers. In particular the Frechet Inception Distance (FID), which we report, measures a distance between distributions of classifier features obtained from a set of samples Dsamples and real data. Following [51], we also rely on a classifier T pre-trained on train data and report the ratio between accuracies on sampled and test data:
+
+  R_{\mathcal {T} (D_\text {samples}, D_\text {test}) = \frac {|D_\text {samples}|}{|D_\text {test}|}\cdot \frac {\sum _{x \in D_\text {test} \text {ac }_{\mathcal {T} (x)}{\sum _{x \in D_\text {samples} \text {ac }_{\mathcal {T} (x)}. 
+
+(6)
+
+This metric is not sensitive to diversity – the model can drop modes as long as the rest is very well classified. The ratio normalizes values that otherwise depend on choices orthogonal to sample quality; we refer to the supplementary material for details on the action classifier. Diversity evaluation. First, we evaluate sample diversity by training a classifier S on samples and evaluating it on unseen test data, following [59]. Intuitively, for S to perform as well as T , samples need to be as diverse and as realistic as real data; we measure it with:
+
+  R_{\mathcal {S} (D_\text {test}) = \sum _{x \in D_\text {test} \frac {\text {ac }_{\mathcal {S} (x)}{\text {ac }_{\mathcal {T} (x)}. 
+
+(7)
+
+This metric is sensitive to diversity as real data modalities not captured by the generator will not be seen by S and misclassified, but not by T , which will degrade the ratio.
+
+10
+
+T. Lucas, et al.
+
+K
+(nb. codebooks)
+
+pveÓ RT Ò RS Ò FIDÓ
+
+pveÓRT Ò RS Ò FIDÓ
+
+pveÓRT Ò RS Ò FIDÓ
+
+C “ 128
+
+C “ 256
+
+C “ 512
+
+1 60.1 0.91 0.60 4.3 52.1 0.98 0.61 3.5 49.7 0.99 0.62 3.7 2 40.2 0.84 0.60 3.2 38.3 0.86 0.61 2.8 33.8 0.87 0.63 2.9 4 30.6 0.84 0.64 2.9 28.2 0.79 0.62 2.7 27.3 0.80 0.61 2.5 8 27.2 0.48 0.49 3.0 23.7 0.49 0.46 4.4 26.7 0.41 0.47 4.3
+
+K pveÓ RT Ò RS Ò FIDÓ pveÓRT Ò RS Ò FIDÓ
+(nb. codebooks)
+
+T {Td “ 4
+
+T {Td “ 8
+
+2 50.7 0.94 0.63 3.2 47.5 0.93 0.66 3.2 4 35.5 0.93 0.67 3.1 37.5 0.77 0.60 3.1 8 28.8 0.64 0.54 2.5 65.6 0.85 0.59 3.6
+
+(T {Td “ 2)
+
+(C “ 256)
+
+Table 1: Impact of latent space capacity on BABEL for T {Td “ 2 (left) and for C “ 256
+
+(right). bold denotes best in column (across K); underlined denotes best in row (across C).
+
+The pair (RS , RT ) is best considered together [59]: if RS is close to one, we consider sample quality to be high, and gains in RT can be attributed to diversity [45]. Note that S and T have the same architecture and are trained with the same hyper parameters. More classically, we also report likelihood based metrics; dropped modes will lead to data points with very low likelihood, so they are sensitive to mode coverage [9]. In particular, we report the test reconstruction error of the auto-encoder using the Per-Vertex Error (pve), and the test likelihood of the GPT on encoded test sequences. As these metrics do not guarantee realistic samples, we consider them together with classifier based quality metrics.
+Over-fitting. Sample quality metrics typically used – standard FID or classification accuracy [51] – measure differences between train data and generated data, without involving a test set. This does not account for over-fitting and rewards models that perfectly copy train data: on small datasets, all metrics will monotonically improve with model capacity. To remedy this, we keep unseen data on BABEL and compute the FID, RS ratio and maximum-likelihood based metrics using that test data. Our only metric not sensitive to over-fitting is RT ; we rely on the others to detect over-fitting.
+
+4.2 Ablative study of design choices
+We now ablate the main design choices made in PoseGPT. The first is the design of the discrete latent space, in particular the quantization bottleneck and its capacity. The
+
+K
+(nb. codebooks)
+
+FID ÓRS pÒq FID ÓRS pÒq
+
+C 128 Compr. cost of zq (bits)
+
+256 512 Compr. cost (bits per dim)
+
+C “ 256 C “ 512 400
+
+3
+
+300
+
+8 0.12 93.8 0.11 93.7
+
+2.5
+
+200
+16 0.11 94.5 0.10 94.9
+
+32
+
+0.09 95.1
+
+0.08 95.2
+
+100 200
+
+400
+
+600
+
+800
+
+2 200
+
+400
+
+600
+
+800
+
+Code Capacity (bits)
+
+Code capacity (bits)
+
+Table 2: Latent space design on Hu- Fig. 7: Cost of compressing zq using the GPT, in bits manAct12. Bold denotes best value. and bits per dimension.
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+11
+
+sum cat cat & ar
+
+t0: extra token at t “ 0. `: sum at all t. :: concat at all t.
+
+25
+
+Val. accuracy
+
+Input tokens Prediction head
+
+BABEL
+
+HumanAct12 20
+
+aT
+
+mlp ar
+
+RS pÒq RT pÒq gpt-acc.(Ò) FID(Ó) RT pÒq
+
+t0 ˆ +ˆ ++ :: ::
+
+ˆˆ ˆˆ ˆˆ ˆˆ
+
+0.65 0.79 0.79 0.86
+
+0.51 0.55 0.57 0.61
+
+22.4 (20.8) 23.1 (16.3) 23.9 (16.2) 24.9 (22.9)
+
+0.56 0.19 0.10 0.22
+
+0.74 15 0.91 0.94 0.86 10
+
+++
+
+✓ˆ
+
+-
+
+-
+
+-
+
+0.09 95.1
+
+:: :: :: ::
+
+✓ˆ ✓✓
+
+0.86 0.61 25.1(22.7)
+
+-
+
+0.98 0.64 25.9(22.6)
+
+-
+
+-5 -
+
+200
+
+400
+
+Training iterations
+
+600
+
+Table 3: GPT design on BABEL and HumanAct12. Bold Fig. 8: Index pred. accuracy us-
+
+text denotes best value. ar denotes auto-regressive.
+
+ing concatenation vs. summation.
+
+second regards the GPT component, trained for next index prediction; in particular we ablate the choice of input embedding method and prediction head. Finally, we evaluate the impact of using causal attention in the auto-encoder. Note that as there is no test split on HumanAct12; because it is too small to define one of reasonable size without severely degrading performance, we compute the FID using train data on this dataset.
+Latent sequence space design. The main design choice regarding the latent sequence space is the quantization bottleneck. We now study the impact of its capacity, mostly controlled by Td (latent sequence length), K (nb. of product quantization factor) and C (total number of centroids). More capacity yields lower reconstruction errors at the cost of less compressed representations. In our case, that means more indices to predict for the GPT, which impacts sampling, and we now explore this trade-off.
+In Table 1 (left), models trained on BABEL show that as expected, pve goes down monotonously with both K and C, but not the RS and RT ratios, as also shown in Figure 6. Models with K “ 1 obtain high sample classification accuracy but poor reconstruction on test data and lower RS ; this suggests insufficient capacity to capture the full diversity of the data. On the other hand, models with the most capacity (e.g., K “ 8) yield sub-par performance. The best trade-offs are achieved with pK, Cq P tp2, 256q, p2, 512q, p4, 128q, p4, 256qu. The table on the right shows that the model can handle decreased temporal resolution. Note that using K “ 8 works better at coarser resolutions, as it compensates for the loss of information. In Table 2, all metrics improve monotonically with K and C; this is expected as over-fitting is not factored out by the metrics and the dataset is small enough to over-fit. Finally, in Figure 7, we report the cost of compressing zq using the GPT model. We observe that the absolute compression cost in bits (left) increases, i.e., zq contains more information, while the cost per dimension decreases: each sequence index is easier to predict individually. Ablations on next index prediction. We now study two design choices made in the GPT component of PoseGPT: the choices of input embedding and predictions head. Using the proper input embedding has a strong impact on the performance of transformer architectures [54], and depends on the input data. In Table 3, we study this
+
+12
+
+T. Lucas, et al.
+
+impact when working with human motion. For this ablation, we fix the latent sequence space, i.e., the auto-encoder hyper-parameters and weights, and train our GPT model with different input embeddings. We measure sample quality, and the accuracy of the GPT model at predicting discrete sequence indices. Note that this accuracy is directly comparable across models, as the latent space is frozen and identical.
+In the first row, we observe that embedding the action at each timestep, rather than as an extra transformer input, has significant positive impact. Conditioning on the sequence length is also beneficial (Row 3 vs. Row 4); this is expected, as it relieves the model from having to predict when to stop generating new poses. As an added benefit, it also allows extra control at inference time. We also see that a concatenation of the embedded information, followed by a linear projection – which can be seen as a learned weighted sum – is better than simple summation on BABEL. On the other hand this extra model capacity is not beneficial on HumanAct12, which may be due to the size of the dataset. In Figure 8, we also observe that models using concatenation rather than summation train significantly faster.
+Having determined the best input configuration for both datasets, we further experiment with more expressive output layers for the model; we show that having a MLP head rather than a single fully-connected layer is beneficial, and we obtain further gains using an auto-regressive layer (see Section 3.2). This can be explained by the fact that with product quantization, several codebook indices are extracted simultaneously from a single input vector, but are not independent, and using an MLP and/or an autoregressive layer better captures the correlations between them.
+
+Causal attention. In Table 4, we study the impact of using causal attention in the autoencoder, for K P t2, 4u and C “ 256. Causal attention is a restriction on model flexibility, as it limits the inputs used by features in the encoder. Empirically, we observe that adding causal attention indeed degrades performance. Adding it to the encoder, which is mandatory to create a model that can be conditioned on past observations, causes only a mild degradation. Adding it in the decoder as well allows to run the model on-line, i.e., make observations and predictions in parallel, but strongly degrades performance.
+
+RS pÒq FID pÓq RS pÒq FID pÓq
+
+RS FID Time conditioning Temperature changes
+
+Sample quality vs time conditioning
+1.3 3.1
+1.2 3
+1.1 2.9
+1 2.8
+0 2 4 6 8 10 12 14 16 Observed time steps
+
+Quality vs softmax temperature
+
+1.1 4
+
+1
+
+3.5
+
+0.9
+
+3
+
+2.5 0.8
+0.8 0.85 0.9 0.95 1 1.05 1.1 1.15 1.2 2
+Softmax Temperature
+
+Fig. 9: Sample quality with our best model for different amounts of observed motion, and different temperatures, measure with the FID and RS metrics.
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+13
+
+FID (Ó)
+
+K
+(nb. codebooks)
+
+Causal E
+
+Causal D
+
+pve (Ó)
+
+3.6
+
+3.4
+
+2
+
+ˆ
+
+ˆ 35.7
+
+2
+
+✓
+
+ˆ 38.3
+
+3.2
+
+2
+
+✓
+
+✓ 50.2
+
+3
+
+4
+
+ˆ
+
+ˆ 25.3
+
+4
+
+✓
+
+ˆ 28.2
+
+2.8
+
+4
+
+✓
+
+✓ 38.6
+
+24
+
+16
+
+64
+
+Nb. iterations
+
+256
+
+Table 4: Impact of causal attention in Fig. 10: Evaluation of error drift. Model itthe encoder and decoder for C “ 256. eratively conditioned on last predictions made.
+
+Conditioning and temperature. Conditioning the model on past observation is expected to improve the quality of generated samples. In Figure 9 (left), we see that indeed both RS and the FID improve monotonically as the length of observations increases. In the right plot, we see that increasing or decreasing the softmax temperature leads to a trade-off between the two metrics; this behaviour can be expected: decreasing the temperature improves sample quality by concentrating the mass on major modes of the distribution, and thus increases mode-dropping. Error-drift in long-term horizon generation. In Figure 10, we study the robustness of PoseGPT to error drift, a typical failure case of models that make auto-regressive predictions in continuous space. To this end, we sample from our model several times consecutively, by conditioning the last pose generated by the model. To initiate this process, the first motion is generated without temporal conditioning. Empirically, we observe that in this setting, PoseGPT is robust to long-term error drift: the FID initially degrades but remains stable even when we repeat the generation process many times.
+
+4.3 Comparison to the state of the art
+In Table 5, we compare PoseGPT against the state-of-the-art results. For fair comparison, these metrics are computed without conditioning on past observations. We find that PoseGPT outperforms the state-of-the-art method, namely ACTOR [51], when looking at the FID metric with a relative gain of 33% (0.12 vs. 0.08) on HumanAct12 and over 50% on BABEL. The performance in diversity and the multimodality indicates that PoseGPT covers the human motion distribution of this dataset. On BABEL, the gains are around 50% in terms of both FID and classification accuracy. The gains in classification accuracy indicate both higher quality samples, and a richer distribution.
+Qualitative examples. Finally, we show samples of human motions generated by PoseGPT. In Figure 5, we show samples of human motion generated by conditioning on a human action only. We observe that human motions are realistic and diverse for both actions. Then in Figure 11, we display two possible future motions given an initial pose and an action. The generated human motions are diverse which demonstrates that PoseGPT is able to handle the multimodal nature of the future. Finally in Figure 12,
+
+14
+
+T. Lucas, et al.
+
+Fig. 11: Samples conditioned on past observation. On the left in green, we show an observed initial pose, then we sample two different future human motions that we show side by side. The top row corresponds to the human action ‘jumping’ and the bottom row is sampled from the human action ‘stretching’.
+
+Fig. 12: Samples conditioned on an initial pose and with four different actions.
+Given an initial pose shown in green, we generate four different human motions conditioned on four different actions. What are these actions?˚
+
+given a initial pose, we generate four human motions with four different actions*. This demonstrates that the action information is taken into account and impacts the human motion generation. We provide more visualizations in the supplementary material.
+
+Model
+
+FIDÓ RT (%).Ò Div. Multimod.
+
+Real
+
+0.02 99.4 6.86 2.60
+
+Action2Motion [28] 2.46 92.3 7.03 2.87
+
+ACTOR [51]
+
+0.12 95.5 6.84 2.53
+
+PoseGPT
+
+0.08 95.8 6.85 2.82
+
+Model future pred. RS pÒq FIDÓ RT pÒq
+
+Real
+
+-
+
+1.0 0.01 1.0
+
+ACTOR˚ X PoseGPT ✓
+
+0.35 9.5 0.56 0.64 2.7 0.98
+
+Model FID Ó AccSpDq Ò Real 0.01 0.99 ACTOR* 20.7 0.20 PoseGPT 5.1 0.86
+
+Table 5: State-of-the-art comparison. On HumanAct12 (left), PoseGPT obtains better FID and comparable classification accuracy. On BABEL (center) and on GRAB (right), PoseGPT obtains substantial gains for all metrics. ˚ means trained by us based on official code. Note that the FID of real data is not 0 due to data augmentations. For consistency with [51,28], we report diversity and multimodality metrics on HumanAct12; these metrics are considered good when close to the values obtained on real data.
+
+*
+
+From left to right and top to bottom: ‘turning’, ‘touching face’, ‘walking’, ‘sitting’.
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+15
+
+5 Conclusion
+
+This work introduces PoseGPT, an auto-regressive transformer-based approach which quantizes human motion into latent sequences. Given a human action, a duration and an arbitrarily long past observation, it outputs realistic and diverse 3D human motions. We provide quantitative and qualitative experiments to show the strengths of our proposed method. In particular, ablations demonstrate that quantization is a key component, and we study each part of our approach in detail. PoseGPT reaches state-of-the-art performance on three different benchmarks and is able to generate human motions given an action label, conditioned on observed past motion of arbitrary length.
+
+16
+
+T. Lucas, et al.
+
+References
+
+1. Agarwal, A., Triggs, B.: Recovering 3d human pose from monocular images. IEEE trans. PAMI (2005)
+2. Ahn, H., Ha, T., Choi, Y., Yoo, H., Oh, S.: Text2action: Generative adversarial synthesis from language to action. In: ICRA (2018)
+3. Ahuja, C., Morency, L.: Language2pose: Natural language grounded pose forecasting. In: 3DV (2019)
+4. Aksan, E., Kaufmann, M., Hilliges, O.: Structured prediction helps 3d human motion modelling. In: ICCV (2019)
+5. Angela S. Lin, Lemeng Wu, R.C.K.T.Q.H.R.J.M.: Generating animated videos of human activities from natural language descriptions. In: Proceedings of the Visually Grounded Interaction and Language Workshop at NeurIPS 2018 (2018)
+6. Badler, N.: Temporal scene analysis: Conceptual descriptions of object movements. In: PhD thesis, University of Toronto (1975)
+7. Badler, N.I., Phillips, C.B., Webber, B.L.: Simulating humans: Computer graphics animation and control. In: Oxford University Press (1993)
+8. Baradel, F., Groueix, T., Weinzaepfel, P., Bre´gier, R., Kalantidis, Y., Rogez, G.: Leveraging mocap data for human mesh recovery. In: 3DV (2021)
+9. Barratt, S., Sharma, R.: A note on the inception score. arXiv preprint arXiv:1801.01973 (2018)
+10. Barsoum, E., Kender, J., Liu, Z.: Hp-gan: Probabilistic 3d human motion prediction via gan. In: CVPRW (2018)
+11. Bengio, Y., Le´onard, N., Courville, A.: Estimating or propagating gradients through stochastic neurons for conditional computation. arXiv preprint arXiv:1308.3432 (2013)
+12. Bowden, R.: Learning statistical models of human motion. In: CVPRW (2000) 13. Bre´gier, R.: Deep regression on manifolds: a 3d rotation case study. In: 3DV (2021) 14. Brock, A., Donahue, J., Simonyan, K.: Large scale gan training for high fidelity natural image
+synthesis. In: ICLR (2019) 15. Cao, Z., Gao, H., Mangalam, K., Cai, Q.Z., Vo, M., Malik, J.: Long-term human motion
+prediction with scene context. In: ECCV (2020) 16. Chen, M., Radford, A., Child, R., Wu, J., Jun, H., Dhariwal, P., Luan, D., Ilya, S.: Generative
+pretraining from pixels. In: ICML (2020) 17. Chen, X., Mishra, N., Rohaninejad, M., Abbeel, P.: Pixelsnail: An improved autoregressive
+generative model. In: ICML (2018) 18. Chorowski, J., Weiss, R.J., Bengio, S., Van Den Oord, A.: Unsupervised speech representa-
+tion learning using wavenet autoencoders. IEEE/ACM trans. on audio, speech, and language processing (2019) 19. De Fauw, J., Dieleman, S., Simonyan, K.: Hierarchical autoregressive image models with auxiliary decoders. arXiv preprint arXiv:1903.04933 (2019) 20. Delmas, G., Weinzaepfel, P., Lucas, T., Moreno-Noguer, F., Rogez, G.: Posescript: 3d human poses from natural language. In: ECCV (2022) 21. Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., Dehghani, M., Minderer, M., Heigold, G., Gelly, S.: An image is worth 16x16 words: Transformers for image recognition at scale. In: ICLR (2021) 22. Esser, P., Rombach, R., Ommer, B.: Taming transformers for high-resolution image synthesis. In: CVPR (2021) 23. Fragkiadaki, K., Levine, S., Felsen, P., Malik, J.: Recurrent network models for human dynamics. In: ICCV (2015)
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+17
+
+24. Galata, A., Johnson, N., Hogg, D.: Learning variable-length markov models of behavior. CVIU (2001)
+25. Ghosh, A., Cheema, N., Oguz, C., Theobalt, C., Slusallek, P.: Synthesis of compositional animations from textual descriptions. In: CVPR (2021)
+26. Ghosh, P., Song, J., Aksan, E., Hilliges, O.: Learning human motion models for long-term predictions. In: 3DV (2017)
+27. Goodfellow, I., Pouget-Abadie, J., Mirza, M., Xu, B., Warde-Farley, D., Ozair, S., Courville, A., Bengio, Y.: Generative adversarial nets. In: NeurIPS (2014)
+28. Guo, C., Zuo, X., Wang, S., Zou, S., Sun, Q., Deng, A., Minglun, Cheng, L.: Action2motion: Conditioned generation of 3d human motions. In: ACMMM (2020)
+29. Gupta, A., Johnson, J., Fei-Fei, L., Savarese, S., Alahi, A.: Social gan: Socially acceptable trajectories with generative adversarial networks. In: CVPR (2018)
+30. Habibie, I., Holden, D., Schwarz, J., Yearsley, J., Komura, T.: A recurrent variational autoencoder for human motion synthesis. In: BMVC (2017)
+31. Herda, L., Fua, P., Plankers, R., Boulic, R., Thalmann, D.: Skeleton-based motion capture for robust reconstruction of human motion. In: Proceedings Computer Animation 2000 (2000)
+32. Holden, D., Komura, T., Saito, J.: Phase-functioned neural networks for character control. In: TOG (2017)
+33. Ionescu, C., Papava, D., Olaru, V., Sminchisescu, C.: Human3.6m: Large scale datasets and predictive methods for 3d human sensing in natural environments. In: IEEE. trans. PAMI (2014)
+34. Jegou, H., Douze, M., Schmid, C.: Product quantization for nearest neighbor search. IEEE trans. PAMI (2010)
+35. Kingma, D.P., Ba, J.: Adam: A method for stochastic optimization. In: ICLR (2015) 36. Kingma, D.P., Welling, M.: Auto-encoding variational bayes. arXiv preprint
+arXiv:1312.6114 (2013) 37. Kocabas, M., Athanasiou, N., Black, M.J.: Vibe: Video inference for human body pose and
+shape estimation. In: CVPR (2020) 38. Lee, H.Y., Yang, X., Liu, M.Y., Wang, T.C., Lu, Y.D., Yang, M.H., Kautz, J.: Dancing to
+music. NeurIPS (2019) 39. Li, R., Yang, S., Ross, D.A., Kanazawa, A.: Learn to dance with aist++: Music conditioned
+3D dance generation. arXiv preprint arXiv:2101.08779 (2021) 40. Lin, X., Amer, M.R.: Human motion modeling using dvgans. arXiv preprint
+arXiv:1804.10652 (2018) 41. Loper, M., Mahmood, N., Romero, J., Pons-Moll, G., Black, M.J.: Smpl: A skinned multi-
+person linear model. In: TOG (2015) 42. Lucas, T., Shmelkov, K., Alahari, K., Schmid, C., Verbeek, J.: Adaptive density estimation
+for generative models. In: NeurIPS (2019) 43. Mahmood, N., Ghorbani, N., Troje, N.F., Pons-Moll, G., Black, M.J.: Amass: Archive of
+motion capture as surface shapes. In: ICCV (2019) 44. Martinez, J., Black, M.J., Romero, J.: On human motion prediction using recurrent neural
+networks. In: CVPR (2017) 45. Naeem, M.F., Oh, S.J., Uh, Y., Choi, Y., Yoo, J.: Reliable fidelity and diversity metrics for
+generative models. In: ICML (2020) 46. Van den Oord, A., Kalchbrenner, N., Espeholt, L., Vinyals, O., Graves, A., et al.: Conditional
+image generation with pixelcnn decoders. In: NeurIPS (2016) 47. van den Oord, A., Kalchbrenner, N., Kavukcuoglu, K.: Pixel recurrent neural networks. In:
+ICML (2016) 48. van den Oord, A., Oriol, V., Kavukcuoglu, K.: Neural discrete representation learning. In:
+ICML (2018)
+
+18
+
+T. Lucas, et al.
+
+49. Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., Killeen, T., Lin, Z., Gimelshein, N., Antiga, L., et al.: Pytorch: An imperative style, high-performance deep learning library. In: NeurIPS (2019)
+50. Pavlakos, G., Choutas, V., Ghorbani, N., Bolkart, T., Osman, A.A., Tzionas, D., Black, M.J.: Expressive body capture: 3d hands, face, and body from a single image. In: CVPR (2019)
+51. Petrovich, M., Black, M.J., Varol, G.: Action-conditioned 3d human motion synthesis with transformer vae. In: ICCV (2021)
+52. Punnakkal, A.R., Chandrasekaran, A., Athanasiou, N., Quiros-Ramirez, A., Black, M.J.: BABEL: Bodies, action and behavior with english labels. In: CVPR (2021)
+53. Radford, A., Wu, J., Child, R., Luan, D., Amodei, D., Sutskever, I.: Language models are unsupervised multitask learners (2019)
+54. Radford, A., Narasimhan, K., Salimans, T., Sutskever, I., et al.: Improving language understanding by generative pre-training (2018)
+55. Razavi, A., Van den Oord, A., Vinyals, O.: Generating diverse high-fidelity images with vq-vae-2. In: NeurIPS (2019)
+56. Rempe, D., Birdal, T., Hertzmann, A., Yang, J., Sridhar, S., Guibas, L.J.: Humor: 3d human motion model for robust pose estimation. ICCV (2021)
+57. Rezende, D.J., Mohamed, S., Wierstra, D.: Stochastic backpropagation and approximate inference in deep, generative models. In: ICML (2014)
+58. Rogez, G., Weinzaepfel, P., Schmid, C.: LCR-Net++: Multi-person 2D and 3D pose detection in natural images. IEEE trans. PAMI (2019)
+59. Shmelkov, K., Schmid, C., Alahari, K.: How good is my gan? In: ECCV (2018) 60. Siyao, L., Yu, W., Gu, T., Lin, C., Wang, Q., Qian, C., Loy, C.C., Liu, Z.: Bailando: 3d dance
+generation by actor-critic gpt with choreographic memory. In: CVPR (2022) 61. Starke, S., Zhang, H., Komura, T., Saito, J.: Neural state machine for character-scene inter-
+actions. In: TOG (2019) 62. Taheri, O., Ghorbani, N., Black, M.J., Tzionas, D.: GRAB: A dataset of whole-body human
+grasping of objects. In: ECCV (2020) 63. Taylor, G.W., Hinton, G.E., Roweis, S.: Modeling human motion using binary latent vari-
+ables. NeurIPS (2006) 64. University., C.M.: Cmu graphics lab motion capture database. http://mocap.cs.cmu.
+edu/ 65. Urtasun, R., Fleet, D.J., Lawrence, N.D.: Modeling human locomotion with topologically
+constrained latent variable models. In: Workshop on Human Motion (2007) 66. Van Den Oord, A., Vinyals, O., et al.: Neural discrete representation learning. In: NeurIPS
+(2017) 67. Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, L.,
+Polosukhin, I.: Attention is all you need. In: NeurIPS (2017) 68. Walker, J., Razavi, A., Oord, A.v.d.: Predicting video with vqvae. arXiv preprint
+arXiv:2103.01950 (2021) 69. Weinzaepfel, P., Bre´gier, R., Combaluzier, H., Leroy, V., Rogez, G.: DOPE: Distillation of
+part experts for whole-body 3D pose estimation in the wild. In: ECCV (2020) 70. Weissenborn, D., Ta¨ckstro¨m, O., Uszkoreit, J.: Scaling autoregressive video models. In:
+ICLR (2020) 71. Yuan, Y., Kitani, K.: Dlow: Diversifying latent flows for diverse human motion prediction.
+In: ECCV (2020) 72. Zhang, Y., Black, M.J., Tang, S.: We are more than our joints: Predicting how 3D bodies
+move. In: CVPR (2021) 73. Zheng, C., Wu, W., Yang, T., Zhu, S., Chen, C., Liu, R., Shen, J., Kehtarnavaz, N., Shah, M.:
+Deep learning-based human pose estimation: A survey. arXiv preprint arXiv:2012.13392 (2020)
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+19
+
+74. Zhou, Y., Barnes, C., Lu, J., Yang, J., Li, H.: On the continuity of rotation representations in neural networks. In: CVPR (2019)
+75. Zou, S., Zuo, X., Qian, Y., Wang, S., Guo, C., Xu, C., Gong, M., Cheng, L.: Polarization human shape and pose dataset. arXiv preprint arXiv:2004.14899 (2020)
+76. Zou, S., Zuo, X., Qian, Y., Wang, S., Xu, C., Gong, M., Cheng, L.: 3D human shape reconstruction from a polarization image. In: ECCV (2020)
+
+20
+
+T. Lucas, et al.
+
+A Appendix
+
+Auto-regressive prediction head. In Section 3.1 of the main paper, we propose to model correlations between the K codebook indices produced by product quantization by using a prediction head that is auto-regressive over the K codebooks. At train time, this prediction head takes as input (i) the logits produced by the standard head of the network and (ii) the K indices embedded using the same embedding as used for the inputs. Then index k is predicted from a concatenation of (logits1...k´1, embed(Input)k...K ). Note that this induces almost no overhead: K ´ 1 extra linear layers, used in parallel, with K typically in t2, 4u. This stands in contrast with the naive solution which would be to concatenate the products along the time dimension: it would have increased the cost of the whole network by a factor K2 due to the quadratic cost of self-attention mechanisms. At sample time, the K indices predicted at a time step t are sampled sequentially and used as input for the next prediction; thus, the k ´ th token is predicted conditionally on tokens 0 . . . k ´ 1 as is the case at train time. Importantly, this only requires running the prediction heads sequentially rather than in parallel as is done at train time. On the other hand, the naive solution would have increased the sampling time by a factor K.
+
+Input embedding. Self-attention based architectures are invariant to permutations of their input, which avoids inductive biases in the architecture. However this can be detrimental when modeling sequential data, as positional information is lost; we follow the standard remedy of learning 1-D positional encodings, added to the embedded input data, to account for the temporal dimension. We also learn embeddings for each action token a and for the sequence length T . We experiment with two ways of adding this conditioning information to the input data: the first one is by adding an extra token to the input sequence, which is possible because the a and T are constant across time. The second is to add the information at every time step. For this we again test two strategies: embedding all informations separately and simply summing them, or concatenating the embeddings and learning an extra layer on top of that. More precisely, each embedding –input, positional, action and length – is a Demb´dimensional vector; they are concatenated together, linearly projected again to a Demb´ dimensional space and fed to the transformer model. We find in the experimental section (Section 4.2) that the last strategy is the best one.
+
+Architectural details. All three components - E, D, and G are based on transformers. The encoder E is a stack of 3 blocks where each block is composed of 4 transformer layers. We perform temporal downsampling by a factor of 2 after the first block by default, and after each following block when downsampling by a factor greater than two (i.e., when T {Td P t4, 8u). The input embedding dimension of each block is 512. each transformer layer is composed of a self-attention module which has 5 attention heads – each of dimension 32 – and a feedforwad layer with 512 hidden units. We use a dropout of 0.1 both in the self-attention and in feed-forward modules. The decoder D mirrors the decoder, with the same hyper-parameters and blocks called in reversed order. The auto-regressive model G is a transformer which has 8 layers; the self attention blocks use 4 attentions heads, each of dimension 256. The input embedding dimension is 256,
+
+PoseGPT: Quantization-based 3D Human Motion Generation and Forecasting
+
+21
+
+and we use a dropout of 0.2 for this network.
+Training details. We implement PoseGPT in Python using the PyTorch framework [49] and we train our network from scratch using the Adam optimizer [35] with a learning rate of 5.10´5 and default parameters. Both the auto-encoder in the first training stage and the auto-regressive network in the second stage are trained for 2 million iterations. The whole training procedure takes 3 days on one single Nvidia V100 GPU. L2 reconstruction losses are applied to body model parameters as well as directly on vertices for a randomly sampled subset of time steps for efficiency/memory reason; we found that using 10% to 20% of the frames is sufficient.
+Action classifiers. For HumanAct12 we use the classifier provided by [28] which is a GRU followed by a a fully-connected layer. The classifier takes as input 3D joints of the human skeleton centered around the spine. For both BABEL and GRAB, we train the classifier ourselves using the same architecture as described above.
+

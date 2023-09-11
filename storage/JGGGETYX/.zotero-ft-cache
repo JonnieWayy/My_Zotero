@@ -1,0 +1,78 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2208.01252
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 2 Aug 2022]
+Title: A Novel Transformer Network with Shifted Window Cross-Attention for Spatiotemporal Weather Forecasting
+Authors: Alabi Bojesomo , Hasan Al Marzouqi , Panos Liatsis
+Download a PDF of the paper titled A Novel Transformer Network with Shifted Window Cross-Attention for Spatiotemporal Weather Forecasting, by Alabi Bojesomo and 2 other authors
+Download PDF
+
+    Abstract: Earth Observatory is a growing research area that can capitalize on the powers of AI for short time forecasting, a Now-casting scenario. In this work, we tackle the challenge of weather forecasting using a video transformer network. Vision transformer architectures have been explored in various applications, with major constraints being the computational complexity of Attention and the data hungry training. To address these issues, we propose the use of Video Swin-Transformer, coupled with a dedicated augmentation scheme. Moreover, we employ gradual spatial reduction on the encoder side and cross-attention on the decoder. The proposed approach is tested on the Weather4Cast2021 weather forecasting challenge data, which requires the prediction of 8 hours ahead future frames (4 per hour) from an hourly weather product sequence. The dataset was normalized to 0-1 to facilitate using the evaluation metrics across different datasets. The model results in an MSE score of 0.4750 when provided with training data, and 0.4420 during transfer learning without using training data, respectively. 
+
+Comments: 	16 pages, 7 figures, 7 tables
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2208.01252 [cs.CV]
+  	(or arXiv:2208.01252v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2208.01252
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Alabi Bojesomo [ view email ]
+[v1] Tue, 2 Aug 2022 05:04:53 UTC (4,704 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled A Novel Transformer Network with Shifted Window Cross-Attention for Spatiotemporal Weather Forecasting, by Alabi Bojesomo and 2 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2208
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

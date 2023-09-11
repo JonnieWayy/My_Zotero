@@ -1,0 +1,79 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2302.00170
+
+Help | Advanced Search
+Search
+Computer Science > Machine Learning
+(cs)
+[Submitted on 1 Feb 2023]
+Title: Diffusion Models for High-Resolution Solar Forecasts
+Authors: Yusuke Hatanaka , Yannik Glaser , Geoff Galgon , Giuseppe Torri , Peter Sadowski
+Download a PDF of the paper titled Diffusion Models for High-Resolution Solar Forecasts, by Yusuke Hatanaka and 4 other authors
+Download PDF
+
+    Abstract: Forecasting future weather and climate is inherently difficult. Machine learning offers new approaches to increase the accuracy and computational efficiency of forecasts, but current methods are unable to accurately model uncertainty in high-dimensional predictions. Score-based diffusion models offer a new approach to modeling probability distributions over many dependent variables, and in this work, we demonstrate how they provide probabilistic forecasts of weather and climate variables at unprecedented resolution, speed, and accuracy. We apply the technique to day-ahead solar irradiance forecasts by generating many samples from a diffusion model trained to super-resolve coarse-resolution numerical weather predictions to high-resolution weather satellite observations. 
+
+Subjects: 	Machine Learning (cs.LG) ; Atmospheric and Oceanic Physics (physics.ao-ph)
+Cite as: 	arXiv:2302.00170 [cs.LG]
+  	(or arXiv:2302.00170v1 [cs.LG] for this version)
+  	https://doi.org/10.48550/arXiv.2302.00170
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Peter Sadowski [ view email ]
+[v1] Wed, 1 Feb 2023 01:32:25 UTC (5,258 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Diffusion Models for High-Resolution Solar Forecasts, by Yusuke Hatanaka and 4 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.LG
+< prev   |   next >
+new | recent | 2302
+Change to browse by:
+cs
+physics
+physics.ao-ph
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

@@ -1,0 +1,84 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2304.06648
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 13 Apr 2023 ( v1 ), last revised 27 Jul 2023 (this version, v6)]
+Title: DiffFit: Unlocking Transferability of Large Diffusion Models via Simple Parameter-Efficient Fine-Tuning
+Authors: Enze Xie , Lewei Yao , Han Shi , Zhili Liu , Daquan Zhou , Zhaoqiang Liu , Jiawei Li , Zhenguo Li
+Download a PDF of the paper titled DiffFit: Unlocking Transferability of Large Diffusion Models via Simple Parameter-Efficient Fine-Tuning, by Enze Xie and 7 other authors
+Download PDF
+
+    Abstract: Diffusion models have proven to be highly effective in generating high-quality images. However, adapting large pre-trained diffusion models to new domains remains an open challenge, which is critical for real-world applications. This paper proposes DiffFit, a parameter-efficient strategy to fine-tune large pre-trained diffusion models that enable fast adaptation to new domains. DiffFit is embarrassingly simple that only fine-tunes the bias term and newly-added scaling factors in specific layers, yet resulting in significant training speed-up and reduced model storage costs. Compared with full fine-tuning, DiffFit achieves 2 × training speed-up and only needs to store approximately 0.12\% of the total model parameters. Intuitive theoretical analysis has been provided to justify the efficacy of scaling factors on fast adaptation. On 8 downstream datasets, DiffFit achieves superior or competitive performances compared to the full fine-tuning while being more efficient. Remarkably, we show that DiffFit can adapt a pre-trained low-resolution generative model to a high-resolution one by adding minimal cost. Among diffusion-based methods, DiffFit sets a new state-of-the-art FID of 3.02 on ImageNet 512 × 512 benchmark by fine-tuning only 25 epochs from a public pre-trained ImageNet 256 × 256 checkpoint while being 30 × more training efficient than the closest competitor. 
+
+Comments: 	Tech Report
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2304.06648 [cs.CV]
+  	(or arXiv:2304.06648v6 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2304.06648
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Enze Xie [ view email ]
+[v1] Thu, 13 Apr 2023 16:17:50 UTC (9,181 KB)
+[v2] Thu, 20 Apr 2023 12:44:17 UTC (9,181 KB)
+[v3] Tue, 25 Apr 2023 11:57:21 UTC (9,177 KB)
+[v4] Wed, 3 May 2023 11:08:17 UTC (10,070 KB)
+[v5] Thu, 4 May 2023 02:55:11 UTC (10,070 KB)
+[v6] Thu, 27 Jul 2023 12:57:58 UTC (10,070 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled DiffFit: Unlocking Transferability of Large Diffusion Models via Simple Parameter-Efficient Fine-Tuning, by Enze Xie and 7 other authors
+    PDF
+    Other formats 
+
+( license )
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2304
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

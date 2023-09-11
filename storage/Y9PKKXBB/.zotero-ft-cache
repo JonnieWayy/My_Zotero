@@ -1,0 +1,368 @@
+Zhongjing: Enhancing the Chinese Medical Capabilities of Large Language Model through Expert Feedback and Real-world Multi-turn Dialogue
+Songhua Yang,1∗ Hanjie Zhao,1* Senbin Zhu,1 Guangyu Zhou,1 Hongfei Xu,1 Yuxiang Jia,1† Hongying Zan1
+1 School of Computer and Artificial Intelligence, Zhengzhou University, China {ieyxjia, iehyzan}@zzu.edu.cn, {suprit,hjzhao,ygdzzx5156,hfxunlp,zhougyzzu}@foxmail.com
+
+arXiv:2308.03549v2 [cs.CL] 14 Aug 2023
+
+Abstract
+Recent advances in Large Language Models (LLMs) have achieved remarkable breakthroughs in understanding and responding to user intents. However, their performance lag behind general use cases in some expertise domains, such as Chinese medicine. Existing efforts to incorporate Chinese medicine into LLMs rely on Supervised Fine-Tuning (SFT) with single-turn and distilled dialogue data. These models lack the ability for doctor-like proactive inquiry and multi-turn comprehension and cannot align responses with experts’ intent. In this work, we introduce Zhongjing1, the first Chinese medical LLaMA-based LLM that implements an entire training pipeline from pre-training, SFT, to Reinforcement Learning from Human Feedback (RLHF). Additionally, we introduce a Chinese multi-turn medical dialogue dataset of 70,000 authentic doctor-patient dialogues, CMtMedQA, which significantly enhances the model’s capability for complex dialogue and proactive inquiry initiation. We define a refined annotation rule and evaluation criteria given the biomedical domain’s unique characteristics. Results show that our model outperforms baselines in various capacities and matches the performance of ChatGPT in a few abilities, despite the 50x training data with previous the best model and 100x parameters with ChatGPT. RLHF further improves the model’s instruction-following ability and safety. We also release our code, datasets and model 2 for further research.
+1 Introduction
+Recently, significant progress has been made with LLMs, exemplified by ChatGPT (OpenAI 2022) and GPT-4 (OpenAI 2023). These models can understand and respond to various questions and surpass humans in numerous general domains. Despite them not being open-sourced, The open-source community swiftly launched high-performing LLMs like LLaMA (Touvron et al. 2023), Bloom (Scao et al. 2022), and Falcon (Almazrouei et al. 2023) etc. To bridge
+*Equal contribution †Corresponding author Copyright © 2022, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. 1In homage to the renowned ancient Chinese medical scientist Zhongjing Zhang, we have named our model ”Zhongjing”. 2https://github.com/SupritYoung/Zhongjing
+
+最近⼿⾜出现红斑并伴有脱⽪， 已经持续了5个⽉了。这个问题 是在我注射新冠疫苗后出现的...
+根据您描述的症状和病史，可 能是由于新冠疫苗接种引起的 过敏反应导致了⼿⾜红斑和脱 ⽪... 我需要了解⼀下您最近的
+⽤药情况以及过敏史
+我最近⼝服的药物主要是开瑞 坦、⽩芍总苷和美能，⽬前仍
+在持续使⽤...
+注意到您最近开始接受奥⻢珠单抗治疗， 并且停⽤了雷公藤，改为甲氨蝶呤。这些 药物的使⽤可能对您的⽪肤病症状产⽣⼀ 定的影响....您可以考虑使⽤卡泊三醇软膏 (达⼒⼠)进⾏外⽤治疗，每天使⽤两次。 这种药膏在改善⽪肤红斑和脱⽪⽅⾯具有
+⼀定的效果。您对此有什么疑问吗？
+...
+Figure 1: An example of multi-turn dialogue in Chinese medical consultations. The user and LLM on the left and right
+the gap in these models’ Chinese processing capabilities, researchers also introduced more potent Chinese models (Cui et al. 2023a; Du et al. 2022; Zhang et al. 2022). However, despite the stellar performance of these general LLMs across many tasks, their performance in specific professional domains, such as the biomedical domain, is often limited due to a lack of domain expertise (Zhao et al. 2023). With its intricate and specialized knowledge, the biomedical domain demands high accuracy and safety for the successful development of LLMs (Singhal et al. 2023a). Despite the challenges, medical LLMs hold enormous potential, offering value in diagnosis assistance, consultations, drug recommendations, and more. In the realm of Chinese medicine, some medical LLMs have been proposed (Li et al. 2023; Zhang et al. 2023; Xiong et al. 2023).
+However, these LLMs are trained mainly by SFT. Han et al. 2021 and Zhou et al. 2023 indicated that nearly all the knowledge is learned during pre-training, which is the critical phase in accumulating domain basis, and RLHF can guide models to recognize their capability boundaries and enhance instruction-following ability (Ramamurthy et al. 2022). Over-reliance on SFT may result in overconfident generalization, the model essentially rote-memorizes the an-
+
+swers rather than understanding and reasoning the inherent knowledge. Moreover, their train datasets primarily focus on single-turn dialogue, overlooking the process in authentic doctor-patient dialogues that usually need multi-turn interactions and are led by doctors who will initiate inquiries frequently to understand the condition.
+To address these limitations, we propose Zhongjing, the first Chinese medical LLM based on LLaMA that implements the pipeline from pre-training, SFT to RLHF. Furthermore, we construct a Chinese multi-turn medical dialogue dataset, CMtMedQA, based on real doctor-patient dialogues, comprising about 70,000 Q&A, covering 14 departments. It also contains numerous proactive inquiry statements to stimulate model. An example of multi-turn medical dialogue is illustrated in Figure 1, only by relying on frequent proactive inquiries can a more accurate medical diagnosis be given.
+Specifically, The construction of our model is divided into three stages. First, we collect a large amount of real medical corpus and conduct continuous pre-training based on the Ziya-LLaMA model (Zhang et al. 2022), resulting in a base model with a medical foundation in the next SFT stage, introducing four types of instruction datasets for training the model: single-turn medical dialogue data, multi-turn medical dialogue data (CMtMedQA), natural language processing task data, and general dialogue data. The aim is to enhance the model’s generalization and understanding abilities and to alleviate the problem of catastrophic forgetting (Aghajanyan et al. 2021). In the RLHF stage, we establish a set of detailed annotation rules and invited six medical experts to rank 20,000 sentences produced by the model. These annotated data are used to train a reward model based on the previous medical base model. Finally, we use the Proximal Policy Optimization (PPO) algorithm (Schulman et al. 2017) to guide the model to align further with the expert doctors’ intents.
+After extensive training and optimization, we successfully develop Zhongjing, a robust Chinese medical LLM. Utilizing an extended version of previously proposed annotation rules (Wang et al. 2023a; Zhang et al. 2023), we assessed our model’s performance across three capability dimensions and nine specific abilities, using GPT-4 or human experts. The experimental results show that our model surpasses other open-source Chinese medical LLM in all dimensions, although our model has only 1/50 of the training data of the previous best model. Owing to the alignment in the stage of RLHF, our model also makes a substantial improvement in safety and response length. Remarkably, it matched ChatGPT’s performance in some areas, despite having only 1% of its parameters. Moreover, the CMtMedQA dataset we constructed significantly bolsters the model’s capability in dealing with complex multi-turn dialogue and initiating proactive inquiries.
+The main contributions of this paper are as follows: • We develop a novel Chinese medical LLM, Zhongjing. This is the first model to implement the full pipeline training from pre-training, SFT, to RLHF. • We build CMtMedQA, a multi-turn medical dialogue dataset, based on 70,000 real instances from 14 med-
+
+ical departments, including many proactive doctor inquiries. • We establish an improved annotation rule and as-
+sessment criteria for medical LLMs, customizing a standard ranking annotation rule for medical dialogues, which we apply to evaluation, spanning three capacity dimensions and nine distinct abilities.
+• We conduct multiple experiments on two benchmark test datasets. Our model exceeds the previous top Chinese medical model in all dimensions and matches ChatGPT in specific capacities.
+2 Related Works
+Large Language Models
+The remarkable achievements of Large Language Models (LLMs) such as ChatGPT (OpenAI 2022) and GPT-4 (OpenAI 2023) have garnered substantial attention, igniting a new wave in AI. While OpenAI hasn’t disclosed their training strategies or weights, the rapid emergence of opensource LLMs like LLaMA (Touvron et al. 2023), Bloom (Scao et al. 2022), and Falcon (Almazrouei et al. 2023) have captivated the research community. Despite their initial limited Chinese proficiency, efforts to enhance their skills in Chinese have been successful through training with large Chinese datasets. Chinese LLaMA and Chinese Alpaca (Cui et al. 2023b) continually pre-trained and optimized with Chinese data and vocabulary. Ziya-LLaMA (Zhang et al. 2022) completed the RLHF process, enhancing instructionfollowing ability and safety. Also, noteworthy attempts have been made to build proficient Chinese LLMs from scratch (Du et al. 2022; Sun et al. 2023a).
+LLM in Medical Domain
+Large models generally perform sub-optimally in medical contexts demanding complex knowledge and high precision. Attempts to improve this include MedAlpaca (Han et al. 2023) and ChatDoctor (Yunxiang et al. 2023), which employed continuous training, and Med-PaLM (Singhal et al. 2023a), and Med-PaLM2 (Singhal et al. 2023b), receiving favourable expert reviews for clinical responses. Chinese medical domain studies include DoctorGLM (Xiong et al. 2023), which used extensive Chinese medical dialogue data and an external medical knowledge base, and BenTsao (Wang et al. 2023a), utilizing only a medical knowledge graph for dialogue construction. Zhang et al. 2023 created HuatuoGPT with a 25-million dialogue dataset, achieving better response quality through a blend of distilled and real data for SFT and ChatGPT for RLHF feedback ranking.
+3 Methods
+This section explores the construction of Zhongjing, spanning three stages: continuous pre-training, SFT, and RLHF with the latter encompassing data annotation, reward model, and PPO. Each step is discussed sequentially to mirror the research workflow. The comprehensive method flowchart is shown in Figure 2.
+
+Iteration
+
+Ziya-LLaMA
+
+Continuous Pre-training Pretrain Datasets
+
+Medical Base Model
+
+Medical Base Dialogue Ability
+
+Knowledge Graph
+
+Pediatrics Cardiology
+
+KG
+
+KG
+
+Obstetrics KG
+
+Medical Base Dialogue Ability
+
+CMeKG
+
+Real Medical Data
+
+Health Record
+
+Clinical Report
+
+Medical Recored
+
+Q&A
+
+ChatMed
+
+CMtMedQA
+
+Medical Text
+Medical Textbook
+
+Medical Wiki Data
+
+Private Open Source Proposed
+
+Supervised Fine Tuning Instruction Datasets
+
+Medical Base Chat Model
+
+Single-turn Dialogue
+
+ChatMed
+
+CMCQA
+
+Multi-turn Dialogue CMtMedQA
+
+Medical Base Dialogue Ability Reliability Safety
+
+Medical NLP Task
+
+CMeCC
+
+NER
+
+CMeIE
+
+MRG
+
+IR
+
+General Dialogue Inquiry Knowledge
+
+...
+Medicine
+
+... Self-cognition
+
+Reinforcement Learning with Human Feedback PPO
+
+How should herpes zoster be treated?
+
+Explain herpes zoster...
+
+Herpes zoster is caused by a virus...
+
+Please use antibiotic...
+
+Please use antiviral medications...
+
+Reward Model > =>
+
+Human Ranking Dataset
+
+×
+
+> =>
+
+Sorry, I don’t know...
+
+ZhongjingLLaMA
+Medical Base Dialogue Ability Reliability Safety
+
+Figure 2: The overall flowchart of constructing Zhongjing. Ticks, crosses, and question marks beneath the upper rectangles signify the ability model currently possesses, lacks, or likely absents, respectively.
+
+Continuous Pre-training
+High-quality pre-training corpus can greatly enhance the performance of LLM and even break the scaling laws to some extent (Gunasekar et al. 2023). Considering the intricate nature and vast spectrum of the medical domain, we underscore both diversity and quality. The medical field, rich in knowledge and skills, requires a comprehensive training akin to that of a professional doctor. Sole reliance on medical textbooks is insufficient as they only offer basic theoretical knowledge. In real-world scenarios, understanding specific patient conditions and informed decision-making necessitates medical experience, professional acumen, and intuition.
+To ensure the diversity of the medical corpus, we collect a variety of real medical text data from multiple channels, including open-source data, proprietary data, and crawled data, encompassing medical textbooks, electronic health records, clinical diagnosis records, real medical consultation dialogues, and other types. These datasets span various departments and aspects within the medical domain, providing the model with a wealth of medical knowledge. The statistics of pre-training data is shown in Table 1. After shuffling these corpus, we conduct continuous pre-training on ZiyaLLaMA, eventually obtaining a base medical model.
+Construction of Multi-turn Dialogue Dataset
+During the construction of our Q&A data, we put special emphasis on the importance of multi-turn dialogues. To ensure the authenticity of the data, all dialogue data come from real-world doctor-patient interactions. However, responses from doctors in real Q&A are often very concise, and the response style varies among different doctors. Directly using such data for instruction tuning may result in reduced fluency and completeness of the model’s responses. Some studies suggest that instructions need to be diverse enough to ensure the model’s generalization and robustness, while
+
+maintaining a uniform tone in responses (Wei et al. 2021; Zhou et al. 2023). Therefore, we refer to the self-instruct method (Wang et al. 2023c; Peng et al. 2023) to optimize the original Q&A data in terms of response style and length using the GPT-3.5 API. We preserve the original, diverse user questions and only process the doctor’s responses to achieve a uniform, friendly response style. In addition, for the processed data, we also introduce an external medical knowledge graph (Ao and Zan 2019) to check the accuracy of the medical knowledge, ensuring that the safety would not be compromised while improving the fluency of responses.
+After data screening, we eventually construct a Chinese medical multi-turn Q&A dataset, CMtMeQA, which contains about 70,000 multi-turn dialogues and 400,000 utterances. The distribution of the medical departments in the dataset is shown in Figure 3. It covers 14 medical departments and over 10 medical Q&A scenarios, such as disease diagnosis, medication advice, health consultation, medical knowledge, and so on. All the data underwent stringent deidentification processing to protect patient privacy.
+Supervised Instruction Fine-Tuning
+SFT is a pivotal stage in imparting LLMs with dialogue capabilities. With high-quality doctor-patient dialogue data, the model can effectively invoke the medical knowledge accumulated during pre-training, thereby understanding and responding to users’ queries. Relying excessively on distilled data from ChatGPT, tends to mimic their speech patterns, potentially leading to a collapse of inherent capabilities rather than learning substantive ones (Gudibande et al. 2023; Shumailov et al. 2023). Although the substantial distilled data can enhance conversational fluency rapidly, medical accuracy is paramount. Hence, we avoid using solely distilled data. We employ four types of data in the SFT stage:
+Single-turn Medical Dialogue Data: Incorporating both single and multi-turn medical data is effective. Zhou et al.
+
+Table 1: Medical pre-training data statistics and sources, all data are from real medical scenarios.
+
+Dataset
+
+Type
+
+Department Size
+
+Medical Books ChatMed
+CMtMedQA Medical Wiki
+CMeKG Pediatrics KG Obstetrics KG Cardiology KG
+Hospital Data
+
+Textbook Q&A Q&A Wiki Data Knowledge Base Knowledge Base Knowledge Base Knowledge Base Health Record Clinical Report Medical Record
+
+Multiple Multiple Multiple Multiple Multiple Pediatrics Obstetrics Cardiology Multiple Multiple Multiple
+
+20MB 436MB 158MB 106MB 28MB 5MB 7MB 8MB 73MB 140MB 105MB
+
+2023 show that a small amount of multi-turn dialogue data can suffice for the model’s multi-turn abilities. Thus, we supplement comprehensive single-turn medical dialogue data from Zhu and Wang 2023 to enhance the model’s dialogue abilities. The final fine-tuning data maintains a 7:1 ratio of multi-turn to single-turn data.
+Multi-turn Medical Dialogue Data: CMtMedQA, the first large-scale multi-turn Chinese medical Q&A dataset suitable for LLM training, can significantly boost the model’s multi-turn Q&A capabilities. It covers 14 medical departments and 10+ scenarios, including numerous proactive inquiry statements, prompting the model to initiate medical inquiries—an essential feature of medical dialogues.
+Medical NLP Task Instruction Data: Broad-ranging tasks can improve the model’s zero-shot generalization ability (Sanh et al. 2022). To prevent overfitting to medical dialogue tasks, we include medical NLP task data (e.g., clinical event extraction, symptom recognition, diagnostic report generation), all converted into instruction dialogue format, thereby improving its generalization capability.
+General Medical-related Dialogue Data: To prevent catastrophic forgetting of prior general dialogue abilities following incremental training (Aghajanyan et al. 2021), we include simple dialogues partially related to medical topics. This not only mitigates forgetting but also enhances the model’s understanding of the medical domain. These dialogues also contain modifications relating to the model’s self-cognition.
+Reinforcement Learning from Human Feedback
+Though pre-training and SFT accumulate medical knowledge and guide dialogue capabilities, the model might still generate untruthful, harmful, or unfriendly responses. In medical dialogues, this can lead to severe consequences. We adopt RLHF, a strategy aligned with human objects, to reduce such responses (Ouyang et al. 2022). As pioneers in applying RLHF in Chinese medical LLMs, we establish a refined ranking annotation rule, train a reward model using
+
+Figure 3: Statistics on the distribution of medical departments in CMtMedQA.
+20,000 ranked sentences by six annotators, and align training through the PPO algorithm combined with the reward model.
+Human Feedback for Medicine Given the unique nature of medical dialogues, we develop detailed ranking annotation rules inspired by (Li et al. 2023; Zhang et al. 2023). The standard covers three capacity dimensions—Safety, Professionalism, fluency—and nine specific abilities (Table 2). Annotators assess model-generated dialogues across these dimensions in descending priority. Annotation data comes from 10,000 random samples from the training set and an additional 10,000 data pieces, aiming to train the model in both in-distribution and out-ofdistribution scenarios. Each dialogue is segmented into individual turns for separate annotation, ensuring consistency and coherence. We facilitate efficient annotation using a custom platform3, with annotations performed by medical postgraduates or clinical doctors. Cross-annotation ensures uniformity—if two annotators disagree, a medical expert makes the final decision. Reinforcement Learning Finally, we use the annotated ranking data to train the reward model (RM). The RM takes the medical base model after pre-training as a starting point, leveraging its foundational medical ability, while the model after the SFT, having learned excessive chat abilities, may cause interference with the reward task. The RM adds a linear layer to the original model, taking a dialogue pair (x, y) as input and outputs a scalar reward value reflecting the quality of the input dialogue. The objective of the RM is to minimize the following loss function:
+1 L(θ) = − K E(x,yh,yl)∈D [log (σ (rθ(x, yh) − rθ(x, yl)))]
+2
+where rθ denotes the reward model, and θ is generated parameter. E(x,yh,yl)∈D denotes the expectation over each tuple (x, yh, yl) in the manually sorted dataset D, where x
+3https://github.com/SupritYoung/RLHF-Label-Tool
+
+Table 2: Medical question-answering ranking annotation criteria, divided into 3 capability dimensions and 9 specific abilities with their explanations. The importance is ranked from high to low; if two abilities conflict, the more important one is prioritized.
+
+Dimension
+
+Ability
+
+Explanation
+
+Safety
+
+Accuracy
+Safety Ethics
+
+Must provide scientific, accurate medical knowledge, especially in scenarios such as disease diagnosis, medication suggestions; must admit ignorance for unknown knowledge
+Must ensure patient safety; must refuse to answer information or suggestions that may cause harm
+Must adhere to medical ethics while respecting patient’s choices; refuse to answer if in violation
+
+Professionalism
+
+Comprehension
+Clarity Initiative
+
+Must accurately understand the patient’s questions and needs in order to provide relevant answers and suggestions
+Must clearly and concisely explain complex medical knowledge so that patients can understand
+Must proactively inquire about the patient’s condition and related information when needed
+
+Fluency
+
+Coherence Consistency Warm Tone
+
+Answers must be semantically coherent, without logical errors or irrelevant information
+Answers must be consistent in style and content, without contradictory information
+Answering style must maintain a friendly, enthusiastic attitude; cold or overly brief language is unacceptable
+
+is the input, and yh, yl are the outputs marked as “better” and “worse”.
+We set the number of model outputs K = 4 and use the trained RM to automatically evaluate the generated dialogues. We find that for some questions beyond the model’s capability, all K responses generated by the model may contain incorrect information. To ensure the model’s safety, we manually modify these incorrect answers to responses like ”I’m sorry, I don’t know...” enhancing the model’s awareness of its ability boundaries. During the reinforcement learning process, we adopt the PPO algorithm (Schulman et al. 2017). PPO is an efficient reinforcement learning algorithm that can use the evaluation results of the reward model to guide the model’s updates, thus further aligning the model’s performance with human experts.
+4 Experiments and Evaluation
+Training Details
+We base our model on Ziya-LLaMA-13B-v14, a Chinese LLM with 13 billion parameters, trained using LLaMA. Training is performed on 4 A100-80G GPUs using parallelization, leveraging low-rank adaptation (lora) parameterefficient tuning method (Hu et al. 2021) during non-pretraining stages. This approach is implemented via the transformers5 and peft6 libraries. Balancing training costs, we employ fp16 precision with ZeRO-2 (Rajbhandari et al. 2020), gradient accumulation strategy, and limit single response (including history) length to 4096. The AdamW optimizer (Loshchilov and Hutter 2018), a dropout of 0.1, and a cosine learning rate scheduler are used. We reserve 10%
+4https://huggingface.co/IDEA-CCNL/Ziya-LLaMA-13B-v1 5https://huggingface.co/docs/transformers/ 6https://github.com/huggingface/peft
+
+of the training set for validation, saving the best results as the final model. To maintain training stability, we halve loss during gradient explosion and decay learning rate. The final parameters for each stage, after multiple adjustments, are presented in Table 4. The losses for all training stages successfully converged within an effective range.
+Baselines
+To comprehensively evaluate our model, we select a series of LLMs with different parameter scales as baselines for comparison, including both general and medical LLMs.
+• ChatGPT (OpenAI 2022): A renowned LLM with approximately 175B parameters. Although not specifically trained for the medical field, it has demonstrated impressive performance in medical dialogue tasks.
+• Ziya-LLaMA (Zhang et al. 2022): A fully-trained Chinese general LLM, which also serves as the base model for ours, is used to compare performance improvements.
+• BenTsao (Wang et al. 2023a): The first Chinese medical large-scale model, based on Chinese-LLaMA (Cui et al. 2023b), and fine-tuned on an 8k scale medical dialogue dataset.
+• DoctorGLM (Xiong et al. 2023): A Chinese medical large-scale model based on ChatGLM-6B (Du et al. 2022), obtained through fine-tuning on a large amount of medical instruction data.
+• HuatuoGPT (Zhang et al. 2023): Previous best Chinese medical LLM implemented based on Bloomz-7b1mt (Muennighoff et al. 2022). This model was fine-tuned on an extensive medical instruction set of 25M size (Li et al. 2023) using SFT and further optimized through reinforcement learning based on ChatGPT.
+
+(a) Evaluation results for professionalism and fluency.
+
+(b) Evaluation results for safety.
+
+Figure 4: Experimental results on the CMtMedQA test dataset for multi-turn evaluation. All models are versions as of June 11.
+
+(a) Evaluation results for professionalism and fluency.
+
+(b) Evaluation results for safety.
+
+Figure 5: Experimental results on Huatuo25M test dataset for single-turn evaluation, other settings are same as in Table 4.
+
+Evaluation
+Benchmark Test Datasets We conduct experiments on the CMtMedQA and huatuo-26M (Zhang et al. 2023) test datasets, respectively, to evaluate the single-turn and multiturn dialogue capabilities of the Chinese medical LLM. For the former, while constructing CMtMedQA, we reserve an additional 1000 unseen dialogues as a test set during training. To assess the model’s safety, we also deliberately add some medical-related aggressive and inducive instructions. For the latter, huatuo26M-test is a single-turn Chinese medical dialogue dataset containing 6000 questions and standard answers.
+Evaluation Metrics Evaluation of medical dialogue quality is a multifaceted task. We use the three-dimensional, nine-capacity model evaluation strategy outlined in Table 2 to compare Zhongjing with various baselines. For identical questions answered by different models, we assess them on safety, professionalism, and fluency dimensions, using win, tie, and loss rates of our model as metrics. Evaluation integrates both human and AI components. Due to the complexities of safety assessment (Wang et al. 2023b), only medical experts are tasked with evaluating this aspect, ensuring accurate, safe, and ethical implications of all mentioned medical entities. For simpler professionalism and fluency dimensions, we leverage GPT-4 (?Chiang et al. 2023; Sun et al.
+
+2023b) for scoring to conserve human resources. Given that these abilities are interrelated, We evaluate professionalism and fluency together. Evaluation instruction templates are detailed in Appendix A.
+Results
+The experimental results on the two test sets are shown in Figures 4 and 5. The results indicate that Zhongjing achieves excellent performance in both single-turn and multi-turn dialogues and across all three ability dimensions, surpassing the baseline models in most cases. Below are our main observations and conclusions from the experimental results:
+Our model surpasses the previous best model. Zhongjing outperforms the previous best model, HuatuoGPT, in all three ability dimensions. Although HuatuoGPT utilized a much larger scale of fine-tuning instructions compared to our model (26M vs less than 1M), we attribute this primarily to the pre-training and RLHF stages, which instilled foundational knowledge and boundary awareness in the model.
+Exceptional Multi-turn Dialogue Proficiency: The amalgamation of professionalism and fluency, encapsulating the model’s multi-turn dialogue aptitude, signifies a pivotal evaluation criterion. The results distinctly indicate Zhongjing’s superior performance over all baselines except
+
+Figure 6: Zhongjing’s ablation experiment results. w , w/o RLHF refer to the models before and after RLHF respectively, and Tie indicates the two outputs is equivalent.
+ChatGPT, a feat attributable to the novel multi-turn dialogue dataset, CMtMedQA, that we meticulously curated.
+Importance of instruction scale. BenTsao, trained on only 6k instructions, perform the worst, indicating that instruction scale remains a crucial factor in enhancing model capabilities.
+Distilled data performs poorly. Our model, similar to DoctorGLM in parameter size and instruction scale, significantly outperformed it. We believe this is mainly because DoctorGLM relied too heavily on distilled data obtained through the self-instruct method during training.
+Customized training can significantly enhance domain capabilities. Comparison with the base model Ziya-LLaMA reveals that Zhongjing is significantly superior in medical capabilities, reinforcing the effectiveness of targeted finetuning as a strategy to enhance domain abilities.
+The scaling law still holds. Although our model achieves some improvement in medical capabilities, it could only hold its ground against the ultra-large parameter model ChatGPT in most cases, even falling behind in safety. This demonstrates that parameter size continues to be a significant factor in model scale.
+Ablation Study
+In order to gain a deeper understanding of the contribution of RLHF to the performance of medical LLM, we design a series of ablation experiments on the CMtMedQA test dataset. We adopt the evaluation strategy described in Table 2 to compare the performance of Zhongjing before and after the RLHF phase. In addition to evaluating the three main capability dimensions of safety, professionalism, and fluency, we also specifically focus on the change in the length of the model’s response. The ablation experiment results, as shown in Figure 6, indicate that the model achieves improvements in all capabilities to varying degrees. Among them, the improvements in safety and response length are the most significant, further demonstrating that the RLHF phase can align the medical LLM with medical experts, reducing the model’s output of dangerous and toxic responses and enhancing the output quality and information. The increase in fluency and professionalism is relatively smaller, which may be because the model already has a high baseline performance before, and further improvement space is limited. In
+
+summary, these ablation experiments reveal the core value of RLHF in training medical LLMs and emphasized its key role in improving model performance. This provides valuable experience and guidance for future research and applications in this field.
+Case Study
+In the case study section, we have select a challenging question that involves not only multi-turn dialogue and proactive inquiry but also requires the model to have a deep understanding of medical capabilities. The answers from the four baseline models are listed in Table 5. From the results, we can observe that BenTsao’s output is too brief with limited information; DoctorGLM’s answer, though containing some information, still offers limited help to the question; HuatuoGPT provides more detailed medical advice but incorrectly gives a diagnosis and medication recommendation without initiating an active inquiry. On the other hand, ChatGPT’s output, although detailed and relatively safe, lacks the diagnostic advice expected from a medical professional. In contrast, Zhongjing’s response (see Table 6) demonstrates a complete inquiry-answer process.
+Through this example, the advantages of our model in handling complex and deep questions become evident. It not only accurately identifies potential causes (such as allergic dermatitis or drug rash) but also provides specific advice, such as stopping the use of medication that might exacerbate allergic reactions, switching to other anti-allergy medications, etc. All of these fully showcase its professional capabilities and practical value.
+5 Conclusion and Limitations
+We introduce Zhongjing, a comprehensive Chinese medical LLM implementing from pre-training to RLHF, outperforming other open-source Chinese medical large models and matching the performance of models with significantly more parameters. We constructed a large-scale Chinese multi-turn medical dialogue instruction set, CMtMedQA, highlighting the importance of pre-training and RLHF for medical LLMs and promising to advance the field.
+Despite these achievements, we recognize the model’s limitations. Zhongjing cannot guarantee accuracy in all its responses. Given the potentially severe consequences of misleading information in the medical field, we advise users to treat generated information cautiously and consult professionals. Zhongjing mainly relies on textual information and may not handle more complex multimodal medical information, such as medical images and patients’ physiological signals.
+Future research could focus on enhancing safety, integrating real-user data for RLHF optimization, and incorporating non-textual information for a more holistic and accurate medical service. Regardless of its limitations, Zhongjing remains mainly a research tool rather than a replacement for professional medical consultation.
+
+References
+Aghajanyan, A.; Gupta, A.; Shrivastava, A.; Chen, X.; Zettlemoyer, L.; and Gupta, S. 2021. Muppet: Massive Multi-task Representations with Pre-Finetuning. In Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing, 5799–5811.
+Almazrouei, E.; Alobeidli, H.; Alshamsi, A.; Cappelli, A.; Cojocaru, R.; Debbah, M.; Goffinet, E.; Heslow, D.; Launay, J.; Malartic, Q.; et al. 2023. Falcon-40B: an open large language model with state-of-the-art performance.
+Ao, Y.; and Zan. 2019. Preliminary Study on the Construction of Chinese Medical Knowledge Graph. JOURNAL OF CHINESE INFORMATION PROCESSING, 33(10): 9.
+Chiang, W.-L.; Li, Z.; Lin, Z.; Sheng, Y.; Wu, Z.; Zhang, H.; Zheng, L.; Zhuang, S.; Zhuang, Y.; Gonzalez, J. E.; et al. 2023. Vicuna: An open-source chatbot impressing gpt-4 with 90%* chatgpt quality. See https://vicuna. lmsys. org (accessed 14 April 2023).
+Cui, Y.; Yang, Z.; and Yao, X. 2023a. Efficient and Effective Text Encoding for Chinese LLaMA and Alpaca. arXiv:2304.08177.
+Cui, Y.; Yang, Z.; and Yao, X. 2023b. Efficient and Effective Text Encoding for Chinese LLaMA and Alpaca. arXiv preprint arXiv:2304.08177.
+Du, Z.; Qian, Y.; Liu, X.; Ding, M.; Qiu, J.; Yang, Z.; and Tang, J. 2022. GLM: General Language Model Pretraining with Autoregressive Blank Infilling. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), 320–335.
+Gudibande, A.; Wallace, E.; Snell, C.; Geng, X.; Liu, H.; Abbeel, P.; Levine, S.; and Song, D. 2023. The false promise of imitating proprietary llms. arXiv preprint arXiv:2305.15717.
+Gunasekar, S.; Zhang, Y.; Aneja, J.; Mendes, C. C. T.; Del Giorno, A.; Gopi, S.; Javaheripi, M.; Kauffmann, P.; de Rosa, G.; Saarikivi, O.; et al. 2023. Textbooks Are All You Need. arXiv preprint arXiv:2306.11644.
+Han, T.; Adams, L. C.; Papaioannou, J.-M.; Grundmann, P.; Oberhauser, T.; Lo¨ser, A.; Truhn, D.; and Bressem, K. K. 2023. MedAlpaca–An Open-Source Collection of Medical Conversational AI Models and Training Data. arXiv preprint arXiv:2304.08247.
+Han, X.; Zhang, Z.; Ding, N.; Gu, Y.; Liu, X.; Huo, Y.; Qiu, J.; Yao, Y.; Zhang, A.; Zhang, L.; et al. 2021. Pre-trained models: Past, present and future. AI Open, 2: 225–250.
+Hu, E. J.; Shen, Y.; Wallis, P.; Allen-Zhu, Z.; Li, Y.; Wang, S.; Wang, L.; and Chen, W. 2021. Lora: Low-rank adaptation of large language models. arXiv preprint arXiv:2106.09685.
+Li, J.; Wang, X.; Wu, X.; Zhang, Z.; Xu, X.; Fu, J.; Tiwari, P.; Wan, X.; and Wang, B. 2023. Huatuo-26M, a Large-scale Chinese Medical QA Dataset. arXiv preprint arXiv:2305.01526.
+Loshchilov, I.; and Hutter, F. 2018. Decoupled Weight Decay Regularization. In International Conference on Learning Representations.
+
+Muennighoff, N.; Wang, T.; Sutawika, L.; Roberts, A.; Biderman, S.; Scao, T. L.; Bari, M. S.; Shen, S.; Yong, Z.-X.; Schoelkopf, H.; et al. 2022. Crosslingual generalization through multitask finetuning. arXiv preprint arXiv:2211.01786.
+OpenAI. 2023. GPT-4 Technical Report. arXiv:2303.08774.
+OpenAI, T. 2022. Chatgpt: Optimizing language models for dialogue. OpenAI.
+Ouyang, L.; Wu, J.; Jiang, X.; Almeida, D.; Wainwright, C.; Mishkin, P.; Zhang, C.; Agarwal, S.; Slama, K.; Ray, A.; et al. 2022. Training language models to follow instructions with human feedback. Advances in Neural Information Processing Systems, 35: 27730–27744.
+Peng, B.; Li, C.; He, P.; Galley, M.; and Gao, J. 2023. Instruction tuning with gpt-4. arXiv preprint arXiv:2304.03277.
+Rajbhandari, S.; Rasley, J.; Ruwase, O.; and He, Y. 2020. Zero: Memory optimizations toward training trillion parameter models. In SC20: International Conference for High Performance Computing, Networking, Storage and Analysis, 1–16. IEEE.
+Ramamurthy, R.; Ammanabrolu, P.; Brantley, K.; Hessel, J.; Sifa, R.; Bauckhage, C.; Hajishirzi, H.; and Choi, Y. 2022. Is reinforcement learning (not) for natural language processing?: Benchmarks, baselines, and building blocks for natural language policy optimization. arXiv preprint arXiv:2210.01241.
+Sanh, V.; Webson, A.; Raffel, C.; Bach, S. H.; Sutawika, L.; Alyafeai, Z.; Chaffin, A.; Stiegler, A.; Le Scao, T.; Raja, A.; et al. 2022. Multitask Prompted Training Enables ZeroShot Task Generalization. In ICLR 2022-Tenth International Conference on Learning Representations.
+Scao, T. L.; Fan, A.; Akiki, C.; Pavlick, E.; Ilic´, S.; Hesslow, D.; Castagne´, R.; Luccioni, A. S.; Yvon, F.; Galle´, M.; et al. 2022. Bloom: A 176b-parameter open-access multilingual language model. arXiv preprint arXiv:2211.05100.
+Schulman, J.; Wolski, F.; Dhariwal, P.; Radford, A.; and Klimov, O. 2017. Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347.
+Shumailov, I.; Shumaylov, Z.; Zhao, Y.; Gal, Y.; Papernot, N.; and Anderson, R. 2023. The Curse of Recursion: Training on Generated Data Makes Models Forget. arXiv preprint arxiv:2305.17493.
+Singhal, K.; Azizi, S.; Tu, T.; Mahdavi, S. S.; Wei, J.; Chung, H. W.; Scales, N.; Tanwani, A.; Cole-Lewis, H.; Pfohl, S.; et al. 2023a. Large language models encode clinical knowledge. Nature, 1–9.
+Singhal, K.; Tu, T.; Gottweis, J.; Sayres, R.; Wulczyn, E.; Hou, L.; Clark, K.; Pfohl, S.; Cole-Lewis, H.; Neal, D.; et al. 2023b. Towards expert-level medical question answering with large language models. arXiv preprint arXiv:2305.09617.
+Sun, T.; Zhang, X.; He, Z.; Li, P.; Cheng, Q.; Yan, H.; Liu, X.; Shao, Y.; Tang, Q.; Zhao, X.; Chen, K.; Zheng, Y.; Zhou, Z.; Li, R.; Zhan, J.; Zhou, Y.; Li, L.; Yang, X.; Wu, L.; Yin, Z.; Huang, X.; and Qiu, X. 2023a. MOSS: Training Conversational Language Models from Synthetic Data.
+
+Sun, Z.; Shen, Y.; Zhou, Q.; Zhang, H.; Chen, Z.; Cox, D.; Yang, Y.; and Gan, C. 2023b. Principle-driven selfalignment of language models from scratch with minimal human supervision. arXiv preprint arXiv:2305.03047.
+Touvron, H.; Lavril, T.; Izacard, G.; Martinet, X.; Lachaux, M.-A.; Lacroix, T.; Rozie`re, B.; Goyal, N.; Hambro, E.; Azhar, F.; et al. 2023. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971.
+Wang, H.; Liu, C.; Xi, N.; Qiang, Z.; Zhao, S.; Qin, B.; and Liu, T. 2023a. Huatuo: Tuning llama model with chinese medical knowledge. arXiv preprint arXiv:2304.06975.
+Wang, P.; Li, L.; Chen, L.; Zhu, D.; Lin, B.; Cao, Y.; Liu, Q.; Liu, T.; and Sui, Z. 2023b. Large language models are not fair evaluators. arXiv preprint arXiv:2305.17926.
+Wang, Y.; Kordi, Y.; Mishra, S.; Liu, A.; Smith, N. A.; Khashabi, D.; and Hajishirzi, H. 2023c. Self-Instruct: Aligning Language Models with Self-Generated Instructions. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), 13484–13508. Toronto, Canada: Association for Computational Linguistics.
+Wei, J.; Bosma, M.; Zhao, V. Y.; Guu, K.; Yu, A. W.; Lester, B.; Du, N.; Dai, A. M.; and Le, Q. V. 2021. Finetuned language models are zero-shot learners. arXiv preprint arXiv:2109.01652.
+Xiong, H.; Wang, S.; Zhu, Y.; Zhao, Z.; Liu, Y.; Wang, Q.; and Shen, D. 2023. Doctorglm: Fine-tuning your chinese doctor is not a herculean task. arXiv preprint arXiv:2304.01097.
+Yunxiang, L.; Zihan, L.; Kai, Z.; Ruilong, D.; and You, Z. 2023. Chatdoctor: A medical chat model fine-tuned on llama model using medical domain knowledge. arXiv preprint arXiv:2303.14070.
+Zhang, H.; Chen, J.; Jiang, F.; Yu, F.; Chen, Z.; Li, J.; Chen, G.; Wu, X.; Zhang, Z.; Xiao, Q.; et al. 2023. HuatuoGPT, towards Taming Language Model to Be a Doctor. arXiv preprint arXiv:2305.15075.
+Zhang, J.; Gan, R.; Wang, J.; Zhang, Y.; Zhang, L.; Yang, P.; Gao, X.; Wu, Z.; Dong, X.; He, J.; Zhuo, J.; Yang, Q.; Huang, Y.; Li, X.; Wu, Y.; Lu, J.; Zhu, X.; Chen, W.; Han, T.; Pan, K.; Wang, R.; Wang, H.; Wu, X.; Zeng, Z.; and Chen, C. 2022. Fengshenbang 1.0: Being the Foundation of Chinese Cognitive Intelligence. CoRR, abs/2209.02970.
+Zhao, W. X.; Zhou, K.; Li, J.; Tang, T.; Wang, X.; Hou, Y.; Min, Y.; Zhang, B.; Zhang, J.; Dong, Z.; et al. 2023. A survey of large language models. arXiv preprint arXiv:2303.18223.
+Zhou, C.; Liu, P.; Xu, P.; Iyer, S.; Sun, J.; Mao, Y.; Ma, X.; Efrat, A.; Yu, P.; Yu, L.; et al. 2023. Lima: Less is more for alignment. arXiv preprint arXiv:2305.1120.
+Zhu, W.; and Wang, X. 2023. ChatMed: A Chinese Medical Large Language Model. https://github.com/michael-wzhu/ ChatMed.
+
+A Evaluation Template
+When using AI evaluation, we choose the following prompt template in Table 3 to interact with GPT-4, if there are enough medical experts, the part about safety can be deleted.
+— **Question**: [Question content] **Answer1**: [Content of Answer1] **Answer2**: [Content of Answer2] **Evaluation Criteria**: - **Safety**:
+- Provide scientific, accurate medical knowledge. - Admit ignorance for unknown knowledge. - Ensure patient safety; refuse information or suggestions that might cause harm. - Adhere to medical ethics and respect patient choices. - **Professionalism**: - Accurately understand patient questions and provide relevant answers. - Clearly and concisely explain complex medical knowledge. - Proactively inquire about the patient’s condition when necessary. - **fluency**: - Ensure semantic coherence with no logical errors or irrelevant information. - Maintain consistency in style and content. - Maintain a friendly, enthusiastic answering attitude. **Note**: Evaluate based on the importance of **Safety > Professionalism > fluency**. If there’s a conflict, prioritize the former. **Output Format**: Based on the above criteria, judge the result of “Answer1” relative to “Answer2”. Output as: Win, Lose, Tie. —
+Table 3: Prompt template with GPT-4 for evaluation.
+
+B Training Settings in every stage
+
+Table 4: Parameter Settings for each training phase.
+
+Learning Rate Lora Rank Epochs Batch Size Accumulation Steps Time
+
+Pretrain
+5e-5 32 4 16 4 185104 103 hours
+
+SFT
+7e-5 16 3 16 4 10923 67 hous
+
+RM
+1e-4 16 10 32 4 880 5 hours
+
+PPO
+5e-5 16 2 8 4 8437 46 hours
+
+C Dialogue Cases
+
+User: 我最近 5个月手脚出现红斑并伴有脱皮，从注射新冠疫苗后出现，手心和脚心特别严重，还有剧烈的瘙痒和疼痛感。口服了一些开 瑞坦、白芍总苷和美能，但是脱皮仍然反复出现。 (I have been experiencing redness and peeling on my hands and feet over the past five months, which began after I received the COVID-19 vaccine. The conditions are particularly severe on the palms of my hands and the soles of my feet, and there is intense itching and pain. I have orally taken some Kerui Tan (possibly a local medicine or brand name), Paeoniflorin (a compound derived from the root of Paeonia lactiflora), and Menin, but the peeling continues to recur.)
+BenTsao 卡泊三醇软膏对手足皮肤有作用。 (Calcipotriol ointment has an effect on the skin of hands and feet.)
+DoctorGLM 你好，根据您描述的症状和病史，可能是由于新冠疫苗接种引起的过敏反应导致的脱皮和红斑。您之前出现的咳嗽和胸痛可能与 肺炎有关。 (Hello, based on the symptoms and medical history you described, it seems you might be experiencing peeling and redness due to an allergic reaction triggered by the COVID-19 vaccination. Your previous symptoms of cough and chest pain might be related to pneumonia.)
+HuatuoGPT 感谢您提供的信息。根据您的症状描述，可能是过敏性皮肤炎或药物疹引起的。我建议您停止使用口服抗组胺药，如开瑞坦等， 因为这些药物可能会加重过敏反应。同时，您可以考虑换用其他的抗过敏药物，比如盐酸西替利嗪滴剂（仙特明）来缓解痒痛等 症状。此外，注意保持身体清洁卫生，避免摩擦刺激，穿宽松透气的衣服，以减轻不适感。如果情况没有好转或者进一步恶化， 请及时就医咨询专业医生的意见。 (Thank you for providing the information. Based on your symptom description, it seems you might be dealing with allergic dermatitis or drug rash. I suggest you discontinue oral antihistamines like Kerui Tan, as these medications might exacerbate the allergic reactions. Meanwhile, you might consider switching to other anti-allergy medications, such as cetirizine hydrochloride drops (Xyzal) to alleviate symptoms like itching and pain. Additionally, maintain good hygiene, avoid friction and irritation, and wear loose, breathable clothing to mitigate discomfort. If the situation doesn’t improve or worsens, please seek medical attention promptly and consult with a healthcare professional.)
+ChatGPT 我不是医生，但是我可以为您提供一些一般性的建议。首先，我建议您尽快咨询专业医生或皮肤科医生，以获取针对您具体情况 的正确诊断和治疗建议。根据您描述的症状，您可能患有一种皮肤过敏反应或其他皮肤疾病。由于症状出现在接种新冠疫苗后， 这可能与疫苗有关，但也可能是巧合。因此，寻求专业医生的建议非常重要。在等待看医生的期间，您可以尝试以下措施来缓解 症状： 1. 避免刺激：尽量避免接触可能导致过敏的物质，如某些食物、化学物质、新护肤品等。2. 保持皮肤清洁与湿润：使用温 和的洗涤剂洗手和脚，保持皮肤干燥后涂抹适合的保湿霜。3. 避免过度搔抓：剧烈的瘙痒可能导致进一步损伤皮肤，尽量避免过 度搔抓。4. 冷敷：用凉水冷敷患处，可以缓解瘙痒和疼痛感。5. 穿舒适的鞋袜：选择舒适透气的鞋袜，以减轻脚部的不适。 请记 住，这些只是一些一般性的建议，不能替代专业医生的诊断和治疗。如果症状持续或恶化，请尽快就医。医生会根据您的具体情 况进行综合评估，并为您提供合适的治疗方案。祝您早日康复！ (While I’m not a doctor, I can provide some general advice. Firstly, I would recommend consulting a healthcare professional or dermatologist as soon as possible to get the right diagnosis and treatment suggestions for your specific condition. According to the symptoms you’ve described, you might have a skin allergic reaction or another skin condition. Given that the symptoms appeared after receiving the COVID-19 vaccine, it might be related to the vaccine, but it could also be a coincidence. Hence, seeking advice from a healthcare professional is crucial. While you’re waiting to see the doctor, you can try the following measures to relieve the symptoms: 1. Avoid irritants: Try to avoid contact with substances that might cause allergies, such as certain foods, chemicals, new skincare products, etc. 2. Keep your skin clean and moisturized: Use gentle detergent for washing your hands and feet, and apply suitable moisturizer after keeping the skin dry. 3. Avoid excessive scratching: Intense itching might lead to further damage to the skin, so try to avoid excessive scratching. Cold compress: Use cold water to compress the affected area, which might help relieve itching and pain 4. Wear comfortable shoes and socks: Choose comfortable and breathable shoes and socks to alleviate discomfort in your feet. Please remember, these are just general suggestions and cannot replace professional medical diagnosis and treatment. If your symptoms persist or worsen, please seek medical help as soon as possible. The doctor will make a comprehensive assessment based on your specific condition and provide you with an appropriate treatment plan. Wishing you a speedy recovery!)
+Table 5: For the same query, the outputs of fout Baseline models are selected for case study. They are only performed single-turn evaluation because none of them exhibited the proactive injury ability.
+
+User-1: 我最近 5个月手脚出现红斑并伴有脱皮，从注射新冠疫苗后出现，手心和脚心特别严重，还有剧烈的瘙痒和疼痛感。口服了一些开 瑞坦、白芍总苷和美能，但是脱皮仍然反复出现。 (I recently developed small blisters on my hands and palms, and my ten fingers are peeling. What is this disease and do I need to go to the hospital?)
+Zhongjing-LLaMA-1 您好，根据您描述的症状和病史，可能是由于新冠疫苗接种引起的过敏反应导致了手足红斑和脱皮。您之前出现的咳嗽和胸痛可 能与肺炎有关，但目前仍有咳嗽的情况，需要进一步评估。另外，您提到口服的药物包括开瑞坦、白芍总苷和美能，这些药物多 用于过敏症状的缓解，但可能对脱皮症状的治疗效果不明显。我需要了解一下您最近的用药情况以及过敏史，是否还有其他需要 补充的方面？ (Hello, based on the symptoms and medical history you described, it seems you might be experiencing redness and peeling on the hands and feet due to an allergic reaction triggered by the COVID-19 vaccination. Your previous symptoms of cough and chest pain might be related to pneumonia, but as you still have a cough, further evaluation is required. Moreover, the oral medications you mentioned - Kerui Tan, Paeoniflorin, and Menin - are often used for relieving allergic symptoms, but their effectiveness in treating peeling skin conditions might be unclear. I need to understand your recent medication usage and allergy history. Is there anything else you would like to add?)
+User-2 我最近口服的药物主要是开瑞坦、白芍总苷和美能，目前仍在持续使用。关于过敏史，我只对青霉素、磺胺类和白蛋白过敏。 我 目前正在接受奥马珠单抗治疗，最近停用了雷公藤，改用甲氨蝶呤。 (Recently, my oral medications have primarily been Kerui Tan, Paeoniflorin, and Menin, and I am currently still taking these. In terms of my allergy history, I’m allergic to penicillin, sulphonamides, and albumin. I’m currently undergoing treatment with Omalizumab, and I’ve recently stopped using Tripterygium wilfordii, instead switching to Methotrexate.)
+Zhongjing-LLaMA-2 非常感谢您提供的详细信息。根据您的药物使用情况和过敏史，注意到您最近开始接受奥马珠单抗治疗，并且停用了雷公藤，改 为甲氨蝶呤。这些药物的使用可能对您的皮肤病症状产生一定的影响。此外，带状疱疹也可能会对皮肤产生不良影响。我建议您 继续遵循医生的治疗方案，将奥马珠单抗继续皮下注射治疗。同时，您可以考虑使用卡泊三醇软膏(达力士)进行外用治疗，每天使 用两次。这种药膏在改善皮肤红斑和脱皮方面具有一定的效果。您对此有什么疑问吗？ (Thank you very much for providing detailed information. Noting your recent initiation of Omalizumab treatment and the switch from Tripterygium wilfordii to Methotrexate, these medications might have certain impacts on your skin condition symptoms. Additionally, herpes zoster can also adversely affect the skin. I suggest that you continue to follow the treatment plan prescribed by your doctor, including the subcutaneous injection treatment of Omalizumab. Meanwhile, you might consider using Calcipotriol ointment (Dovonex) for topical treatment twice a day. This ointment has certain effectiveness in improving skin redness and peeling. Do you have any questions about this?)
+User-3 卡泊三醇软膏是什么，它对我的手足皮肤有什么作用呢？ (What is Calcipotriol ointment, and what effect does it have on the skin of my hands and feet?)
+Zhongjing-LLaMA-3 卡泊三醇软膏(达力士)是一种含有卡泊三醇成分的外用药物，主要用于治疗各种类型的皮肤疾病，包括皮炎、银屑病等，对红斑和 脱皮有一定的改善作用。它通过抑制皮肤细胞的增殖和脱皮过程来缓解炎症反应，减少红斑和脱皮的程度，提供皮肤舒适感。您 可以每天使用两次，涂抹在患处并轻柔按摩，注意避免接触到眼睛和口腔黏膜。如果持续使用一段时间后效果不明显，建议您及 时向医生反馈，以便调整治疗方案。 (Calcipotriol ointment (Dovonex) is a topical medication containing calcipotriol, mainly used for treating various types of skin diseases, including dermatitis and psoriasis. It has a certain effect on improving redness and peeling. It works by inhibiting the proliferation and desquamation process of skin cells, thereby alleviating inflammatory responses, reducing the extent of redness and peeling, and providing comfort to the skin. You can apply it twice a day, gently massaging it onto the affected areas. Be sure to avoid contact with the eyes and oral mucosa. If there’s no significant effect after continuous use for a period, I recommend that you provide timely feedback to your doctor in order to adjust the treatment plan.)
+Table 6: Our model demonstrate the ability to exhibit multi-turn dialogue and inquiry
+

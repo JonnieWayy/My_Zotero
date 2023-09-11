@@ -1,0 +1,1087 @@
+Journal Pre-proof
+MASK-CNN-Transformer for real-time multi-label weather recognition Shengchao Chen, Ting Shu, Huan Zhao, Yuan Yan Tang
+
+PII: DOI: Reference:
+
+S0950-7051(23)00631-7 https://doi.org/10.1016/j.knosys.2023.110881 KNOSYS 110881
+
+To appear in: Knowledge-Based Systems
+
+Received date : 9 April 2023 Revised date : 31 July 2023 Accepted date : 2 August 2023
+
+Please cite this article as: S. Chen, T. Shu, H. Zhao et al., MASK-CNN-Transformer for real-time multi-label weather recognition, Knowledge-Based Systems (2023), doi: https://doi.org/10.1016/j.knosys.2023.110881.
+
+This is a PDF file of an article that has undergone enhancements after acceptance, such as the addition of a cover page and metadata, and formatting for readability, but it is not yet the definitive version of record. This version will undergo additional copyediting, typesetting and review before it is published in its final form, but we are providing this version to give early visibility of the article. Please note that, during the production process, errors may be discovered which could affect the content, and all legal disclaimers that apply to the journal pertain.
+© 2023 Elsevier B.V. All rights reserved.
+
+Graphical Abstract
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+MASK-CNN-Transformer For Real-Time Multi-Label Weather Recognition Shengchao Chen, Ting Shu, Huan Zhao, Yuan Yan Tang
+
+Journal Pre-proof
+
+Journal Pre-proof
+Highlights
+MASK-CNN-Transformer For Real-Time Multi-Label Weather Recognition Shengchao Chen, Ting Shu, Huan Zhao, Yuan Yan Tang
+• To provide more accurate and reliable recognition of complex weather patterns for related real-world applications, we propose the MASK-CNN-Transformer, which combines pre-trained CNN and Transformer models to capture potential associations between features and context in outdoor images.
+• To improve the model’s generalization ability and recognition performance, we propose and employ MASK strategy during the training phase that randomly selects regions from the image and its labels. This trains the model to establish potential relationships between global-local features and interactive weather conditions.
+• To validate the effectiveness of the proposed MASKCT in dynamic, continuous real-world situations, a realtime weather recognition dataset containing continuously changing video sets in three different scenarios is constructed and estimated by the proposed model in this work.
+• Extensive experiments on real-world datasets demonstrate the proposed MASK-CT can achieve the SOTA performance in weather recognition and it can achieve dynamic real-time weather recognition rate of up to 101.3 FPS.
+
+Journal Pre-proof
+
+MASK-CNN-Transformer For Real-Time Multi-Label Weather Recognition
+Shengchao Chena,b, Ting Shua,∗, Huan Zhaoc, Yuan Yan Tangd
+aGuangdong-Hongkong-Macao Greater Bay Area Weather Research Center for Monitoring Warning and Forecasting (Shenzhen Institute of Meteorological Innovation), Shenzhen, 518125, China
+bAustralian Artificial Intelligence Institute, School of Computer Science, FEIT, University of Technology Sydney, Ultimo, Sydney, 2007, NSW, Australia cThe Chinese University of Hong Kong, Shenzhen, 518172, China
+dZhuhai UM Science and Technology Research Institute, Faculty of Science & Technology, University of Macau, Macau, 519000, China
+
+Journal Pre-proof
+
+Abstract Weather recognition is an essential support for many practical life applications, including traffic safety, environment, and meteorology. However, many existing related works cannot comprehensively describe weather conditions due to their complex cooccurrence dependencies. This paper proposes a novel multi-label weather recognition model considering these dependencies. The proposed model called MASK-Convolutional Neural Network-Transformer (MASK-CT) is based on the Transformer, the convolutional process, and the MASK mechanism. The model employs multiple convolutional layers to extract features from weather images and a Transformer encoder to calculate the probability of each weather condition based on the extracted features. To improve the generalization ability of MASK-CT, a MASK mechanism is used during the training phase. The effect of the MASK mechanism is explored and discussed. The Mask mechanism randomly withholds some information from one-pair training instances (one image and its corresponding label). There are two types of MASK methods. Specifically, MASK-I is designed and deployed on the image before feeding it into the weather feature extractor and MASK-II is applied to the image label. The Transformer encoder is then utilized on the randomly masked image features and labels. The experimental results from various real-world weather recognition datasets demonstrate that the proposed MASK-CT model outperforms state-of-the-art methods. Furthermore, the high-speed dynamic real-time weather recognition capability of the MASK-CT is evaluated. Keywords: Multi-label Weather Recognition, Deep Learning, Transformer, Convolutional Neural Network
+
+1. Introduction Weather, encompassing wind, temperature, humidity, pre-
+cipitation, and other atmospheric conditions, greatly influences people’s lives and societal progress (Chen et al., 2023a,b). In autonomous driving, precise weather analysis plays a vital role in making appropriate and safe decisions. By recognizing weather conditions, autonomous vehicles can adjust their driving behavior, identify and avoid hazards, optimize routes, and improve sensor fusion and perception. This integration allows them to navigate effectively under various weather conditions, ensuring passenger safety and enhancing overall driving efficiency (Kurihata et al., 2006; Pavlic et al., 2013). Therefore, continuous monitoring of real-time weather conditions is a subject of scientific importance with significant social impact (Lu et al., 2014; Li et al., 2017; Elhoseiny et al., 2015; Katsura et al., 2005; Chen et al., 2022).
+Image-based weather conditions analysis offers significant advantages in terms of cost and efficiency. However, most existing studies on weather condition recognition were based on hand-crafted weather features, limiting their effectiveness to specific weather conditions. Furthermore, the results are unsatisfactory when weather features are not prominent (Zhao et al.,
+∗Corresponding author: shuting@gbamwf.com Preprint submitted to Knowledge-Based Systems
+
+2018). Additionally, weather conditions that rely on sensor networks carrying cameras suffer from high maintenance costs and inefficient identification, making them progressively less competitive (Kurihata et al., 2005; Roser and Moosmann, 2008; Yan et al., 2009; Kurihata et al., 2006; Pavlic et al., 2013; Song et al., 2014; Li et al., 2014; Lu et al., 2014; Li et al., 2017). Therefore, weather recognition through image analysis can significantly improve the efficiency and cost-effectiveness of identifying weather conditions in various applications. However, further research is needed to overcome the limitations of existing methods and to develop more reliable and accurate models.
+The progress in Deep Learning (DL) and the extensive deployment of cameras has facilitated highly accurate and costeffective recognition of weather conditions. DL-based weather recognition methods provide substantial advantages over traditional, hand-crafted feature-based approaches (Chen et al., 2023c). However, accurately recognizing weather conditions remains challenging due to several inherent obstacles. Firstly, the intricate and interconnected nature of weather conditions poses challenges for accurately recognizing a single outdoor image. Secondly, the available datasets for weather recognition images often exhibit undesired variations, further complicating the recognition process. Lastly, the lack of detailed information in these datasets can hinder the accuracy of weather recognition. These challenges are detailed as follows.
+Image-based weather recognition is mainly limited by a
+August 5, 2023
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+single image’s complex and interwoven weather conditions. Fig. 1(a) and (b) show images of the same scene taken at different times, which contain at least two weather conditions. However, many early studies recognized only one type of weather from the images, so much so that they were quite limited. The attributes of the outdoor images significantly influence imagebased weather recognition (e.g., light intensity, contrast, viewing angle, etc.), and differences in these attributes are generally caused by differences between shooting devices, locations, parameters, etc. Weather recognition based on images is predominantly constrained by the complexity and intertwining of weather conditions within a single image. Fig. 1(a) and (b) display images of the identical scene captured at different times, each depicting at least two distinct weather conditions. Nevertheless, numerous early studies merely recognized a single type of weather from the images, resulting in significant limitations. Various attributes of outdoor images notably influence imagebased weather recognition, including light intensity, contrast, viewing angle, and others. These attribute variations often stem from disparities in shooting devices, locations, parameters, and other factors. Fig. 1(c) and (d) are photographs of the same scene taken by the same camera at different exposure levels. Their recognition results differ because the prominent rainfall features are ignored. After all, the light intensity in Fig. 1(b) is lower than that in Fig. 1(a). In addition, the reduction in the area of identifiable feature area in the image due to the difference in the shooting viewpoint also affects the recognition accuracy. Fig. 1(e) and (f) show images taken from different viewing angles in the same scene of the device. Their feature areas are mainly concentrated in the sky, while Fig. 1(f) has a much smaller recognition area than Fig. 1(e) due to the different shooting perspectives. Finally, the overly ideal situation of the dataset used to train a deep learning-based weather recognition model can pose a serious challenge to the usefulness of the model. Firstly, utilizing more ideal images proves beneficial for capturing significant feature regions. Secondly, the dataset could contain labeling errors, even with multiple people involved in simultaneous processing. Moreover, the current datasets primarily consist of discrete scene images. However, this contradicts real-life scenarios that are continuous, dynamic, and non-ideal. These aforementioned challenges significantly impede current weather recognition based on DL and images.
+Recognizing weather conditions in outdoor images poses a significant challenge due to the co-occurrence dependence among various weather phenomena and the potential presence of multiple weather conditions within a single image. Previous studies have explored the use of graphical neural networks, recurrent neural networks, and their variants to model these dependencies. However, their reliance on predefined relationships between weather conditions hampers their competitiveness. Additionally, the recognition process is influenced differently by various regions of the image. Consequently, it becomes crucial to comprehensively evaluate the impact of different image regions on weather condition recognition.
+To this end, we propose a novel architecture called MASKCNN-Trans-former (MASK-CT) that integrates a convolutional neural network (CNN) and transformers. The CNN extracts
+
+Figure 1: (a) A foggy and rainy sky taken by Camera #1. (b) Sky taken by Camera #2 that with different parameters from Camera #1, the scene is the same as (a). (c) A sunny image with clouds in the sky. (d) A sky that is foggy, rainy, and cloudy at the same time. (e) Outdoor map taken by camera three, the red box represents the primary concentration area of features. (f) The outdoor image was taken by Camera #4, and the shooting angle is not consistent with Camera #3; the red box represents the primary concentration area of features.
+complex weather features from the images, while transformers are used to model the dependencies between weather conditions and to explore the relationship between different regions of the image and weather conditions. The MASK strategy is used during model training to enhance its generalization ability and enable it to be applied to real-world complex weather recognition problems. Furthermore, most existing image-based weather recognition research has not considered continuous, dynamically changing scenes. Therefore, we construct a real-time weather recognition dataset to evaluate the proposed model’s performance in these scenarios. Overall, our proposed MASK-CT architecture offers an effective approach to address the multi-label weather recognition task by incorporating transformers to handle the dependencies between weather conditions and CNNs to extract features from images. The evaluation on the real-time weather recognition dataset demonstrates the model’s effectiveness in dealing with dynamic scenes, making it a promising solution for practical applications.
+In summary, there are four main contributions of this work: • To provide more accurate and reliable recognition of com-
+plex weather patterns for related real-world applications, we propose the MASK-CNN-Transformer, which combines pre-trained CNN and Transformer models to capture
+
+2
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+potential associations between features and context in outdoor images. • To improve the model’s generalization ability and recognition performance, we propose and employ MASK strategy during the training phase that randomly selects regions from the image and its labels. This trains the model to establish potential relationships between global-local features and interactive weather conditions. • To validate the effectiveness of the proposed MASKCT in dynamic, continuous real-world situations, a realtime weather recognition dataset containing continuously changing video sets in three different scenarios is constructed and estimated by the proposed model in this work. • Extensive experiments on real-world datasets demonstrate the proposed MASK-CT can achieve the SOTA performance in weather recognition and it can achieve dynamic real-time weather recognition rate of up to 101.3 FPS. The remainder of this work is in the following: Section II reviews related works about weather recognition and multi-label image recognition. Section III describes the proposed approach in detail. Section IV describes the specific implementation details of the experiment and shows the results. Section V and Section IV discuss and conclude this work, respectively.
+2. Related work This section presents an extensive review of the existing
+approaches for weather condition recognition and multi-label classification tasks. The discussion is structured into three main parts: weather recognition with hand-crafted features, weather recognition with CNNs, and multi-label classification tasks. A comprehensive summary of the research endeavors on weather condition recognition is tabulated in Table 1.
+2.1. Weather recognition with hand-crafted features Real-time automatic weather recognition is crucial for ensur-
+ing safe driving. Several research studies (Kurihata et al., 2005; Roser and Moosmann, 2008; Yan et al., 2009; Kurihata et al., 2006) have employed vehicle cameras to capture images and recognize weather conditions. Raindrop features were extracted from in-vehicle photos to identify rainy weather in works by Kurihara et al. (Kurihata et al., 2005, 2006) and Yan et al. (Yan et al., 2009), using the template matching method. Additionally, global features such as HSV color histograms, gradient magnitude histograms, and road information have been used to distinguish between sunny and cloudy days and haze. Roser et al. (Roser and Moosmann, 2008) extracted feature histograms from various regions of the original image and averaged them into multiple fractions to characterize outside rainfall. Pavlic et al. (Pavlic et al., 2013) processed the power spectrum of the image using a Gabor filter to detect haze, while Brone et al. (Bronte et al., 2009) employed the Sobel filter to detect haze based on image edges.
+
+Lu et al. (Lu et al., 2014) employed hand-crafted local features, such as sky, reflections, and shadows, to recognize weather conditions. On the other hand, Li et al. (Li et al., 2014) combined global features with the Support Vector Machine (SVM) and decision trees to recognize weather conditions. Song et al. (Song et al., 2014) utilized inflection point information, image noise, edge gradient energy, power spectrum slope, and contrast saturation to assess weather conditions in outdoor images synthetically. Zhang et al. (Zhang et al., 2016) utilized global and local features to identify the weather conditions of a single image.
+Although these studies have developed various hand-crafted features for weather recognition and demonstrated promising results in specific applications, they suffer from certain limitations. Specifically, these approaches have been developed for specific conditions or perspectives, resulting in limited generality.
+2.2. Weather recognition with CNNs
+CNN have exhibited exceptional performance in a range of computer vision tasks, including image classification, target detection, and semantic segmentation. Among the most notable CNN architectures are ResNet (He et al., 2016), VGGNet (Simonyan and Zisserman, 2014), and AlexNet (Krizhevsky et al., 2012). In recent years, there has been an increase in the use of CNNs for weather recognition tasks. Elhoseiny et al. (Elhoseiny et al., 2015) used a fine-tuned AlexNet model to recognize dual weather conditions based on the dataset presented by Lu et al. (Lu et al., 2014). Shi et al. (Shi et al., 2018) used the VGG model to extract image foreground features for fourweather classification. Lin et al. (Lin et al., 2017) proposed a CNN-based weather recognition framework, RSCM, for multimine weather recognition. Lu et al. (Lu et al., 2014) combined hand-crafted weather features with a CNN model for weather classification.
+However, these methods only considered the weather recognition task as a simple binary-label classification problem, ignoring the correlations among different weather conditions. As discussed in (Lu et al., 2014; Zhao et al., 2018), weather phenomena are complex and interdependent, and different weather conditions may co-occur. Li et al. (Li et al., 2017) used weather cues to assist semantic segmentation, providing a framework for describing multiple weather situations. However, this approach relies on manageable cues for humans and does not address the issue of partial weather information loss.
+To address these shortcomings, Zhao et al. (Zhao et al., 2018) proposed a CNN-RNN architecture that recognizes various weather conditions by considering the weather recognition task as a multi-label classification problem. However, the RNN model used a predefined order for predicting weather conditions, limiting its flexibility. In addition, some studies use expansion of the convolution module (Yu et al., 2020; Xiao et al., 2021; Mittal and Sangwan, 2023) or more flexible ways of normalizing networks (Roy and Bhowmik, 2022) to identify road weather conditions.
+
+3
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+Research Kurihata et al.(Kurihata et al., 2005) Roset et al.(Roser and Moosmann, 2008)
+Yan et al.(Yan et al., 2009) Kurihata et al.(Kurihata et al., 2006)
+Pavlic et al. (Pavlic et al., 2013) Bronte et al. (Bronte et al., 2009)
+Lu et al. (Lu et al., 2014) Li et al. (Li et al., 2014) Song et al. (Song et al., 2014) Zhang et al. (Zhang et al., 2016) Elhoseiny et al. (Elhoseiny et al., 2015) Shi et al. (Shi et al., 2018) Lin et al. (Lin et al., 2017) Zhao et al. (Zhao et al., 2018) Li et al. (Li et al., 2017) Yu et al.(Yu et al., 2020) Xiao et al.(Xiao et al., 2021) Tian et al. (Tian et al., 2021) Roy et al.(Roy and Bhowmik, 2022) Garcea et al.(Garcea et al., 2022) Samo et al. (Samo et al., 2023) Mittal et al. (Mittal and Sangwan, 2023)
+
+Table 1: Partial summary of research on image-based weather condition recognition.
+
+Approach
+
+Years
+
+Label
+
+Template matching SVM based on feature vectors Based on image features using Adaboost algorithm
+Feature matching Based spectral features using linear classifier
+Based on visibility distance estimation Based on weather cues using collaborative learning
+Building decision trees and SVM Extract image’s feature
+Based on multi-category specific dictionary learning and multi-core learning Using CNN
+Use Mask R-CNN Using Region Selection and Concurrency Model
+Combining CNN and RNN Classify weather and segmented weather cue using CNN global similarity and local salience modules-based global-similarity local-salience network
+VGG16 based on dilated convolution Classify weather via spiking neural network Adversarial Weather Degraded Multi-class scenes Classification Network Self-supervised and semi-supervised learning
+Classify weather via Vision Transformer Classify weather based on pre-trained CNN
+
+2005 2006 2009 2006 2013 2009 2014 2014 2013 2016 2015 2018 2017 2018 2017 2020 2021 2021 2022 2022 2023 2023
+
+Rainy Rainy Rainy, Sunny Rainy Foggy Foggy Sunny and cloudy Clear, Fog, Overcast, and Rain Sunny, Snowy, Fog, Rain Sunny, Rainy, Snowy, Haze Cloudy, Sunny Sunny, Foggy, Rainy, and Snowy sunny, cloudy, rainy, snowy, haze, and thunder Sunny, Cloudy, Rainy, Snowy, Moist, and Rainy Sky (blue, gray), Shadow, and Clouds (white, dark) Fog50, Fog200, Fog500, RoadIce, RoadSnow, RoadWet and Sunny hail, rainbow, snow, rain, lightning, dew, sandstorm, frost, fog/smog, rime, and glaze cloudy, rainy, sunny and sunrise Foggy, Haze, Dust, Rain, and Poor illumination rainy sunny, cloudy, foggy, rainy, wet, clear, snowy and icy cloudy, rainy, shine, sunrise
+
+Framework
+PCA+Eigendrops SVM
+Real Adaboot PCA+Eigendrops
+/ / / Tree, SVM KNN / CNN Mask R-CNN RSCM CNN-RNN CNN CNN CNN SNN Pruning-CNN LSTM Transformer CNN
+
+2.3. Multi-label classification task Multi-Label Classification represents a extensively re-
+searched challenge within the domain of computer vision. To attain optimal prediction performance, models must explicitly account for label dependencies. Recognizing multiple labels in an image presents a formidable challenge; however, recent research has shown considerable advancements in this field. The existing literature on Multi-Label Classification can be categorized into four main groups: multi-classifier fusion, conditional label inference, shared embedded space, and label graphics modeling. Each of these categories will be concisely introduced in the following.
+Multi-classifier fusion. some approaches used deep CNNs to implement multi-label classification by building a single classifier for each category and fusing the results (Wang and Li, 2020; Al-Haija et al., 2022; Kukreja et al., 2022). Such methods ignored the dependency among various labels and were not competitive in the current multi-label classification tasks.
+
+In summary, weather recognition based on hand-crafted features has limited applicability to specific weather situations. This kind of approach is constrained by the production of weather features, making it challenging to achieve acceptable performance in complex environments. In contrast, CNN-based weather recognition faces the challenge of constructing cooccurrence dependencies for multiple weather situations. To address this challenge, some multi-label classification methods have been proposed, which can partially alleviate the difficulty of building weather co-occurrence dependencies. However, these methods suffer from reduced effectiveness and efficiency.
+To address these limitations, we introduce a novel method that harnesses the capabilities of both CNN and Transformer models. The proposed approach neither necessitates prior knowledge nor predefined label dependencies. It inherently learns feature-label and label-label relationships. Through the fusion of CNN and Transformer strengths, our method achieves remarkable performance in weather recognition tasks, particularly in complex environments
+
+Conditional label inference. Autoregressive models (Dembczynski et al., 2010; Read et al., 2011; Nam et al., 2017; Wang et al., 2016) used the chain rule to estimate the actual joint probability of the output labels given the inputs. Similar with the multi-classifier fusion, the drawback of such methods is that they predict one label at a time and need to provide a preassembled set of labels, whose execution efficiency was limited. Shared embedded space. This class of methods uses input features and output labels projected onto a shared latent embedding space to accomplish multi-label classification(Yeh et al., 2017; Bhatia et al., 2015). However, these methods are still limited by pre-defined complex relationships. Label graphics modeling. Modeling label relevance through graphs has proven to be an effective approach. Several recent studies have used Graph Neural Networks (GNN) to model label dependence and obtained good results (Chen et al., 2019b; Lanchantin et al., 2019; Chen et al., 2019a, 2020). However, all those methods need pre-defined label co-occurrence statistics to form a knowledge-based graph.
+
+3. MASK-CNN-Transformer (MASK-CT)
+The proposed architecture of MASK-CT is depicted in Figure 2, and it consists of several components: MASK-I, a Weather Feature Extractor (WFE), MASK-II, feature discovery, and a Transformer Encoder Array.
+MASK-I is utilized for data augmentation, wherein outdoor images of different scales are divided into batches of subgraphs and are then fed into the network. These subgraphs are randomly masked with a constant-sized frame to increase the dataset’s variability. The WFE extracts weather features from the images, while MASK-II randomly masks some labels corresponding to the given outdoor images with a certain probability.
+Subsequently, the embeddings of the masked labels are concatenated with the feature map embeddings extracted by the WFE. The output embeddings from the feature discovery component are then fed into the Transformer Encoder Array. The Transformer Encoder Array implicitly models weather featureweather label and weather label-weather label dependencies by
+
+4
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+means of its internal multi-headed attention module of feature associations, without providing predefined feature associations.
+The final output of MASK-CT is the probabilities corresponding to the individual weather labels of the input image. In this way, the architecture comprehensively models the cooccurrence dependencies between weather conditions and the relationships between weather features. Furthermore, it also models the complex relationships between different weather features, as each feature region of a single image is linked.
+
+3.1. Mask-I A practical and straightforward approach named MASK-I
+was proposed, as one of the MASK components, to improve the generalization performance and weather condition recognition accuracy of the model under different visibility, light intensity, etc. The implementation of MASK-I is shown in Fig. 3. The image from the camera was cropped to different scales. Given the number of cropped images as L, 0.25L images were randomly selected to adjust the brightness (e.g., brightness, contrast, saturation, and hue), the process can be formulated as Eq.(1) to Eq.(4). First, the contrast of the image is adjusted according to the set contrast increment β:
+
+Ir′gb
+
+=
+
+Irgb
+
++
+
+(Irgb
+
+− T) Imax
+
+∗
+
+β ,
+
+(1)
+
+where image
+
+IbregfboarnedanIr′dgbarfeteprrebseeinntgs
+
+the R, G, and B components of the adjusted for contrast, respectively,
+
+and T is the given adjustment threshold. The light of the image
+
+L can be obtained according to the RGB space:
+
+L
+
+=
+
+1 2
+
+∗
+
+[Max(Ir′gb)
+
++
+
+Min(Ir′gb)],
+
+(2)
+
+where the minimum
+
+Mvaaluxe(sIr′ogbf)Ra,nGd ,MBinv(aIlr′ugeb)s
+
+represents the maximum and in RGB space. The adjusted
+
+image light intensity L′ can be obtained from:
+
+L′ = LAve. + (L − LAve.) ∗ (α + 1),
+
+(3)
+
+where LAve. is the average light intensity of image, α is the adjustment range. The image saturation S can be obtain from:
+
+S = 
+
+M a x(Ir′gb )− M in(Ir′gb ) MMaaxx((IIr′r′ggbb))+−MMiinn((IIr′r′ggbb) 2−( M a x(Ir′gb )+ M in(Ir′gb ))
+
+if L′ ≤ 0.5 if L′ > 0.5
+
+(4)
+
+S′
+
+=
+
+Max(Ir′gb) − Max(Ir′gb) +
+
+Min(Ir′gb) Min(Ir′gb)
+
+∗ L′
+
++
+
+(1
+
+− L′) ∗ Max(Ir′gb) − Min(Ir′gb) 2 − [Max(Ir′gb) + Min(Ir′gb)]
+
+.
+
+(5)
+
+As a result of the above, the image’s saturation changes so that the hue of the image changes and the lighting adjustment in Mask-I was completed.
+These images were then subjected to adaptive masking based on selecting features with significant differences (e.g., clouds and blue sky) for random masking in their respective regions. The principle of adaptive masking is as follows: given a square
+
+box of size D × D, advance on the image in steps = D/2. First, the average intensity of the region was calculated, and the regions with more significant intensity than the average value will be masked by the black square box with the side length of D/2.
+
+3.2. Weather feature extractor (WFE) The initial six layers of ResNet served as the Weather Fea-
+ture Extractor (WFE) responsible for extracting weather-related features from outdoor images. Considering an input image size of h × w × d and a feature map size of h′ × w′ × k after WFE, we perform feature embedding for these maps. This facilitates the Transformer encoder array in comprehending the correlation between specific weather cues and corresponding labels. The feature map embedding size is denoted as (h′ × w′, k), representing the subregion of the patch mapped back to the original image space. Refer to Fig. 4 for visual illustration.
+
+3.3. Mask-II The introduction of MASK-II aims to enhance the model’s
+flexibility in establishing inter-label connections. This approach involves masking certain labels during training, thereby encouraging the model to utilize the remaining weather labels to infer the masked ones. Figure 5 illustrates the implementation of MASK-II, wherein N = 5, and three out of the five weather labels (rainy, foggy, and snowy) were randomly selected and marked as ”Masked.” Meanwhile, the remaining labels (cloudy and sunny) were regarded as ”Known,” with a probability of one for cloudy and zero for clear. These ”known” weather labels were further categorized as ”known to happen” and ”known not to happen.” Subsequently, the state embedding of each label was obtained by summing the embedding with its corresponding state embedding, which was then utilized as input to the transformer encoder array. The mathematical expression for Mask-II can be seen in Eq. (6).
+
+LSi = Li + Si,
+
+(6)
+
+where LS denotes the label state embedding that was as input to transformer encoder array, L denotes the weather label, and S takes on the one of three possible states: Masked, Known to happen, and Known not to happen.
+
+3.4. Transformer encoder array The Transformer encoder array primarily comprises a multi-
+headed self-attention module, aimed at capturing features and their interrelationships regarding weather conditions. Additionally, it includes a forward feedback network responsible for further encoding and learning processes. The structure of the Transformer Encoder we used is shown in Fig. 6. Given that the input Transformer Encoder embedding is H = {F1, . . . , FH×W , FD, LS1, . . . , LSi}, where FD is Feature Discovery, which embeds the feature embedding extracted by CNN and the label state array into convolution operation to further explore the relationship between weather features and weather labels, which can be established as Eq.(7). In addition, where the importance of Hi ∈ H, H j ∈ H for each was obtained based on the multi-headed self-attention layer. The attention weights
+
+5
+
+Journal Pre-proof
+
+Pre-proof
+
+Figure 2: Illustration of the proposed MASK-CT architecture for multi-label weather condition recognition, where the label array consists of N labels from the outdoor image, the black dotted box containing Mask-I and Mask-II means that these are just available during training phase.
+
+Weather feature fragments
+
+Weather feature fragments with masks
+
+Captured by Camare: Original
+Multi-scale segmentation Random light adjustment
+
+...... Adaptive Masking
+
+......
+
+Weather Feature Extractor
+
+k Journal ......
+
+Light levels were adjusted
+Figure 3: Implementation process of MASK-I. The original image was randomly cropped to get an image array called weather feature fragment, where the green dashed box is the feature fragment after the light level was adjusted. Note that one of the weather feature fragments with masks was randomly selected when input to the weather feature extractor of the proposed model.
+
+Feature Map (Extracted by WFE)
+
+Feature embeddings
+
+FD = Embedding(F) ⊗ Embedding(LS),
+
+(7)
+
+h’
+
+h’×w’
+
+Atti,j = softmax Q√KdkT ,
+
+(8)
+
+w’ embedding width: k
+
+M
+
+Hi = Atti, jVh j,
+
+(9)
+
+i=1
+
+Figure 4: Shape change of weather features extracted by WFE before input to Transformer Encoder.
+
+between Hi, H j named Atti, j can be formulated as Eq.(8). After
+
+computing the attention weights Atti, j for all Hi, H j pairs, we
+
+used the weighted sum to change expressed as Eq.(9) and Eq.(10).
+
+each
+
+Hi
+
+to
+
+H′i .
+
+They
+
+can be
+
+H′i = ReLU HiWr + b1 Wo + b2,
+
+(10)
+
+where Q is the Query that can be expressed as Wq · Hi, K denotes the Key that can be formulated as Wk · H j, V denotes the Value that can be formulated as Wv · H j. In addition, the Wq, Wk, Wv, Wr, and Wo is represents the Query weight ma-
+
+trix, Key weight matrix, Value weight matrix, and two trans-
+
+formation metrics, respectively, the b1 and b2 are bias vector
+
+6
+
+Journal Pre-proof
+
+ScaledDot-Producte Attention -proof
+
+N = 5
+
+Rainy Cloudy Foggy Suuny Snowy
+
+Caption: The weather is rainy with cloudy and foggy
+
+Rainy Rainy
+
+Cloudy Cloudy
+
+Foggy Non-Sunny Non-Snowy Random Mask
+Foggy Non-Sunny Non-Snowy
+
+Prior knowledge: P (Cloudy) = 1, P (Sunny) = 0 The label is masked
+
+Label
+
+State
+
+Label State
+
+Rainy Cloudy Foggy
+
++
+
+=
+
++ = Known to happen
+
+None Cloudy + Known
+
++
+
+=
+
+None
+
+Non-Sunny
+
++ = Known not to happen
+
+Cloudy + Known
+
++ Non-Snowy
+
+=
+
+None
+
+Figure 5: Illustration of the implemention of MASK-II.
+
+(a)
+Transformer Encoder
+
+(b)
+
+Encoder
+
+(d)
+
+Add & Norm
+
+Multi-Head Attention Concat
+
+Encoder 4 Encoder 3 Encoder 2 Encoder 1
+
+FFN
+
+P
+
+Feed Forward Add & Norm
+
+(c)
+
+Feed Forward Network
+
+Dropout
+
+Activation function
+......
+
+Feed Forward Add & Norm Multi-Head Attention
+Input Embedding
+
+Value
+
+Query
+
+Key
+
+Linear Journal P Layersr
+
+Figure 6: The architecture of Transformer Encoder. (a) Overall architecture. (b) A diagram of the Encoder’s internal construction consists of a multi-headed attention module and two feed-forward networks. (c) The feed-forward network architecture in Encoder contains 2048 neural, an activation layer, and a dropout module. (d) The construction of multi-head attention in Encoder, which consists of a linear layer, Scaled Dot-Product Attention, notes that four heads were used in our work.
+
+of Wr, and Wo. The proposed Transformer Encoder contains 4. Experiment
+
+four encoder layers inside. The above update process can be
+
+repeated from layer to layer, and the updated H′i was fed to the next encoder to continue repeating the above steps. Moreover,
+
+This section describes the experimental setup, dataset, and the results of the conducted experiments. It involves evaluat-
+
+the obtained weights were not shared between layers.
+
+ing the proposed MASK-CT on two publicly available weather
+
+The input H was transformed into H′ = F′1, . . . , F′H×W , FD′, LS′1, . . . , LS′i after encoding by Transformer Encoder. Transformer Encoder has modeled the dependencies between weather features and labels and labellabel dependencies. An independent feed-forward network
+
+recognition datasets and a self-built dataset tailored to test the model’s recognition ability in dynamic scenes. Additionally, we present the results of ablation experiments on the proposed MASK-CT, where the MASK component is excluded, using the same two publicly available weather recognition datasets.
+
+(FFN) was used to complete the weather condition classifica-
+
+tion at the end of the Transformer Encoder. This FFN contains only a single linear layer, and its classification results P can be formulated into Eq.(11) and Eq.(12).
+
+4.1. Experimental settings All models and algorithms in this work are built on the Py-
+torch (Paszke et al., 2019). ResNet152, pre-trained by Ima-
+
+P = FFN LS′ = S igmoid Wc · LS′ + b ,
+
+(11)
+
+geNet, was used as the CNN backbone in the MASK-CT to speed up the convergence of the model. Its output layer was
+
+S igmoid(x)
+
+=
+
+1
+
+1 + e−x .
+
+replaced with a multi-label classification frame suitable for this (12) task. The Transformer encoder array was trained from scratch
+
+7
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+based on the CNN backbone’s output (feature map), feature discovery’s output, and the label state array. During training, D in MASK-I was set to 18, and the MASK-II was randomized so that 25 % labels were masked. The Transformer encoder array takes an Adam optimizer with first and second momentum of 0.9 and 0.999, respectively, to minimize the loss function. The loss function of the network can be built as Eq. (14).
+
+L(x,
+
+y)
+
+=
+
+−
+
+1 C
+
+∗
+
+i
+
+y[i] ∗ log (1 + exp(−x[i]))−1
+
+(13)
+
++(1 − y[i]) ∗ log
+
+exp(−x[i]) (1 + exp(−x[i]))
+
+,
+
+(14)
+
+where x and y denotes the ground truth and models’ output, respectively.
+In addition, an exit operation with a probability of 0.35 was applied after each fully connected layer to avoid overfitting. For the integrated training of MASK-CT, the initial learning rate was set to 1e−5, and a strategy of decreasing the learning rate when the metrics stopped improving was used. Before MASKCT was trained, each image in the dataset was resized to 384 × 384, and random noise was used for dataset augmentation. During training, each mini-batch contains 32 randomly scrambled images.
+
+has at least one weather label. An example illustration of the dataset is shown in Figure 8.
+Real-Time weather condition recongintion test dataset. The weather condition recognition dataset described above consists of individual photos captured from diverse locations and angles, depicting varying scenes and lighting conditions. However, the weather conditions represented in these datasets are discrete, which contrasts with the continuous and dynamic nature of real-world weather conditions. As a result, an effective weather recognition model should demonstrate proficiency in recognizing datasets with discrete weather conditions and adapt to real-world scenes, commonly referred to as dynamic scene recognition. Accordingly, a novel test dataset has been curated to assess the recognition capability of the proposed model in real-world scenarios, including its processing speed.
+The test dataset comprises of three video clips captured in the real world and is divided into three subsets, namely RealTime-I, Real-Time-II, and Real-Time-III. These subsets were cropped frame-by-frame at a frame rate of 30 FPS. Additionally, each of these photos was comprehensively marked by a team of five markers. The elemental composition of the three subsets is illustrated in Figure 9, and the structure of the test dataset is presented in Table 2.
+
+4.2. Data Two available datasets used in this work are the transient at-
+tribute dataset and the multi-label weather classification dataset. A detailed description of them is given below. In addition, a self-built dataset for validating the model’s ability to recognize weather in real time under dynamic scenarios is presented and described below.
+
+Table 2: Composition of the real-time weather condition recognition test dataset and its details
+Real-time weather condition recognition dataset
+
+Subsets Scale
+Image size
+
+Real-Time-I 2861 images
+640×363
+
+Real-Time-II 3426 images 1280×720
+
+Real-Time-III 1808 images 1920×1080
+
+Transient attribute dataset. The dataset used in this study was originally sourced from the transient attribute dataset (Laffont et al., 2014), and was adapted for use in outdoor scene comprehension and editing. This diverse dataset comprises of images captured predominantly in outdoor settings, such as cities, towns, mountains, and lakes, with varying scales and perspectives, thus providing cross-scene diversity. To facilitate this study, the dataset was re-annotated, with all labels apart from ’sunny’, ’cloudy’, ’foggy’, ’rainy’, ’snowy’, and ’moist’ being removed. In the original dataset, labels were annotated with intensities, but for this study, labels with intensities greater than or equal to 0.5 were annotated as 1, while those below were annotated as 0, for ease of training. It is worth noting that some images in the dataset have a very low or even non-existent attribute intensity, particularly those captured during darker light intensities like dawn, dusk, and night. The resultant dataset contains 8571 images across 7 different weather classes. Fig. 7 illustrates an example of the dataset. Multi-label weather dataset. The dataset is from Zhao et al. (Zhao et al., 2018) and contains 10,000 images covering five common weather conditions in daily life such as sunny, cloudy, foggy, rainy, snowy, and including urban, suburban, and rural scenes. Each image has a different scale and perspective and
+
+4.3. Evaluation metrics and baselines The precision and recall of each weather label were selected
+as evaluation metrics. The results were first classified into the true positive (TP), true negative (TN), false positive (FP), and false negative (FN) according to the classification, as shown in Table 3. Then, the average class precision (CP) and the average class recall (CR), which are the average of each class precision and recall, are calculated based on the above metrics, as in Eq. (14) - (17). In addition, the overall precision (OP) and overall recall (OR), which measure the actual prediction of all images in all weather classes, are also calculated, as in Eq. (18) - (20). Finally, class F1 (CF1) and overall F1 (OF1), the harmonic means of precision and recall, were formulated as Eq. (18) and Eq. (22).
+
+Table 3: Confusion matrix used to illustrate the TP, TN, FP, and FN.
+Ground Truth Prediction
+
+10
+
+1
+
+TP FN
+
+0
+
+FP TN
+
+8
+
+Journal Pre-proof
+
+Sunny Cloudy Foggy
+Snowy Cloudy Foggy Moist
+
+Cloudy Moist Snowy
+Cloudy
+
+Cloudy Rainy Moist
+
+Moist Rainy Foggy Moist
+
+Cloudy Sunny
+
+Snowy Sunny Cloudy Mosit
+
+Cloudy Foggy Moist
+Snowy Cloudy Moist
+
+Journal Pre-proof
+
+Figure 7: Example illustration of the transient attribute dataset used in this work. The weather labels belonging to each image are realistically labeled on each image, where the red label indicates the weather level with the maximum intensity.
+
+Recall
+
+=
+
+T
+
+TP P+F
+
+N
+
+,
+
+(15)
+
+Precision
+
+=
+
+TP TP + FP,
+
+(16)
+
+CR =
+
+N n=1
+
+K n=1
+
+Recall
+
+N·K
+
+,
+
+(17)
+
+CP =
+
+N n=1
+
+K n=1
+N·
+
+Precision K
+
+,
+
+(18)
+
+OP =
+
+N n=1
+
+K i=1
+
+f
+
+pn,i, p˜n,i
+
+N·K
+
+,
+
+(19)
+
+OR =
+
+N n=1
+
+K i=1
+
+f
+
+pn,i, p˜n,i
+
+N n=1
+
+K i=1
+
+pn,i
+
+,
+
+(20)
+
+where N is the number of samples in the test dataset, K denotes
+
+the number of weather classes, pn,i and p˜n,i denotes the actual label and predicted label of the nth sample on the ith weather
+
+class in single image, respectively. The indicator function f (·)
+
+is defined as Eq.(20).
+
+f (p, p˜) =
+
+1, p = p˜ 0, otherwise
+
+(21)
+
+CF1
+
+=
+
+2 · CR CR +
+
+· CP CP
+
+,
+
+(22)
+
+OF1
+
+=
+
+2 · OR OR +
+
+· OP OP
+
+.
+
+(23)
+
+AlexNet (Krizhevsky et al., 2012), VGGnet (Simonyan and Zis-
+
+serman, 2014), and ResNet (He et al., 2016), pre-trained by
+
+ImageNet, were chosen as benchmark models for comparison.
+
+The outputs of their classifiers were all changed to the class cor-
+
+responding to the dataset (transient attribute dataset: 7; multi-
+
+label weather dataset: 5). CNN-RNN class models (Zhao et al.,
+
+2018), such as CNN-LSTM, CNN-ConvLSTM, and CNN-Att-
+
+ConvLSTM with an attention mechanism, were also selected.
+
+In addition, the complete graph convolutional neural network
+
+(Xie et al., 2021) with attention (GCN-A) was selected. Some popular Transformer-based image recognition like Swin Transformer (Liu et al., 2021), Twins Transformer (Chu et al., 2021), and Cross Vision Transformer (Cross ViT) (Chen et al., 2021) were selected as baselines.
+Considering the fact that the proposed MASK mechanism is specifically tailored for Transformer-based models due to the masked feature and real labels are embedded to Transformer Encoder, we demonstrate the effectiveness and necessity of the proposed MASK strategy in these Transformer-based models, the -CT means that the model carry the MASK strategy. Note that these experiments are follow the same setup of MASK-CT.
+4.4. Results on the transient attributes dataset The transient attribute dataset was partitioned into three sub-
+sets - training, validation, and test - without any overlapping instances. The subsets were split in the proportion of 70%, 10%, and 20%, respectively. The experiment results for the transient attribute dataset are reported in Table 4. Based on the combined results for CP, CR, CF1, OP, OR, and OF1, the proposed MASK-CT model outperforms other models and achieves stateof-the-art performance on the dataset. Notably, the comparison between MASK-CT and CT (MASK-CT without MASK) highlights a significant gap in performance, with the latter displaying an average decrease of 5.3% compared to MASKCT due to the lack of the MASK strategy. In addition, the performance of Transformer-based baseline with MASK strategy, such as Swin Transformer-MASK, Twins TransformerMASK and Cross ViT-MASK are poorer relative to our proposed MASK-CT, but outperform their original form. These indicate that: (1) the effectiveness and superiority of our proposed MASK-CT model for the multi-class weather recognition in the transient attribute dataset is validated; (2) the effectiveness and necessity of the MASK strategy is further demonstrated. Furthermore, we find that recognition of rain is more challenging than other weather conditions and requires pronounced nearfield features. However, the photos in the transient attribute dataset predominantly feature far-field views.
+
+9
+
+Journal Pre-proof
+
+Foggy Snowy Cloudy
+
+Cloudy
+
+Sunny
+
+Sunny
+
+Sunny Cloudy
+
+Cloudy
+
+Cloudy
+
+Sunny Cloudy
+
+Cloudy Foggy
+
+Snowy Cloudy
+
+Journal Pre-proof
+
+Cloudy Rainy
+
+Cloudy Foggy Rainy
+
+Cloudy Foggy Rainy
+
+Cloudy Rainy
+
+Foggy Cloudy
+
+Figure 8: Example illustration of the multi-label weather dataset used in this work, where a red label means that the image has only one weather label, while a black label means that the image has at least one weather label (multiple weather conditions).
+
+Table 4: Experimental result on transient attributes dataset (Per-class result: precision/recall), the Bold indicates the best performance.
+
+Model
+
+Sunny
+
+Cloudy
+
+Foggy
+
+Snowy
+
+Moist
+
+Rainy
+
+Other
+
+CP
+
+CR
+
+CF1
+
+OP
+
+OR OF1
+
+AlexNet (Krizhevsky et al., 2012) VGGNet (Simonyan and Zisserman, 2014)
+ResNet (He et al., 2016) CNN-LSTM (Zhao et al., 2018) CNN-ConvLSTM (Zhao et al., 2018) CNN-Att-ConvLSTM (Zhao et al., 2018)
+GCN-A (Xie et al., 2021) Swin Transformer (Liu et al., 2021)
+Swin Transformer-MASK Twins Transformer (Chu et al., 2021)
+Twins Transformer-MASK Cross ViT (Chen et al., 2021)
+Cross ViT-MASK CT (MASK-CT without MASK)
+MASK-CT (Ours)
+
+0.756/0.892 0.777/0.836 0.805/0.832 0.819/0.754 0.868/0.777 0.857/0.785 0.853/0.816 0.823/0.811 0.838/0.779 0.825/0.770 0.851/0.799 0.814/0.760 0.856/0.804 0.819/0.772 0.872/0.809
+
+0.802/0.868 0.847/0.803 0.864/0.834 0.883/0.555 0.876/0.813 0.851/0.852 0.859/0.858 0.732/0.729 0.831/0.835 0.837/0.840 0.860/0.865 0.828/0.832 0.868/0.872 0.829/0.833 0.866/0.870
+
+0.688/0.688 0.767/0.717 0.756/0.727 0.777/0.529 0.789/0.703 0.837/0.682 0.825/0.735 0.856/0.832 0.799/0.754 0.762/0.745 0.818/0.779 0.755/0.741 0.822/0.784 0.758/0.749 0.833/0.792
+
+0.948/0.803 0.848/0.920 0.919/0.943 0.654/0.205 0.938/0.916 0.952/0.896 0.94/0.908 0.912/0.894 0.876/0.905 0.840/0.783 0.898/0.919 0.830/0.775 0.907/0.926 0.845/0.789 0.914/0.932
+
+0.840/0.903 0.873/0.899 0.936/0.897 0.986/0.942 0.867/0.929 0.913/0.911 0.911/0.893 0.887/0.878 0.893/0.895 0.885/0.875 0.903/0.905 0.880/0.870 0.914/0.916 0.889/0.880 0.929/0.93
+
+0.625/0.392 0.887/0.931 0.675/0.593 0.271/0.373 0.653/0.627 0.656/0.454 0.763/0.651 0.742/0.723 0.749/0.768 0.765/0.800 0.779/0.802 0.750/0.790 0.795/0.818 0.755/0.796 0.788/0.810
+
+0.789/0.224 0.622/0.552 0.675/0.593 0.000/0.000 0.548/0.552 0.585/0.628 0.763/0.651 0.721/0.709 0.714/0.739 0.735/0.755 0.750/0.769 0.725/0.745 0.768/0.788 0.732/0.749 0.763/0.781
+
+0.7783 0.8022 0.7945 0.6271 0.7913 0.8091 0.8445 0.8171 0.8194 0.8092 0.8415 0.7997 0.8377 0.8038 0.8521
+
+0.6815 0.7369 0.7808 0.3653 0.7596 0.7428 0.7754 0.8494 0.8137 0.8013 0.8350 0.7921 0.8312 0.7954 0.8462
+
+0.7267 0.7682 0.7876 0.4617 0.7751 0.776 0.8084 0.8325 0.8165 0.8052 0.8382 0.7959 0.8344 0.7996 0.8491
+
+0.8967 0.9043 0.8519 0.7991 0.912 0.9167 0.873 0.7654 0.8598 0.8487 0.8905 0.8435 0.8874 0.8531 0.8961
+
+0.08 0.8155 0.8341 0.3814 0.8203 0.8231 0.8342 0.8991 0.8706 0.8600 0.9004 0.8550 0.8975 0.8634 0.9069
+
+0.8455 0.8576 0.8429 0.5163 0.8637 0.8678 0.8532 0.8280 0.8659 0.8546 0.8958 0.8492 0.8929 0.8579 0.9012
+
+4.5. Results on the multi-label weather classification dataset The multi-label weather classification dataset (Zhao et al.,
+2018) was decomposed into training, validation, and test datasets in the ratio of 70 %, 10 %, and 20 % without any intersection between the individual datasets. The some recognition results for the multi-label weather classification dataset are shown in Figure 10. Furthermore, a comprehensive quantitative analysis for our proposed and baselines using the evaluation metrics mentioned above presented the experimental results is shown in Table 5. Combining the results of CP, CR, CF, OP, OR, and OF1, the proposed MASK-CT showed the SOTA performance in most weather conditions, followed by Cross ViT-Mask, while Swin Transformer and Twins Transformer showed comparable performance to CT (MASK-CT without MASK), but slightly lower than our MASK-CT and Cross ViT-MASK. In addition, the proposed model degrades the performance by an average of 5.3 % after removing MASK, which validates the effective-
+
+ness and necessity of the proposed MASK strategy and likewise shows that the proposed model has excellent performance and achieves state-of-the-art results on both public datasets. The apparent recognition performance decay between Swin Transformer/Twins Transformer/Cross ViT, Swin TransformerMASK/Twins Transformer-MASK/Cross ViT-MASK further demonstrates the effectiveness of the MASK strategy.
+The test results unveiled a remarkable phenomenon where the recognition outcomes deviated from the ground truth but aligned with the actual situation, as depicted in Figure 10. To elaborate, the ground truth was divided into two distinct categories: labels and human judgments. The former represents the labels in the original dataset, while the latter indicates the judgment output of an evaluation team comprising at least five members. Referred to as objectively misleading judgments, this issue arises from erroneous annotations in manually annotated datasets. Nevertheless, our proposed MASK-CT model proficiently identified real-world weather conditions, irrespective of
+
+10
+
+Journal Pre-proof
+
+Real-Time-I
+
+Real-Time-II
+
+Real-Time-III
+
+5. Discussion
+
+Journal Pre-proof
+
+Figure 9: Example of a real-time weather condition recognition test dataset. From left to right, Real-Time-I, Real-Time-II, and Real-time-III. Real-Time-I is a video recorded at an Antarctic research station, mainly divided into five clips with different labels. Real-time-II is a video of rainstorm generation, mainly divided into six clips with different labels. Real-time-III is a video of weather changes between mountain ranges, mainly divided into five clips with different labels. They were all from bilibili that is an online video site.
+the misleading labels, and made accurate predictions.
+4.6. Real-time weather condition recognition The real-time recognition of weather conditions plays a cru-
+cial role in various applications, including transportation, agriculture, and outdoor activities. In this section, we assess the performance of the proposed MASK-CT in recognizing weather conditions in dynamic environments, aiming to evaluate its real-time capabilities and flexibility. To conduct the evaluation, we utilize a well-trained model from a multi-label weather classification dataset. We measure the model’s performance on three independent subsets, namely Real-Time-I, Real-Time-II, and Real-Time-III, without any additional iterations.
+To evaluate the performance comprehensively, we recorded the recognition rate while feeding the Real-Time-I, II, and III subsets into the well-trained model. The test results, as shown in Table 6, indicate that the proposed MASK-CT achieves promising performance in all three test subsets. Furthermore, the proposed model achieves an average recognition rate of 101.3 FPS on the three subsets, which implies that it can recognize real-time weather conditions at a high recognition rate while maintaining good performance. These results demonstrate the practical value of MASK-CT for real-time weather condition recognition, and the promising performance and high recognition rate make it a valuable tool for various applications that require real-time weather condition recognition.
+
+Tables 4 and 5 present the performance of the proposed MASK-CT model on two different datasets: one for transient attribute classification and another for multi-label weather classification. The results of the ablation experiments demonstrate the effectiveness of the proposed MASK strategy in weather recognition. Specifically, Table 5 shows that the proposed model achieves state-of-the-art performance in recognizing weather conditions in dynamic scenes while maintaining promising results.
+The enhanced performance of MASK-CT can be attributed to its capacity in effectively modeling intricate relationships among weather features, weather labels, and their interactions through the application of the Transformer Encoder. The suggested MASK strategy markedly improves the model’s generalization performance by considering variations in lighting and viewpoint, which may affect recognition outcomes. Moreover, the utilization of multi-headed attention mechanisms in the Transformer Encoder allows the model to concentrate on the influence of features on labels, labels on features, and features on other features.
+However, the recognition accuracy of the proposed model for images with low light intensity (e.g., darkness or dusk) may be inadequate. This is a prevalent issue across all models because the visibility of recognizable features in images captured during darkness or dusk is limited. Consequently, establishing comprehensive relationships between features and labels might be challenging for the model.
+In summary, the proposed MASK-CT demonstrates promising results for weather recognition in dynamic scenes. Its strength lies in effectively modeling complex relationships between weather features and labels through the utilization of the Transformer Encoder. Nevertheless, it is important to note that the recognition accuracy might be affected by low light intensity conditions.
+6. Conclusion and Future work In this paper, we proposed the MASK-CNN-Transformer
+(MASK-CT) architecture for weather condition recognition. Our approach involved using a weather feature extractor (WFE) to extract weather features in the form of a feature map, which was then embedded along with a label state array into a Transformer encoder array. This encoder array comprised multiple encoder blocks that modeled relationships between features, labels, and feature-label pairs. To address the impact of illumination and feature regions on recognition performance, we introduced two types of MASK procedures: MASK-I and MASKII. These procedures were used for data augmentation and partial label inference, respectively, and significantly improved the generalization performance of the model. The experimental results on transient attribute datasets and multi-label weather classification datasets demonstrated that the proposed MASK-CT model achieved state-of-the-art results. Additionally, our ablation experiment confirmed the effectiveness and necessity of the proposed MASK strategy. Furthermore, we prepared a test
+
+11
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+Cloudy Rainy
+
+Cloudy Foggy
+
+Cloudy Foggy Snowy
+
+Cloudy Non-Raniy
+
+Ground Truth: Cloudy, Rainy
+Sunny Snowy
+
+Ground Truth: Cloudy, Foggy
+
+Ground Truth: Cloudy, Snowy
+Cloudy Foggy Rainy
+
+Ground Truth: Cloudy, Rainy Cloudy
+
+Cloudy Rainy Ground Truth: Cloudy, Rainy
+Cloudy Foggy Rainy
+
+Ground Truth: Sunny, Snowy
+Cloudy Non-Foggy Rainy
+
+Cloudy Foggy Snowy
+Ground Truth: Cloudy, Foggy, Snowy
+
+Ground Truth: Cloudy, Rainy
+
+Cloudy
+
+Cloudy Rainy
+
+Ground Truth: Cloudy Cloudy
+
+Ground Truth: Cloudy, Foggy, Rainy
+Cloudy Rainy
+
+Ground Truth: Cloudy, Foggy, Rainy
+
+Ground Truth: Cloudy, Rainy
+
+Ground Truth: Cloudy
+
+Ground Truth: Cloudy
+
+Ground Truth: Cloudy, Rainy
+
+Figure 10: Weather recognition results for some images in the test dataset. Ground Truth below the image is based on the annotation of the original dataset, and the red labels in the image represent the incorrectly identified weather labels.
+
+Ground Truth (Label): Sunny Ground Truth (Human judgment): Rainy Recognition results: Rainy
+
+Ground Truth (Label): Cloudy, Foggy Ground Truth (Human judgment): Cloudy, Foggy, Rainy Recognition results: Cloudy, Foggy, Rainy
+
+Ground Truth (Label): Cloudy, Snowy Ground Truth (Human judgment): Cloudy, Rainy Recognition results: Cloudy, Rainy
+
+Ground Truth (Label): Cloudy, Foggy, Rainy Ground Truth (Human judgment): Cloudy, Foggy Recognition results: Cloudy, Foggy
+
+Ground Truth (Label): Snowy Ground Truth (Human judgment): Sunny, Cloudy Recognition results: Sunny, Cloudy
+
+Ground Truth (Label): Sunny Ground Truth (Human judgment): Cloudy Recognition results: Cloudy
+
+Figure 11: Some images with objectively misleading judgments, Ground Truth (Label) is the image label in the original dataset, Ground Truth (Human judgment) is the actual situation obtained by the evaluation team, and Recognition results are the proposed MASK-CT recognition results.
+
+dataset to evaluate the real-time performance of the MASK-CT model, which achieved a detection rate of 101.3 FPS under dynamic scenarios while maintaining acceptable performance.
+Our work serves as a foundational step towards developing
+
+more comprehensive systems that incorporate weather information with other relevant factors for a holistic analysis. The experimental data in this research primarily originates from regular and surveillance cameras. In the context of autonomous
+
+12
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+Table 5: Experimental result on multi-label weather classification dataset, (Per-class result: precision/recall), the Bold indicates the best performance.
+
+Model
+
+Sunny
+
+Cloudy
+
+Foggy
+
+Rainy
+
+Snowy
+
+CP
+
+CR
+
+CF1
+
+OP
+
+OR OF1
+
+AlexNet VGGNet ResNet CNN-LSTM CNN-ConvLSTM CNN-Att-ConvLSTM GCN-A Swin Transformer Twins Transformer Cross ViT Swin Transformer-MASK Twins Transformer-MASK Cross ViT-MASK CT (MASK-CT without MASK) MASK-CT (Ours)
+
+0.84/0.74 0.772/0.851 0.903/0.719 0.843/0.791 0.855/0.78 0.838/0.843 0.881/0.851 0.809/0.741 0.823/0.766 0.816/0.762 0.835/0.770 0.848/0.786 0.853/0.801 0.872/0.864 0.902/0.909
+
+0.896/0.942 0.927/0.915 0.922/0.936 0.897/0.958 0.899/0.953 0.917/0.953 0.933/0.948 0.820/0.824 0.834/0.837 0.830/0.834 0.828/0.831 0.858/0.863 0.865/0.869 0.929/0.927 0.956/0.952
+
+0.735/0.89 0.867/0.728 0.841/0.855
+0.86/0.73 0.798/0.862 0.856/0.861 0.902/0.840 0.759/0.722 0.769/0.752 0.757/0.743 0.794/0.749 0.814/0.775 0.819/0.781 0.866/0.840 0.878/0.890
+
+0.784/0.685 0.814/0.701 0.776/0.882 0.83/0.694 0.843/0.716 0.856/0.758 0.948/0.955 0.848/0.869 0.856/0.799 0.834/0.779 0.872/0.901 0.892/0.913 0.902/0.921 0.862/0.781 0.894/0.888
+
+0.876/0.905 0.887/0.931 0.947/0.938 0.94/0.556 0.926/0.924 0.894/0.938 0.925/0.796 0.870/0.864 0.899/0.889 0.884/0.874 0.889/0.891 0.897/0.899 0.909/0.911 0.910/0.877 0.940/0.950
+
+0.8263 0.8533 0.878 0.8739 0.8643 0.8721 0.9178 0.8032 0.8139 0.8012 0.8163 0.8364 0.8405 0.8878 0.9140
+
+0.8325 0.8252 0.8661 0.7458 0.8472 0.8702 0.8779 0.7958 0.8059 0.7936 0.8106 0.8299 0.8340 0.8578 0.9218
+
+0.8294 0.839 0.872 0.8048 0.8557 0.8705 0.8974 0.7995 0.8098 0.7974 0.8134 0.8331 0.8372 0.8725 0.9178
+
+0.9007 0.9087 0.8876 0.8991 0.9165 0.9263 0.9222 0.8797 0.8533 0.8480 0.8568 0.8868 0.8945 0.8849 0.9419
+
+0.8668 0.8494 0.8861 0.8127 0.8793 0.8946 0.8976 0.8903 0.8646 0.8595 0.8676 0.8967 0.9046 0.8998 0.9069
+
+0.8834 0.878 0.8868 0.8537 0.8975 0.9135 0.9097 0.8844 0.8592 0.8537 0.8629 0.8921 0.8999 0.8923 0.9241
+
+Table 6: Performance of MASK-CT trained on multi-label weather classification dataset on real-time weather condition recognition test dataset
+
+Test dataset CP
+
+CR
+
+CF1
+
+OP
+
+OR OF1 Frames Per Second (FPS)
+
+Real-Time-I Real-Time-II Real-Time-III
+Ave.
+
+0.88 0.825 0.891 0.8653
+
+0.802 0.81 0.859 0.8237
+
+0.8391 0.8174 0.8747 0.8437
+
+0.92 0.87 0.915 0.9017
+
+0.895 0.84 0.932 0.889
+
+0.9073 0.8547 0.9234 0.8951
+
+96 101 107 101.3
+
+driving applications, road and urban surveillance cameras can wirelessly transmit real-time images to a server, on which a pre-trained model proposed in this paper is deployed. This model can rapidly and efficiently analyze and recognize these real-time images, and wirelessly transmit the identified weather conditions to the users, providing the current weather status for the autonomous driving vehicles. We believe that by highlighting the potential applications and future directions of outdoor weather recognition in autonomous driving, we can better emphasize the practical relevance of our work. In future work, we plan to investigate other factors that affect weather conditions and explore ways to optimize our model structure to achieve even higher accuracy and faster recognition of weather conditions.
+Acknowledge This work was supported by the National Natural Sci-
+ence Foundation of China (No.42105145 and 62172458) and the Guangdong Province Natural Science Foundation (No. 2023A1515011438).
+References
+Al-Haija, Q.A., Gharaibeh, M., Odeh, A., 2022. Detection in adverse weather conditions for autonomous vehicles via deep learning. AI 3, 303–317.
+Bhatia, K., Jain, H., Kar, P., Varma, M., Jain, P., 2015. Sparse local embeddings for extreme multi-label classification. Advances in neural information processing systems 28.
+Bronte, S., Bergasa, L.M., Alcantarilla, P.F., 2009. Fog detection system based on computer vision techniques, in: 2009 12th International IEEE conference on intelligent transportation systems, IEEE. pp. 1–6.
+
+Chen, C.F.R., Fan, Q., Panda, R., 2021. Crossvit: Cross-attention multiscale vision transformer for image classification, in: Proceedings of the IEEE/CVF international conference on computer vision, pp. 357–366.
+Chen, S., Long, G., Shen, T., Jiang, J., 2023a. Prompt federated learning for weather forecasting: Toward foundation models on meteorological data. arXiv preprint arXiv:2301.09152 .
+Chen, S., Long, G., Shen, T., Zhou, T., Jiang, J., 2023b. Spatialtemporal prompt learning for federated weather forecasting. arXiv preprint arXiv:2305.14244 .
+Chen, S., Shu, T., Zhao, H., Wan, Q., Huang, J., Li, C., 2022. Dynamic multiscale fusion generative adversarial network for radar image extrapolation. IEEE Transactions on Geoscience and Remote Sensing 60, 1–11.
+Chen, S., Shu, T., Zhao, H., Zhong, G., Chen, X., 2023c. Tempee: Temporal-spatial parallel transformer for radar echo extrapolation beyond auto-regression. arXiv preprint arXiv:2304.14131 .
+Chen, T., Lin, L., Hui, X., Chen, R., Wu, H., 2020. Knowledge-guided multilabel few-shot learning for general image recognition. IEEE Transactions on Pattern Analysis and Machine Intelligence .
+Chen, T., Xu, M., Hui, X., Wu, H., Lin, L., 2019a. Learning semantic-specific graph representation for multi-label image recognition, in: Proceedings of the IEEE/CVF international conference on computer vision, pp. 522–531.
+Chen, Z.M., Wei, X.S., Wang, P., Guo, Y., 2019b. Multi-label image recognition with graph convolutional networks, in: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 5177–5186.
+Chu, X., Tian, Z., Wang, Y., Zhang, B., Ren, H., Wei, X., Xia, H., Shen, C., 2021. Twins: Revisiting the design of spatial attention in vision transformers. Advances in Neural Information Processing Systems 34, 9355–9366.
+Dembczynski, K., Cheng, W., Hu¨llermeier, E., 2010. Bayes optimal multilabel classification via probabilistic classifier chains, in: ICML.
+Elhoseiny, M., Huang, S., Elgammal, A., 2015. Weather classification with deep convolutional neural networks, in: 2015 IEEE International Conference on Image Processing (ICIP), IEEE. pp. 3349–3353.
+Garcea, F., Blanco, G., Croci, A., Lamberti, F., Mamone, R., Ricupero, R., Morra, L., Allamano, P., 2022. Self-supervised and semi-supervised learning for road condition estimation from distributed road-side cameras. Scientific reports 12, 22341.
+He, K., Zhang, X., Ren, S., Sun, J., 2016. Deep residual learning for image recognition, in: Proceedings of the IEEE conference on computer vision and pattern recognition, pp. 770–778.
+
+13
+
+Journal Pre-proof
+
+Journal Pre-proof
+
+Katsura, H., Miura, J., Hild, M., Shirai, Y., 2005. A view-based outdoor navigation using object recognition robust to changes of weather and seasons. Journal of the Robotics Society of Japan 23, 75–83.
+Krizhevsky, A., Sutskever, I., Hinton, G.E., 2012. Imagenet classification with deep convolutional neural networks. Advances in neural information processing systems 25.
+Kukreja, V., Solanki, V., Baliyan, A., Jain, V., 2022. Weathernet: Transfer learning-based weather recognition model, in: 2022 International Conference on Emerging Smart Computing and Informatics (ESCI), IEEE. pp. 1–5.
+Kurihata, H., Takahashi, T., Ide, I., Mekada, Y., Murase, H., Tamatsu, Y., Miyahara, T., 2005. Rainy weather recognition from in-vehicle camera images for driver assistance, in: IEEE Proceedings. Intelligent Vehicles Symposium, 2005., IEEE. pp. 205–210.
+Kurihata, H., Takahashi, T., Mekada, Y., Ide, I., Murase, H., Tamatsu, Y., Miyahara, T., 2006. Raindrop detection from in-vehicle video camera images for rainfall judgment, in: First International Conference on Innovative Computing, Information and Control-Volume I (ICICIC’06), IEEE. pp. 544–547.
+Laffont, P.Y., Ren, Z., Tao, X., Qian, C., Hays, J., 2014. Transient attributes for high-level understanding and editing of outdoor scenes. ACM Transactions on graphics (TOG) 33, 1–11.
+Lanchantin, J., Sekhon, A., Qi, Y., 2019. Neural message passing for multilabel classification, in: Joint European Conference on Machine Learning and Knowledge Discovery in Databases, Springer. pp. 138–163.
+Li, Q., Kong, Y., Xia, S.m., 2014. A method of weather recognition based on outdoor images, in: 2014 International Conference on Computer Vision Theory and Applications (VISAPP), IEEE. pp. 510–516.
+Li, X., Wang, Z., Lu, X., 2017. A multi-task framework for weather recognition, in: Proceedings of the 25th ACM international conference on Multimedia, pp. 1318–1326.
+Lin, D., Lu, C., Huang, H., Jia, J., 2017. Rscm: Region selection and concurrency model for multi-class weather recognition. IEEE Transactions on Image Processing 26, 4154–4167.
+Liu, Z., Lin, Y., Cao, Y., Hu, H., Wei, Y., Zhang, Z., Lin, S., Guo, B., 2021. Swin transformer: Hierarchical vision transformer using shifted windows, in: Proceedings of the IEEE/CVF international conference on computer vision, pp. 10012–10022.
+Lu, C., Lin, D., Jia, J., Tang, C.K., 2014. Two-class weather classification, in: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 3718–3725.
+Mittal, S., Sangwan, O.P., 2023. Classifying weather images using deep neural networks for large scale datasets. International Journal of Advanced Computer Science and Applications 14.
+Nam, J., Loza Menc´ıa, E., Kim, H.J., Fu¨rnkranz, J., 2017. Maximizing subset accuracy with recurrent neural networks in multi-label classification. Advances in neural information processing systems 30.
+Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., Killeen, T., Lin, Z., Gimelshein, N., Antiga, L., et al., 2019. Pytorch: An imperative style, high-performance deep learning library. Advances in neural information processing systems 32.
+Pavlic, M., Rigoll, G., Ilic, S., 2013. Classification of images in fog and fog-free scenes for use in vehicles, in: 2013 IEEE Intelligent Vehicles Symposium (IV), IEEE. pp. 481–486.
+Read, J., Pfahringer, B., Holmes, G., Frank, E., 2011. Classifier chains for multi-label classification. Machine learning 85, 333–359.
+Roser, M., Moosmann, F., 2008. Classification of weather situations on single color images, in: 2008 IEEE Intelligent Vehicles Symposium, IEEE. pp. 798–803.
+Roy, S.D., Bhowmik, M.K., 2022. Awdmc-net: Classification of adversarial weather degraded multiclass scenes using a convolution neural network. Computer Vision and Image Understanding 222, 103498.
+Samo, M., Mafeni Mase, J.M., Figueredo, G., 2023. Deep learning with attention mechanisms for road weather detection. Sensors 23, 798.
+Shi, Y., Li, Y., Liu, J., Liu, X., Murphey, Y.L., 2018. Weather recognition based on edge deterioration and convolutional neural networks, in: 2018 24th International Conference on Pattern Recognition (ICPR), IEEE. pp. 2438–2443.
+Simonyan, K., Zisserman, A., 2014. Very deep convolutional networks for large-scale image recognition. arXiv preprint arXiv:1409.1556 .
+Song, H., Chen, Y., Gao, Y., 2014. Weather condition recognition based on feature extraction and k-nn, in: Foundations and practical applications of cognitive systems and information processing. Springer, pp. 199–210.
+
+Tian, M., Chen, X., Zhang, H., Zhang, P., Cao, K., Wang, R., 2021. Weather classification method based on spiking neural network, in: 2021 International Conference on Digital Society and Intelligent Systems (DSInS), IEEE. pp. 134–137.
+Wang, J., Yang, Y., Mao, J., Huang, Z., Huang, C., Xu, W., 2016. Cnn-rnn: A unified framework for multi-label image classification, in: Proceedings of the IEEE conference on computer vision and pattern recognition, pp. 2285– 2294.
+Wang, Y., Li, Y., 2020. Research on multi-class weather classification algorithm based on multi-model fusion, in: 2020 IEEE 4th Information Technology, Networking, Electronic and Automation Control Conference (ITNEC), IEEE. pp. 2251–2255.
+Xiao, H., Zhang, F., Shen, Z., Wu, K., Zhang, J., 2021. Classification of weather phenomenon from images by using deep convolutional neural network. Earth and Space Science 8, e2020EA001604.
+Xie, K., Wei, Z., Huang, L., Qin, Q., Zhang, W., 2021. Graph convolutional networks with attention for multi-label weather recognition. Neural Computing and Applications 33, 11107–11123.
+Yan, X., Luo, Y., Zheng, X., 2009. Weather recognition based on images captured by vision system in vehicle, in: International Symposium on Neural Networks, Springer. pp. 390–398.
+Yeh, C.K., Wu, W.C., Ko, W.J., Wang, Y.C.F., 2017. Learning deep latent space for multi-label classification, in: Thirty-first AAAI conference on artificial intelligence.
+Yu, T., Kuang, Q., Hu, J., Zheng, J., Li, X., 2020. Global-similarity localsalience network for traffic weather recognition. IEEE Access 9, 4607–4615.
+Zhang, Z., Ma, H., Fu, H., Zhang, C., 2016. Scene-free multi-class weather classification on single images. Neurocomputing 207, 365–373.
+Zhao, B., Li, X., Lu, X., Wang, Z., 2018. A cnn–rnn architecture for multi-label weather recognition. Neurocomputing 322, 47–57.
+
+14
+
+Journal Pre-proof
+Declaratio if ioterettt ☒ The authors declare that they have no known competng fnancial interests or personal relatonships that could have appeared to infuence the work reported in this paper. ☐ The authors declare the following fnancial interests/personal relatonships which may be considered as potental competng interests:
+
+Journal Pre-proof
+

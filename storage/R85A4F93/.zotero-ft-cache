@@ -1,0 +1,82 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2305.05189
+
+Help | Advanced Search
+Search
+Computer Science > Computation and Language
+(cs)
+[Submitted on 9 May 2023 ( v1 ), last revised 18 Aug 2023 (this version, v3)]
+Title: SUR-adapter: Enhancing Text-to-Image Pre-trained Diffusion Models with Large Language Models
+Authors: Shanshan Zhong , Zhongzhan Huang , Wushao Wen , Jinghui Qin , Liang Lin
+Download a PDF of the paper titled SUR-adapter: Enhancing Text-to-Image Pre-trained Diffusion Models with Large Language Models, by Shanshan Zhong and 4 other authors
+Download PDF
+
+    Abstract: Diffusion models, which have emerged to become popular text-to-image generation models, can produce high-quality and content-rich images guided by textual prompts. However, there are limitations to semantic understanding and commonsense reasoning in existing models when the input prompts are concise narrative, resulting in low-quality image generation. To improve the capacities for narrative prompts, we propose a simple-yet-effective parameter-efficient fine-tuning approach called the Semantic Understanding and Reasoning adapter (SUR-adapter) for pre-trained diffusion models. To reach this goal, we first collect and annotate a new dataset SURD which consists of more than 57,000 semantically corrected multi-modal samples. Each sample contains a simple narrative prompt, a complex keyword-based prompt, and a high-quality image. Then, we align the semantic representation of narrative prompts to the complex prompts and transfer knowledge of large language models (LLMs) to our SUR-adapter via knowledge distillation so that it can acquire the powerful semantic understanding and reasoning capabilities to build a high-quality textual semantic representation for text-to-image generation. We conduct experiments by integrating multiple LLMs and popular pre-trained diffusion models to show the effectiveness of our approach in enabling diffusion models to understand and reason concise natural language without image quality degradation. Our approach can make text-to-image diffusion models easier to use with better user experience, which demonstrates our approach has the potential for further advancing the development of user-friendly text-to-image generation models by bridging the semantic gap between simple narrative prompts and complex keyword-based prompts. The code is released at this https URL . 
+
+Comments: 	accepted by ACM MM 2023
+Subjects: 	Computation and Language (cs.CL) ; Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2305.05189 [cs.CL]
+  	(or arXiv:2305.05189v3 [cs.CL] for this version)
+  	https://doi.org/10.48550/arXiv.2305.05189
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Shanshan Zhong [ view email ]
+[v1] Tue, 9 May 2023 05:48:38 UTC (29,597 KB)
+[v2] Fri, 12 May 2023 10:24:15 UTC (29,597 KB)
+[v3] Fri, 18 Aug 2023 09:13:46 UTC (29,596 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled SUR-adapter: Enhancing Text-to-Image Pre-trained Diffusion Models with Large Language Models, by Shanshan Zhong and 4 other authors
+    PDF
+    Other formats 
+
+( license )
+Current browse context:
+cs.CL
+< prev   |   next >
+new | recent | 2305
+Change to browse by:
+cs
+cs.CV
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

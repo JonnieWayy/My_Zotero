@@ -1,0 +1,936 @@
+arXiv:2305.13620v1 [cs.CV] 23 May 2023
+
+A Dive into SAM Prior in Image Restoration
+
+Input
+Zeyu Xiao1∗ Jiawang Bai2∗ Zhihe Lu3* Zhiwei Xiong1 1University of Science and Technology of China
+2Tsinghua University 3National University of Singapore
+
+Set14: Barbara
+
+Ground-truth
+
+ART ART-Ours
+
+Abstract
+
+The goal of image restoration (IR), a fundamental issue in computer vision, is to restore a high-quality (HQ) image from its degraded low-quality (LQ) observation. Multiple HQ solutions may correspond to an LQ input in this poorly posed problem, creating an ambiguous solution space. This motivates the investigation and incorporation of prior knowledge in order to effectively constrain the solution space and enhance the quality of the restored images. In spite of the pervasive use of hand-crafted and learned priors in IR, limited attention has been paid to the incorporation of knowledge from large-scale foundation models. In this paper, we for the first time leverage the prior knowledge of the state-of-the-art segment anything model (SAM) [55] to boost the performance of existing IR networks in an parameter-efficient tuning manner. In particular, the choice of SAM is based on its robustness to image degradations, such that HQ semantic masks can be extracted from it. In order to leverage semantic priors and enhance restoration quality, we propose a lightweight SAM prior tuning (SPT) unit. This plug-and-play component allows us to effectively integrate semantic priors into existing IR networks, resulting in significant improvements in restoration quality. As the only trainable module in our method, the SPT unit has the potential to improve both efficiency and scalability. We demonstrate the effectiveness of the proposed method in enhancing a variety of methods across multiple tasks, such as image super-resolution and color image denoising.
+1. Introduction
+Image restoration (IR) is a fundamental problem in computer vision that aims to recover high-quality (HQ) images from their degraded low-quality (LQ) observations caused by various degradations, such as blur, noise and compression artifacts. The IR tasks encompass image superresolution (SR), image denoising, dehazing, JPEG deblocking, etc. However, due to the nature of the degradation pro-
+*Equal contribution
+
+Ground-truth
+
+Ground-truth
+
+SAM map
+
+LR input
+
+SAM map
+
+Noisy input
+
+Figure 1. Illustration of SAM’s robustness on low-quality images (e.g. low-resolution and noisy images). It shows SAM can segment objects correctly given low-quality images. This observation motivates us to leverage the semantic priors extracted from SAM, a large-scale foundation model, to enhance image restoration performance. Examples are from Set5 Bird and McMaster 0007, respectively.
+
+cess, it is an ill-posed problem in practice, leading to multiple HQ solutions corresponding to an LQ input, posing significant challenges for accurate IR.
+Numerous image priors [33, 43, 86, 87, 129] have been proposed to regularize the solution space of latent clear images in IR tasks. For instance, the self-similarity prior [26, 30,35,46,91] produces visually pleasing results in image SR task. Total variation [87], wavelet-domain processing [24], and BM3D [16] are proposed for the image denoising task by assuming the prior distribution to be smoothness, low rank and self-similarity. For image dehazing, assumptions are made on atmospheric light, transmission maps, or clear images [27,43]. While these task-specific image priors have demonstrated superior performance for IR methods, they are frequently based on observations of specific image properties that may not always reflect the inherent image properties. In addition, the design and selection of task-specific image priors rely on manual and empirical efforts, and the corresponding IR models require intricate optimization.
+Recently, it has been increasingly popular to adopt deep models to construct more general priors for IR tasks. For instance, the seminal work on deep image prior (DIP) [96] has shown that a randomly initialized convolutional neural network (CNN) can implicitly capture texture-level image priors, which can be utilized for IR. SinGAN [88] demonstrates that a randomly initialized generative adver-
+
+1
+
+sarial network (GAN) model can capture rich patch statistics after being trained on a single image. Furthermore, a GAN generator trained on a large dataset of natural images can be used as a generic image prior, referred to as a deep generative prior (DGP) [83]. The mentioned methods have shown remarkable performance in IR and image manipulation tasks. In particular, the CNN and GAN models used in these works are either trained from scratch on a single image or pre-trained on an external dataset.
+In this paper, we focus on examining whether foundation models pre-trained on extremely large-scale datasets, such as those containing billions of samples, with strong transfer capabilities can provide richer and more helpful priors for IR tasks. To this end, we take the first step towards leveraging the semantic-aware prior extracted from a powerful foundation model for segmentation, segment anything model (SAM) [55], which has been trained on a massive dataset called SA-1B containing 1 billion masks and 11 million images. Our motivation for using SAM as a semantic prior for IR tasks stems from its remarkable robustness on degraded images, including those that are with low-resolution and noise, as illustrated in Figure 1. Specifically, we obtain semantic masks of a degraded image by feeding it to the pre-trained SAM, which is referred to as the SAM prior in this paper. Our method utilizes semantic masks acquired from SAM to enhance the performance of existing IR methods through integration with a lightweight SAM prior tuning (SPT) unit. This integration of high-level semantic information with intermediate features leads to superior restoration results. Specifically, the SPT unit acts as a plug-and-play component by selectively transferring semantic priors to enhance the low-level features and spatial structures of the input LQ image.
+To better exploit the potential of the semantic priors obtained from SAM, we propose a parameter-efficient tuning scheme to update the SPT units. The SPT unit consists of a small number of learnable parameters and can be easily integrated into existing IR methods. Our proposed method efficiently integrates semantic priors with existing intermediate features of various CNN-based and Transformerbased IR methods, yielding significant performance improvements over the baselines on benchmark datasets for a range of IR tasks, including image SR and color image denoising. With the success of the SPT unit in IR tasks, we hope that our work can encourage further studies on incorporating semantic priors into other deep learning-based models.
+Overall, our contributions can be summarized as follows:
+(1) This paper introduces a novel approach to enhance the performance of IR methods by leveraging the prior knowledge obtained from the state-of-the-art foundation model for segmentation, SAM. This is the first time such a large-scale pre-trained prior has been used in the context
+
+of IR, and we demonstrate that it can be highly effective in improving the restoration quality.
+(2) In order to incorporate the semantic priors obtained from SAM, we propose a lightweight SPT unit that can be easily integrated into existing IR methods as a plug-andplay component. By designing the SPT unit as the only trainable module, we achieve both efficiency and scalability, in contrast to full fine-tuning pipeline which can be computationally expensive and time-consuming.
+(3) We comprehensively evaluate the effectiveness of our proposed SPT unit as a plug-in for enhancing existing IR methods, including both CNN-based and Transformerbased methods, on various tasks such as image SR and color image denoising. Experimental results demonstrate that our method consistently outperforms existing state-ofthe-art methods, highlighting its superiority and generalizability.
+2. Related Work
+2.1. Image Restoration
+Compared to traditional model-based IR methods [36, 44, 79, 94, 95, 108], learning-based methods, particularly those based on CNNs, have shown impressive performance and gained increasing popularity. These deep models learn mappings between LQ and HQ images from large-scale paired datasets. Since the pioneering work of SRCNN [22] (for image SR), DnCNN [118] (for image denoising), and ARCNN [21] (for JPEG compression artifact reduction), a large number of CNN-based models have been proposed to improve model representation ability through more elaborate neural network architecture designs, such as residual blocks [7, 52, 117], dense blocks [102, 125, 126], and others [12, 15, 19, 31, 32, 37, 48, 50, 53, 57, 59–62, 65–67, 84, 92, 98–100, 104, 105, 120, 121, 124]. Some of these models have also incorporated attention mechanisms inside the CNN framework, such as channel attention [17, 80, 123], non-local attention [69, 77], and adaptive patch aggregation [128]. Recently, due to the limited ability of CNNs to model long-range dependencies, researchers have started to explore the use of pure self-attention modules for IR [8, 14, 64,72,106,112,115]. In contrast to existing IR methods, our method does not introduce any novel architecture. Instead, we aim to enhance the performance of existing methods by leveraging the prior generated from a large pre-trained model, such as SAM [55], in a tuning manner, refining and polishing the existing intermediate features through the proposed lightweight SPT unit.
+2.2. Hand-Crafted Image Priors
+Image priors that describe various statistics of natural images have been widely developed and adopted in IR and image editing. For different IR tasks, priors are also de-
+
+2
+
+signed specifically based on the characteristics of the imaging and degradation models. In the image super-resolution (SR) task, the self-similarity prior is able to produce visually pleasing results without extensive training on external databases since a natural image tend to recur within and across scales of the same image [26, 30, 35, 46, 91]. The heavy-tailed gradient prior [89], sparse kernel prior [28], l0 gradient prior [109], normalized sparsity prior [56] and dark channel prior [82] are proposed to solve the image deblurring task. While these traditional hand-crafted priors frequently capture specific statistics and serve specific purposes, there is a growing interest in finding more general priors that capture richer image statistics via deep learning models. In this paper, we present a parameter-efficient tuning scheme to leverage the prior knowledge from SAM for the task of IR. To the best of our knowledge, our work is the first to introduce the use of SAM for the task of image restoration, demonstrating the potential of leveraging pretrained semantic priors for improving IR methods.
+2.3. Learned Image Priors
+Convolutional neural networks (CNNs) [18, 23, 78] have been proposed to capture useful priors by learning mappings between LQ and HQ images from external training data. Recent research has shown that deep CNNs can implicitly capture image statistics, making them effective priors for restoring corrupted images. DIP [96] and single image generative adversarial networks (SinGAN) [88] have demonstrated the effectiveness of these deep priors in IR tasks, but their applicability may be limited due to their reliance on image-specific statistics. While other deep priors such as deep denoiser prior [2, 119], TNRD [13], and LCM [3] have been developed for IR tasks, our focus is not on competing with them. Instead, we aim to study and exploit the integration of knowledge from large-scale foundation models (e.g., SAM [55]) for IR. To the best of our knowledge, this is the first attempt to leverage the prior knowledge from SAM for IR tasks. By introducing the prior generated from SAM in a tuning manner, we aim to further improve the performance of existing IR methods without proposing any new architecture. Our approach complements existing deep priors and provides a promising direction for future research in the field of IR.
+2.4. Large-Scale Foundation Models
+In the era of big data, large-scale foundation models become important components of artificial intelligence. The recent development of large models mainly benefits from the advanced training schemes (e.g., self-supervised training [20, 39, 51]) and scalable network architectures (e.g., Transformer [25, 97]). The early works such as BERT [51] and RoBERTa [71] utilize masked language modeling to obtain powerful pre-trained models on various natural lan-
+
+guage processing (NLP) tasks. Most recently, ChatGPT and GPT-4 [81] developed by OpenAI demonstrates remarkable capabilities on a variety of domains, and even shows sparks of artificial general intelligence [5]. In computer vision, to leverage large-scale image data in a selfsupervised manner, contrastive learning [10,11] and masked image modeling [40, 107] have been explored, which provide rich pre-trained knowledge for downstream tasks. As a representative work, CLIP [85] learns visual representations from the supervision of natural language using 400 million image-text pairs, showing an impressive transferable ability. Besides, recent works such as IPT [9] and DegAE [110] demonstrate foundation models pre-trained on the large-scale data can improve the performance of lowlevel vision tasks. Recently, Meta AI Research released a foundation model namely SAM [55] for open-world image segmentation. Due to its great potential, an important future direction is to use SAM to aid the downstream tasks [73]. In this paper, we explore how to improve IR performance with the semantic prior knowledge from SAM.
+2.5. Parameter-Efficient Fine-tuning
+To introduce additional knowledge from a new dataset or domain into the well-trained models, early works usually fine-tune the whole model parameters [34, 41, 42]. However, this scheme requires a large amount of computational resources and time. As an alternative, parameter-efficient fine-tuning [58, 63, 70] is firstly proposed in NLP to exploit pre-trained large language model. It has also been extensively studied for image classification tasks. For instance, SpotTune [38] studies different fine-tuned layers, TinyTL [6] only learns the bias modules, and side-tuning [116] trains a lightweight network and uses summation to fuse it with the pre-trained network. Regarding vision and language models, e.g., CLIP [85], parameter-efficient tuning [111, 127] is also leveraged for the performance enhancement on downstream tasks. Some recent methods such as Adapter [45] and VPT [49] are developed for Transformerbased architectures, which insert a small number of learnable parameters inside each Transformer layer. Different from these works, we study the parameter-efficient finetuning for IR with the purpose of introducing the semantic prior knowledge.
+
+3. Preliminary
+
+3.1. Network Definition
+For an LQ input image ILQ ∈ RH×W ×Cin , an IR network IRNet(·) can generate an HQ image IˆHQ ∈ RrH×rW ×Cout
+
+IˆHQ = IRNet(ILQ),
+
+(1)
+
+3
+
+Input image 𝐼𝐿𝑄
+
+Deep Feature Extraction
+
+Building Block 𝐵1
+
+Building Block 𝐵2
+
+…
+
+𝛼
+
+𝛼
+
+…
+
+𝐼𝐿𝑄
+
+𝐵1
+
+Restored image 𝐼መ𝐻𝑄
+
+Reconstructor
+
+SPT Unit
+
+Shallow Feature Extraction
+Building Group Building Group Building Group
+Conv Block SPT Unit
+
+SAM map
+
+SAM
+
+𝒫 C
+
+Conv ReLU Conv
+
+Figure 2. Illustration of our proposed method. In comparison to traditional IR methods that typically employ a shallow feature extractor
+
+followed by a deep feature extractor with multiple building blocks and a reconstructor, we present a novel method that efficiently improves
+
+network performance by leveraging prior knowledge obtained from SAM [55]. Our proposed method involves integrating semantic masks
+
+obtained from SAM into SPT units, which combine thpersieomrantic priors with intermediate features of existing IR methods. As the SPT
+unit is the only trainable module, our approach is both efficient and scalable compared to full fine-tuning scheme. Incorporating the SAM
+
+prior into our SPT unit allows for effective exploitation of prior knowledge from the large-scale foundation model and improved restoration
+
+quality.
+
+Encoder
+…
+
+Building Group Building Group Building Group
+Conv Block SAM Prior Tuning Unit
+
+which should be close to the ground-truth image IGT . H, W , Cin, Cout, and r are the imLaogceal-Gheloibgahl tT,emwpiodrtahl ,Intienrpacutitons channel, output channel, and the scale factor for image super-resolution, respectively.
+As shown in Figure 2, an IR network consists of three main components: shallow feature extraction, deep feature extraction, and the reconstruction part. Without loss of generality, we leverage a convolution layer as shallow feature extraction to get the low-level feature F0 ∈ RH×W ×C
+
+F0 = Enc(ILQ),
+
+(2)
+
+where C denotes the feature number, and Enc(·) denotes
+the convolution layer, serving for the shallow feature ex-
+traction. Then, the shallow feature is processed by the deep feature extraction module, which is composed of N1 building blocks, obtaining the extracted deep feature FDF ∈ RH×W ×C . The above procedure can be formulated as
+
+FDF = BN1 (. . . (B2(B1(F0)) . . . ),
+
+(3)
+
+where Bi(·) is the i-th building block. Finally, we can get the HQ output image through the reconstruction part
+
+IˆHQ = Rec(FDF ),
+
+(4)
+
+where Rec(·) denotes the reconstruction part. In terms of the composition of the reconstruction module, it varies depending on the specific IR task. In the case of image superresolution, a sub-pixel convolution layer [90] with a factor of r is used to upsample the deep feature FDF to match the size of the high-resolution output. This is followed by
+
+a convolution layer both before and after the upsampling module to aggregate the features. On the other hand, for the tasks such as image denoising, the reconstruction module only consists of a single convolution layer that adjusts the channel dimension of FDF from C to Cout. The LQ input is then added to the convolution output to produce the final output. This residual learning approach can help accelerate the convergence of the network during training.
+
+3.2. Segment Anything Model
+In recent years, there has been a growing interest in foundational models pre-trained on large-scale datasets due to their ability to generalize to various downstream tasks. One such example is the recently released SAM by Meta AI Research [55]. By incorporating a single user prompt, SAM can accurately segment any object in any image or video without the need for additional training, which is commonly referred to as the zero-shot transfer in the computer vision community. According to [55], SAM’s impressive capabilities are derived from a vision foundation model that has been trained on an extensive SA-1B dataset comprising over 11 million images and one billion masks.
+The emergence of SAM has undoubtedly demonstrated strong generalization across various images and objects, opening up new possibilities and avenues for intelligent image analysis and understanding. Given an image I ∈ RH×W ×Cin , SAM can generate a segmentation mask tensor MSAM ∈ RH×W ×Nc
+
+MSAM = SAM(I),
+
+(5)
+
+4
+
+Deep Feature Extraction
+
+Building Block 𝐵1
+
+Building Block 𝐵2 𝑓
+
+Enc
+
+Shallow Feature Extraction
+Reconstructor
+
+𝐼𝐿𝑄
+
+𝐹1
+
+𝐹2
+
+𝐹𝑁1
+
+…
+
+𝐹𝑖
+
+𝒫𝑖
+
+𝒫𝑖 +1
+
+𝑓
+
+𝑀𝑆𝐴𝑀
+
+SPT
+
+SPT
+
+Unit
+
+Unit
+
+𝐹1𝑠𝑝𝑡
+
+𝐹1 𝐹2𝑠𝑝𝑡
+
+𝐹2
+
+…
+
+SPT
+
+Unit
+
+𝐹𝑁𝑠1𝑝𝑡
+
+𝐹𝑁1
+
+𝑀𝑆𝐴𝑀
+
+𝐹𝑖′
+
+C𝑓
+
+𝑓
+
+𝐹𝑖𝑠𝑝𝑡
+
+𝛼
+
+𝛼
+
+𝐹1𝑛
+
+𝐹2𝑛
+
+𝛼 𝐹𝑁𝑛1
+…
+
+SPT Unit
+
+𝐼መ𝐻𝑄
+
+𝑓
+
+Conv Convolution
+
+Conv
+
+ReLU Activation operation
+
+ReLU
+
+C Concatenation
+
+Conv
+
+Multiplication Sum
+
+Figure 3. Illustration of the SPT unit and the efficient tuning scheme. The SPT unit takes in the semantic map MSAM extracted from SAM,
+the deep feature Fi extracted from the i-th building block, and the SAM prior representation P as input. It then outputs a new feature map Fispt, which incorporates the correlation between Fi and P. To efficiently incorporate this new feature map, it is added to the original feature map Fi with a weighting factor of α. The tuned feature maps are then fed into the subsequent building blocks of the network.
+
+where Nc denotes the number of masks. SAM has shown robustness in segmenting low-quality images and producing relatively accurate semantic masks. Therefore, we propose to leverage these semantic masks as priors for IR. By utilizing the rich semantic information in the maps, the IR networks are able to restore more HQ details in the reconstructed images.
+We prompt SAM with an 8 × 8 regular grid of foreground points for each degraded image, resulting in less than 64 masks in most cases. We fix the number of masks fed into the image restoration networks as 64 by adopting the zero-padding when the masks are insufficient and truncation when the number of masks is larger than 64. We also discuss more choices of the number of masks in our experimental part.
+4. Method
+4.1. SAM Prior Tuning Unit
+SAM [55] has shown to have promising segmentation capabilities in various scenarios and is robust to various image degradations. We utilize the extracted semantic map MSAM from SAM as the prior to provide diverse and rich information to improve the performance of existing IR methods.
+We first concatenate the LQ input image ILQ and the semantic map MSAM extracted from SAM along the channel dimension. Then, the concatenated feature is fed to two convolution layers with a ReLU activation operation be-
+
+tween them (denoted as f (·)), resulting in the SAM prior representation P ∈ RH×W ×C
+
+P = f ([ILQ, MSAM ]).
+
+(6)
+
+To provide a concrete example of how the SPT unit
+
+works, we use the feature Fi extracted from the i-th building
+
+block without loss of generality. As shown in Figure 3, we
+
+′
+first concatenate Fi with MSAM and feed the concatenated
+
+feature to f (·) to generate the enhanced feature represen-
+
+′
+
+′
+
+tation Fi . Next, Fi and P are separately fed into the fea-
+
+ture branch and the SAM prior branch, respectively. Each
+
+branch consists of two convolution layers with ReLU acti-
+
+vation in between. The output features of both branches are
+
+multiplied to obtain the correlation, and skip connections
+
+are added to both branches to enhance the representation
+
+ability of the entire SPT unit. These procedures can be for-
+
+mulated as
+
+Pi+1 = f (Pi) + Pi,
+
+Fispt
+
+=
+
+′
+f (Fi )
+
+∗
+
+f (P)
+
++
+
+′
+Fi .
+
+(7)
+
+By inserting the SPT unit into N1 building blocks of existing IR networks as a plug-and-play unit, a new network structure is formed, which can utilize the semantic information from the SAM prior to improve IR performance.
+
+4.2. Efficient Tuning Scheme
+
+In order to reduce the computational cost during the training stage, we introduce a parameter-efficient tuning
+
+5
+
+scheme that leverages pre-trained IR networks. Instead of
+training an IR network from scratch or re-training an exist-
+ing one, we only update the trainable parameters. This not
+only reduces the computational cost but also enhances the
+overall efficiency of our method. To incorporate the new feature map Fispt processed by
+the SPT unit, we add it to the original feature map Fi using a weighting factor of α
+
+Fin = Fi + αFispt,
+
+(8)
+
+= Fi + αϕΘ(Fi),
+
+where ϕΘ(·) is the SPT unit ϕ with tunable parameters Θ to the pre-trained IR networks to transform the pre-trained features to new ones. The incorporation of the enhanced feature map into the original feature map is a straightforward yet powerful operation that allows subsequent building blocks to exploit the semantic information from the SAM prior. By replacing the original feature map with the enhanced one, our proposed approach achieves improved restoration quality without significant computational costs.
+In contrast to retraining an entirely new network, our method builds upon existing pre-trained IR networks and only updates the parameters of the SPT units. This parameter-efficient approach significantly reduces the computational burden and makes it a cost-effective solution for improving the performance of existing IR networks.
+
+5. Experiments
+5.1. Experimental Settings
+Data and Evaluation. We conduct experiments on two typical IR tasks: image SR and color image denoising. For image SR, we use DIV2K [93] and Flickr2K [68] as training data, while Set5 [4], Set14 [113], B100 [75], Urban100 [46], and Manga109 [76] are used as test data. As for color image denoising, we follow the same training data as ART [114], which includes DIV2K, Flickr2K, BSD500 [1], and WED [74]. We evaluate our proposed method using BSD68 [75], Kodak24 [29], McMaster [122], and Urban100 as test data for color image denoising. The performance is evaluated in terms of PSNR and SSIM [103] values on the Y channel of images transformed to the YCbCr space for image SR, and on the RGB channel for color image denoising. Selected baseline methods. To evaluate the effectiveness of our proposed method, we conduct experiments using several representative methods in two IR tasks. For image SR, we select three representative methods: IMDN [47], a typical light-weight CNN-based SR method, as well as the state-of-the-art vision Transformer-based methods ART [114] and CAT [14]. Training Settings. Data augmentation is performed on the training data through horizontal flip and random rotation of
+
+90◦, 180◦, and 270◦. Besides, we crop the original images into 64×64 patches as the basic training inputs for image SR and 128×128 patches for image denoising. We add the SPT units after each buliding block, and the batch size is set to 4. We choose ADAM [54] to optimize the networks with β1 = 0.9, β2 = 0.999, and zero weight decay. The initial learning rate is set as 1×10−4. We fine-tune the parameters of ART, CAT, and IMDN until convergence, and we adjust the learning rate to half every 5,000 iterations. Experiments are conducted with a single NVIDIA 3090 GPU.
+5.2. Quantitative and Qualitative Comparisons
+We evaluate the effectiveness of our proposed method by comparing representative baseline methods and their SPT unit tuned versions on the tasks of image SR and color image denoising. Image super-resolution. Table 1 presents a quantitative comparison between methods trained with and without the SPT unit on benchmark datasets for image SR. The results show that the existing image super-resolution methods finetuned with SPT units outperform the corresponding baselines by a significant margin. For example, in the ×4 superresolution of Urban100 dataset, ART fine-tuned with our proposed method achieves 28.1717dB (PSNR), while the same baseline network only achieves 27.7747dB (PSNR). The weighted average values in the table demonstrate that our method effectively utilizes the SAM prior, leading to further performance improvements in existing SR methods.
+Figure 4 illustrates visual comparisons of SR results obtained by the baseline methods and their tuned versions. We observe that the existing SR methods tend to generate realistic detailed textures but with visual aliasing and artifacts. For example, in the first example of Figure 4, ART produces blurry details of the tablecloths. On the other hand, ART tuned with our proposed method reconstructs sharp and natural details. This indicates that our method effectively employs semantic priors to capture the characteristics of each category, leading to more natural and realistic textures. This observation is consistent with the approach presented in [101]. Color image denoising. Table 2 presents quantitative comparisons for color image denoising. The results show that ART fine-tuned with SPT units outperforms the original ART by a significant margin on three different levels of noise. For instance, in the σ = 25 color image denoising task, ART fine-tuned with our proposed method achieves an average PSNR of 32.7844dB, which is 0.0642dB higher than the same baseline network. As shown in Figure 5, the color image denoising results of ART fine-tuned with our method exhibit better visual quality than the original ART. The images restored by our method have more details and fewer blocking artifacts, leading to sharper edges and more explicit textures. These results demonstrate that our method
+
+6
+
+Table 1. Quantitative comparison of baseline methods and their SPT unit-tuned variants in terms of PSNR (dB, ↑) for the image SR task.
+
+Method
+ART ART ART ART ART ART
+CAT CAT CAT CAT CAT CAT
+IMDN IMDN IMDN IMDN IMDN IMDN
+
+Scale
+×2 ×2 ×3 ×3 ×4 ×4
+×2 ×2 ×3 ×3 ×4 ×4
+×2 ×2 ×3 ×3 ×4 ×4
+
+Set5
+
+PSNR
+
+∆
+
+38.5631 38.5741 35.0736 35.0919 33.0448 33.1113
+
++0.0109
++0.0182
++0.0665
+
+38.5079 38.5230 35.0550 35.0730 33.0769 33.1106
+
++0.0151
++0.0180
++0.0337
+
+37.9105 37.8891 34.3233 34.3869 32.1867 32.2018
+
+-0.0215
++0.0636
++0.0151
+
+Set14
+
+PSNR
+
+∆
+
+34.5924 34.6315 31.0183 31.0598 29.1585 29.2475
+
++0.0391
++0.0415
++0.0890
+
+34.7776 34.8017 31.0433 31.0629 29.1779 29.1995
+
++0.0241
++0.0196
++0.0216
+
+33.5949 33.6793 30.3066 30.3067 28.5724 28.6088
+
++0.0844
++0.0001
++0.0364
+
+B100
+
+PSNR
+
+∆
+
+32.5768 32.5983 29.5056 29.5362 27.9668 28.0154
+
++0.0215
++0.0305
++0.0486
+
+32.5853 32.5954 29.5194 29.5286 27.9871 28.0093
+
++0.0101
++0.0092
++0.0223
+
+32.1535 32.1711 29.0732 29.1087 27.5439 27.5814
+
++0.0176
++0.0355
++0.0374
+
+Urban100
+
+PSNR
+
+∆
+
+34.3001 34.3712 30.1037 30.2219 27.7747 28.1717
+
++0.0710
++0.1182
++0.3970
+
+34.2577 34.2786 30.1184 30.1441 27.8861 27.8930
+
++0.0209
++0.0256
++0.0069
+
+32.1351 32.2199 28.1488 28.3076 26.0318 26.2896
+
++0.0848
++0.1588
++0.2578
+
+Manga109
+
+PSNR
+
+∆
+
+40.2425 40.2888 35.3889 35.4513 32.3081 32.5648
+
++0.0463
++0.0624
++0.2568
+
+40.1030 40.1584 35.3838 35.4002 32.3891 32.4817
+
++0.0554
++0.0163
++0.0926
+
+38.7899 38.9840 33.5833 33.8483 30.4370 30.7284
+
++0.1940
++0.2651
++0.2913
+
+Average
+
+PSNR
+
+∆
+
+35.8269 35.8724 31.7925 31.8607 29.4792 29.7052
+
++0.0454
++0.0682
++0.2260
+
+35.7773 35.8064 31.8003 31.8175 29.5476 29.5887
+
++0.0291
++0.0172
++0.0411
+
+34.5026 34.6015 30.4228 30.5711 28.1590 28.3476
+
++0.0989
++0.1483
++0.1886
+
+Table 2. Quantitative comparison of baseline methods and their SPT unit-tuned variants in terms of PSNR (dB, ↑) for the color image denoising task.
+
+Method
+ART ART ART ART ART ART
+
+σ value
+15 15 25 25 50 50
+
+BSD68
+
+PSNR
+
+∆
+
+34.4599
+
+-
+
+34.4615 +0.0016
+
+31.8372
+
+-
+
+31.9233 +0.0862
+
+28.6349
+
+-
+
+28.6369 +0.0020
+
+Kodak24
+
+PSNR
+
+∆
+
+35.3871
+
+-
+
+35.3921 +0.0050
+
+32.9526
+
+-
+
+33.0058 +0.0532
+
+29.8659
+
+-
+
+29.8674 +0.0015
+
+McMaster
+
+PSNR
+
+∆
+
+35.6765
+
+-
+
+35.6813 +0.0049
+
+33.4057
+
+-
+
+33.4359 +0.0302
+
+30.3100
+
+-
+
+30.3127 +0.0027
+
+Urban100
+
+PSNR
+
+∆
+
+35.2938
+
+-
+
+35.2999 +0.0062
+
+33.1415
+
+-
+
+33.1994 +0.0579
+
+30.1926
+
+-
+
+30.2001 +0.0075
+
+Average
+
+PSNR
+
+∆
+
+35.0672
+
+-
+
+35.0717 +0.0044
+
+32.7202
+
+-
+
+32.7844 +0.0642
+
+29.6609
+
+-
+
+29.6656 +0.0046
+
+can effectively leverage semantic priors to improve the performance of existing color image denoising methods.
+5.3. Ablation Study
+For the ablation study, we use the dataset DIV2K [93] and Flickr2K [68] to train ART on the ×4 image SR task. The results are evaluated on the dataset of Manga109. The effectiveness of the SPT Unit. To evaluate the effectiveness of the proposed SPT unit, we design several variants as follows: (1) SPT-Fi: we feed MSAM directly to f (·) without concatenating it with Fi; (2) SPT-Pi: we remove the extracted SAM prior representation Pi from the SPT unit; (3) SPT-cat: we concatenate MSAM , Fi, and Pi and feed the concatenated tensor to f (·), generating Fispt. The corresponding results are shown in Table 3, where it can be observed that although these variants achieve some performance improvements, they are far less effective than our designed SPT unit. This indicates that our SPT unit is simple yet effective, and can better utilize the semantic prior information from the SAM mask for image SR. We
+
+Table 3. The effectiveness of the SPT unit in different variants
+and different positions. BNi here denotes the insertion of the SPT units into the building blocks B1 to BNi .
+
+SPT variants
+
+Method
+′
+SPT-Fi SPT-Pi SPT-cat
+
+PSNR
+32.4694+0.1613 32.4519+0.1438 32.4194+0.1113
+
+Block
+B1 B2 B3
+
+SPT locations
+
+PSNR
+
+Block
+
+32.3222+0.0141 B4 32.3188+0.0107 B5 32.4149+0.1068 B6
+
+PSNR
+32.4266+0.1185 32.4607+0.1526 32.5648+0.2568
+
+also analyze the effect of inserting the SPT unit at different positions on the final performance. Table 3 shows the results. It can be observed that as the number of SPT units inserted increases, the final performance gradually improves, and the more units inserted, the more significant the improvement. For example, when we only insert the SPT unit in the first building block, we only achieve a 0.0141dB improvement. However, when we insert the SPT unit in all building blocks, we achieve a significant improvement of up to 0.2568dB.
+
+7
+
+Set14: Barbara
+
+Input
+
+ART
+
+Ground-truth
+
+ART-Ours
+
+Set14: Zebra
+
+Input
+
+ART
+
+Ground-truth
+
+ART-Ours
+
+Input
+
+CAT
+
+Input
+
+CAT
+
+Urban100: Img004
+
+Ground-truth
+
+CAT-Ours
+
+Urban100: Img085
+
+Ground-truth
+
+CAT-Ours
+
+Input
+
+IMDN
+
+Input
+
+IMDN
+
+Manga109: GakuenNoise
+
+Input Ground-truth
+
+ART IMDN-Ours
+
+Manga109: YumeiroCooking
+
+Input Ground-truth
+
+ART IMDN-Ours
+
+Figure 4. Visual comparisons on ×4 image super-resolution. We show the results of extracted SAM masks, input LQ images, the ground-
+
+truth HQSimet1a4g:eBsa,rtbhaerabaseline methGordosu,nadn-tdrutthhe baselineARmTe-Othuords s trained with oSuert1p4r:oZpeobrsaed method. Ground-truth
+
+ART-Ours
+
+Input
+
+ART
+
+Input
+
+ART
+
+McMaster: 0002
+
+Ground-truth
+
+ART-Ours
+
+Kodak24: Kodim03
+
+Ground-truth
+
+ART-Ours
+
+Figure 5. Visual comparisons on color image denoising (σ = 50). We show the results of extracted SAM masks, input LQ images, the ground-truth HQ images, ART, and ART trained with our proposed method.
+
+Table 4. Impact of different α values.
+
+α
+α = 0.5 α = 1.5
+
+PSNR
+32.4332+0.1316 32.4653+0.0995
+
+α
+α=1 α=2
+
+PSNR
+32.5648+0.2568 32.4025+0.1623
+
+Table 5. Comparison of different tuning schemes.
+
+Scheme
+Ours Full fine-tuning
+
+PSNR
+32.5648+0.2568 32.5640+0.2538
+
+# Iterations
+∼8,000 ∼15,000
+
+The effectiveness of the efficient tuning scheme. We first conduct an analysis of the impact of different α values on the results. We select several typical α values (i.e., 0.5, 1.0, 1.5, and 2.0) and compare their effects, as shown in Table 4.
+
+From the results in Table 1, it can be observed that the best performance is achieved when α = 1.0. When α is too large or too small, the weight tuning of the SPT unit cannot be balanced well, leading to sub-optimal performance. We also compare our tuning method with full-parameter tun-
+
+8
+
+Set14: Barbara
+
+Ground-truth
+
+ART-Ours
+
+Set14: Zebra
+
+Ground-truth
+
+ART-Ours
+
+Table 6. Effectiveness of the extracted SAM masks
+
+Input
+
+ART
+
+SAM mask/representation
+
+PSNR
+
+Coarse Medium McMaster: 00F0i2ne
+
+32.5648+0.2568 32.5709+0.2628 Ground-t3ru2t.h5737+0.2A65R6T-Ours
+
+Input
+
+ART
+
+B100: 62096
+
+Ground-truth
+
+ART-Ours
+
+Figure 6. A failure case. The use of extracted SAM masks as semantic priors in our method can introduce unrealistic fine-grained structures and texture characteristics, resulting in artifacts that deviate significantly from the real one.
+
+ing. As shown in Table 5, our tuning method can improve the performance of the ART network faster and better than the latter. This is because we base our method on the pretrained and frozen ART parameters and focused on updating the tuning-related parameters, which enables efficient updates on a small number of parameters. The effect of the granularity of SAM masks. We adjust the density of the regular grid used to prompt SAM and obtain different groups of masks, Usually, a denser grid results in a larger number of masks containing more fine-grained objects. Specifically, we prompt SAM using 8 × 8, 16 × 16, and 24 × 24 grids, which are denoted as Coarse, M edium, and F ine, respectively. For these three cases, we fix the number of masks fed into the image restoration networks as 64, 128, and 256, respectively, using padding or truncation. In terms of the network architecture, we only adjust the number of the input channel of the first convolutional layer. Table 6 shows the impact of the granularity of SAM masks on the final results. It can be observed that using more masks can improve the performance of ART, which indicates that leveraging more fine-grained semantic information is more helpful and further confirms the effectiveness of the SAM prior.
+5.4. Limitations
+This section presents the limitation of our method that arises from the use of extracted SAM masks as semantic priors. Despite the performance improvement on SR, they may also generate unrealistic fine-grained structures and textures that do not exist in the ground-truth image. For example, in the sailboat shown in Figure 6, the SAM masks indicate a semantic mask of the sail area, resulting in a grid-like structure that is not present in the ground-truth image. While
+
+this structure may appear visually pleasing to humans, it deviates significantly froImnputthe actual imaAgReT and can be considered as artifacts. To address this limitation, future work could explore more effective methods for incorporating semantic priors into IR tasks. This could be achieved by inKovdeask2ti4g: aKtoidnimg0d3 ifferent wGaroyusndt-otruithntroduceARseT-mOuarns tic priors into existing methods to improve the fidelity of the generated image.
+6. Conclusion
+In this paper, we propose a novel approach for image restoration that leverages the prior knowledge of the stateof-the-art segment anything model (SAM) to improve the quality of restored images. By incorporating semantic priors extracted from SAM using a light-weight SAM prior tuning (SPT) unit, we significantly enhance the restoration quality. Notably, the SPT unit is the only trainable module in our approach, making it both efficient and scalable. Our experiments demonstrate the effectiveness of the SPT unit as a plug-in to enhance a variety of methods for image super-resolution and denoising. More importantly, our work highlights the potential of integrating prior knowledge from large-scale foundation models for improving the performance of image restoration.
+References
+[1] Pablo Arbelaez, Michael Maire, Charless Fowlkes, and Jitendra Malik. Contour detection and hierarchical image segmentation. IEEE transactions on pattern analysis and machine intelligence, 33(5):898–916, 2010. 6
+[2] Siavash Arjomand Bigdeli, Matthias Zwicker, Paolo Favaro, and Meiguang Jin. Deep mean-shift priors for image restoration. NeurlPS, 2017. 3
+[3] ShahRukh Athar, Evgeny Burnaev, and Victor Lempitsky. Latent convolutional models. arXiv preprint arXiv:1806.06284, 2018. 3
+[4] Marco Bevilacqua, Aline Roumy, Christine Guillemot, and Marie Line Alberi-Morel. Low-complexity single-image super-resolution based on nonnegative neighbor embedding. 2012. 6
+[5] Se´bastien Bubeck, Varun Chandrasekaran, Ronen Eldan, Johannes Gehrke, Eric Horvitz, Ece Kamar, Peter Lee, Yin Tat Lee, Yuanzhi Li, Scott Lundberg, et al. Sparks of artificial general intelligence: Early experiments with gpt4. arXiv preprint arXiv:2303.12712, 2023. 3
+[6] Han Cai, Chuang Gan, Ligeng Zhu, and Song Han. Tinytl: Reduce memory, not parameters for efficient on-device learning. NeurlPS, 2020. 3
+[7] Lukas Cavigelli, Pascal Hager, and Luca Benini. Cas-cnn: A deep convolutional neural network for image compression artifact suppression. In IJCNN, 2017. 2
+[8] Hanting Chen, Yunhe Wang, Tianyu Guo, Chang Xu, Yiping Deng, Zhenhua Liu, Siwei Ma, Chunjing Xu, Chao Xu, and Wen Gao. Pre-trained image processing transformer. In CVPR, 2021. 2
+
+9
+
+[9] Hanting Chen, Yunhe Wang, Tianyu Guo, Chang Xu, Yiping Deng, Zhenhua Liu, Siwei Ma, Chunjing Xu, Chao Xu, and Wen Gao. Pre-trained image processing transformer. In CVPR, 2021. 3
+[10] Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. A simple framework for contrastive learning of visual representations. In ICML, 2020. 3
+[11] Xinlei Chen, Haoqi Fan, Ross Girshick, and Kaiming He. Improved baselines with momentum contrastive learning. arXiv preprint arXiv:2003.04297, 2020. 3
+[12] Yunjin Chen and Thomas Pock. Trainable nonlinear reaction diffusion: A flexible framework for fast and effective image restoration. IEEE transactions on pattern analysis and machine intelligence, 39(6):1256–1272, 2016. 2
+[13] Yunjin Chen and Thomas Pock. Trainable nonlinear reaction diffusion: A flexible framework for fast and effective image restoration. IEEE transactions on pattern analysis and machine intelligence, 39(6):1256–1272, 2016. 3
+[14] Zheng Chen, Yulun Zhang, Jinjin Gu, Linghe Kong, Xin Yuan, et al. Cross aggregation transformer for image restoration. NeurlPS, 2022. 2, 6
+[15] Wenlong Cheng, Mingbo Zhao, Zhiling Ye, and Shuhang Gu. Mfagan: A compression framework for memoryefficient on-device super-resolution gan. arXiv preprint arXiv:2107.12679, 2021. 2
+[16] Kostadin Dabov, Alessandro Foi, Vladimir Katkovnik, and Karen Egiazarian. Image denoising by sparse 3-d transform-domain collaborative filtering. IEEE Transactions on Image Processing, 16(8):2080–2095, 2007. 1
+[17] Tao Dai, Jianrui Cai, Yongbing Zhang, Shu-Tao Xia, and Lei Zhang. Second-order attention network for single image super-resolution. In CVPR, 2019. 2
+[18] Tao Dai, Jianrui Cai, Yongbing Zhang, Shu-Tao Xia, and Lei Zhang. Second-order attention network for single image super-resolution. In CVPR, 2019. 3
+[19] Xin Deng, Yutong Zhang, Mai Xu, Shuhang Gu, and Yiping Duan. Deep coupled feedback network for joint exposure fusion and image super-resolution. IEEE Transactions on Image Processing, 30:3098–3112, 2021. 2
+[20] Carl Doersch, Abhinav Gupta, and Alexei A Efros. Unsupervised visual representation learning by context prediction. In ICCV, 2015. 3
+[21] Chao Dong, Yubin Deng, Chen Change Loy, and Xiaoou Tang. Compression artifacts reduction by a deep convolutional network. In ICCV, 2015. 2
+[22] Chao Dong, Chen Change Loy, Kaiming He, and Xiaoou Tang. Learning a deep convolutional network for image super-resolution. In ECCV, 2014. 2
+[23] Chao Dong, Chen Change Loy, Kaiming He, and Xiaoou Tang. Image super-resolution using deep convolutional networks. IEEE transactions on pattern analysis and machine intelligence, 38(2):295–307, 2015. 3
+[24] David L Donoho. De-noising by soft-thresholding. IEEE transactions on information theory, 41(3):613–627, 1995. 1
+[25] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner,
+
+Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An image is worth 16x16 words: Transformers for image recognition at scale. arXiv preprint arXiv:2010.11929, 2020. 3 [26] Mehran Ebrahimi and Edward R Vrscay. Solving the inverse problem of image zooming using” self-examples”. In ICIAR, 2007. 1, 3 [27] Raanan Fattal. Dehazing using color-lines. ACM transactions on graphics (TOG), 34(1):1–14, 2014. 1 [28] Rob Fergus, Barun Singh, Aaron Hertzmann, Sam T Roweis, and William T Freeman. Removing camera shake from a single photograph. In Acm Siggraph 2006 Papers, pages 787–794. 2006. 3 [29] Rich Franzen. Kodak lossless true color image suite. source: http://r0k. us/graphics/kodak, 4(2), 1999. 6 [30] Gilad Freedman and Raanan Fattal. Image and video upscaling from local self-examples. ACM Transactions on Graphics (TOG), 30(2):1–11, 2011. 1, 3 [31] Xueyang Fu, Menglu Wang, Xiangyong Cao, Xinghao Ding, and Zheng-Jun Zha. A model-driven deep unfolding method for jpeg artifacts removal. IEEE Transactions on Neural Networks and Learning Systems, 2021. 2 [32] Xueyang Fu, Zheng-Jun Zha, Feng Wu, Xinghao Ding, and John Paisley. Jpeg artifacts reduction via deep convolutional sparse coding. In ICCV, 2019. 2 [33] Stuart Geman and Donald Geman. Stochastic relaxation, gibbs distributions, and the bayesian restoration of images. IEEE Transactions on pattern analysis and machine intelligence, (6):721–741, 1984. 1 [34] Ross Girshick. Fast r-cnn. In ICCV, 2015. 3 [35] Daniel Glasner, Shai Bagon, and Michal Irani. Superresolution from a single image. In ICCV, 2009. 1, 3 [36] Shuhang Gu, Nong Sang, and Fan Ma. Fast image super resolution via local regression. In ICPR, 2012. 2 [37] Yong Guo, Jian Chen, Jingdong Wang, Qi Chen, Jiezhang Cao, Zeshuai Deng, Yanwu Xu, and Mingkui Tan. Closedloop matters: Dual regression networks for single image super-resolution. In CVPR, 2020. 2 [38] Yunhui Guo, Honghui Shi, Abhishek Kumar, Kristen Grauman, Tajana Rosing, and Rogerio Feris. Spottune: transfer learning through adaptive fine-tuning. In CVPR, 2019. 3 [39] Raia Hadsell, Sumit Chopra, and Yann LeCun. Dimensionality reduction by learning an invariant mapping. In CVPR, 2006. 3 [40] Kaiming He, Xinlei Chen, Saining Xie, Yanghao Li, Piotr Dolla´r, and Ross Girshick. Masked autoencoders are scalable vision learners. In CVPR, 2022. 3 [41] Kaiming He, Ross Girshick, and Piotr Dolla´r. Rethinking imagenet pre-training. In ICCV, 2019. 3 [42] Kaiming He, Georgia Gkioxari, Piotr Dolla´r, and Ross Girshick. Mask r-cnn. In ICCV, 2017. 3 [43] Kaiming He, Jian Sun, and Xiaoou Tang. Single image haze removal using dark channel prior. IEEE transactions on pattern analysis and machine intelligence, 33(12):2341– 2353, 2010. 1 [44] Kaiming He, Jian Sun, and Xiaoou Tang. Single image haze removal using dark channel prior. IEEE transactions on
+
+10
+
+Pattern Analysis and Machine Intelligence, 33(12):2341– 2353, 2010. 2 [45] Neil Houlsby, Andrei Giurgiu, Stanislaw Jastrzebski, Bruna Morrone, Quentin De Laroussilhe, Andrea Gesmundo, Mona Attariyan, and Sylvain Gelly. Parameter-efficient transfer learning for nlp. In ICML, 2019. 3 [46] Jia-Bin Huang, Abhishek Singh, and Narendra Ahuja. Single image super-resolution from transformed selfexemplars. In CVPR, 2015. 1, 3, 6 [47] Zheng Hui, Xinbo Gao, Yunchu Yang, and Xiumei Wang. Lightweight image super-resolution with information multi-distillation network. In ACM MM, 2019. 6 [48] Takashi Isobe, Xu Jia, Shuhang Gu, Songjiang Li, Shengjin Wang, and Qi Tian. Video super-resolution with recurrent structure-detail network. In ECCV, 2020. 2 [49] Menglin Jia, Luming Tang, Bor-Chun Chen, Claire Cardie, Serge Belongie, Bharath Hariharan, and Ser-Nam Lim. Visual prompt tuning. In ECCV, 2022. 3 [50] Xixi Jia, Sanyang Liu, Xiangchu Feng, and Lei Zhang. Focnet: A fractional optimal control network for image denoising. In CVPR, 2019. 2 [51] Jacob Devlin Ming-Wei Chang Kenton and Lee Kristina Toutanova. Bert: Pre-training of deep bidirectional transformers for language understanding. In NAACL-HLT, 2019. 3 [52] Jiwon Kim, Jung Kwon Lee, and Kyoung Mu Lee. Accurate image super-resolution using very deep convolutional networks. In CVPR, 2016. 2 [53] Yoonsik Kim, Jae Woong Soh, Jaewoo Park, Byeongyong Ahn, Hyun-Seung Lee, Young-Su Moon, and Nam Ik Cho. A pseudo-blind convolutional neural network for the reduction of compression artifacts. IEEE Transactions on Circuits and Systems for Video Technology, 30(4):1121–1135, 2019. 2 [54] Diederik P Kingma and Jimmy Ba. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980, 2014. 6 [55] Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alexander C Berg, Wan-Yen Lo, et al. Segment anything. arXiv preprint arXiv:2304.02643, 2023. 1, 2, 3, 4, 5 [56] Dilip Krishnan, Terence Tay, and Rob Fergus. Blind deconvolution using a normalized sparsity measure. In CVPR, 2011. 3 [57] Wei-Sheng Lai, Jia-Bin Huang, Narendra Ahuja, and MingHsuan Yang. Deep laplacian pyramid networks for fast and accurate super-resolution. In CVPR, 2017. 2 [58] Brian Lester, Rami Al-Rfou, and Noah Constant. The power of scale for parameter-efficient prompt tuning. In EMNLP, 2021. 3 [59] Juncheng Li, Faming Fang, Jiaqian Li, Kangfu Mei, and Guixu Zhang. Mdcn: Multi-scale dense cross network for image super-resolution. IEEE Transactions on Circuits and Systems for Video Technology, 31(7):2547–2561, 2020. 2 [60] Juncheng Li, Faming Fang, Kangfu Mei, and Guixu Zhang. Multi-scale residual network for image super-resolution. In ECCV, 2018. 2
+
+[61] Xin Li, Xin Jin, Jianxin Lin, Sen Liu, Yaojun Wu, Tao Yu, Wei Zhou, and Zhibo Chen. Learning disentangled feature representation for hybrid-distorted image restoration. In ECCV, 2020. 2
+[62] Xin Li, Bingchen Li, Xin Jin, Cuiling Lan, and Zhibo Chen. Learning distortion invariant representation for image restoration from a causality perspective. In CVPR, 2023. 2
+[63] Xiang Lisa Li and Percy Liang. Prefix-tuning: Optimizing continuous prompts for generation. In ACL, 2021. 3
+[64] Jingyun Liang, Jiezhang Cao, Guolei Sun, Kai Zhang, Luc Van Gool, and Radu Timofte. Swinir: Image restoration using swin transformer. In ICCV, 2021. 2
+[65] Jingyun Liang, Andreas Lugmayr, Kai Zhang, Martin Danelljan, Luc Van Gool, and Radu Timofte. Hierarchical conditional flow: A unified framework for image superresolution and image rescaling. In ICCV, 2021. 2
+[66] Jingyun Liang, Guolei Sun, Kai Zhang, Luc Van Gool, and Radu Timofte. Mutual affine network for spatially variant kernel estimation in blind image super-resolution. In ICCV, 2021. 2
+[67] Jingyun Liang, Kai Zhang, Shuhang Gu, Luc Van Gool, and Radu Timofte. Flow-based kernel prior with application to blind super-resolution. In CVPR, 2021. 2
+[68] Bee Lim, Sanghyun Son, Heewon Kim, Seungjun Nah, and Kyoung Mu Lee. Enhanced deep residual networks for single image super-resolution. In CVPRW, 2017. 6, 7
+[69] Ding Liu, Bihan Wen, Yuchen Fan, Chen Change Loy, and Thomas S Huang. Non-local recurrent network for image restoration. arXiv preprint arXiv:1806.02919, 2018. 2
+[70] Pengfei Liu, Weizhe Yuan, Jinlan Fu, Zhengbao Jiang, Hiroaki Hayashi, and Graham Neubig. Pre-train, prompt, and predict: A systematic survey of prompting methods in natural language processing. arXiv preprint arXiv:2107.13586, 2021. 3
+[71] Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer Levy, Mike Lewis, Luke Zettlemoyer, and Veselin Stoyanov. Roberta: A robustly optimized bert pretraining approach. arXiv preprint arXiv:1907.11692, 2019. 3
+[72] Zhisheng Lu, Hong Liu, Juncheng Li, and Linlin Zhang. Efficient transformer for single image super-resolution. arXiv preprint arXiv:2108.11084, 2021. 2
+[73] Zhihe Lu, Zeyu Xiao, Jiawang Bai, Zhiwei Xiong, and Xinchao Wang. Can sam boost video super-resolution? arXiv preprint arXiv:2305.06524, 2023. 3
+[74] Kede Ma, Zhengfang Duanmu, Qingbo Wu, Zhou Wang, Hongwei Yong, Hongliang Li, and Lei Zhang. Waterloo exploration database: New challenges for image quality assessment models. IEEE Transactions on Image Processing, 26(2):1004–1016, 2016. 6
+[75] David Martin, Charless Fowlkes, Doron Tal, and Jitendra Malik. A database of human segmented natural images and its application to evaluating segmentation algorithms and measuring ecological statistics. In ICCV, 2001. 6
+[76] Yusuke Matsui, Kota Ito, Yuji Aramaki, Azuma Fujimoto, Toru Ogawa, Toshihiko Yamasaki, and Kiyoharu
+
+11
+
+Aizawa. Sketch-based manga retrieval using manga109 dataset. Multimedia Tools and Applications, 76:21811– 21838, 2017. 6 [77] Yiqun Mei, Yuchen Fan, and Yuqian Zhou. Image superresolution with non-local sparse attention. In CVPR, 2021. 2 [78] Yiqun Mei, Yuchen Fan, Yuqian Zhou, Lichao Huang, Thomas S Huang, and Honghui Shi. Image super-resolution with cross-scale non-local attention and exhaustive selfexemplars mining. In CVPR, 2020. 3 [79] Tomer Michaeli and Michal Irani. Nonparametric blind super-resolution. In ICCV, 2013. 2 [80] Ben Niu, Weilei Wen, Wenqi Ren, Xiangde Zhang, Lianping Yang, Shuzhen Wang, Kaihao Zhang, Xiaochun Cao, and Haifeng Shen. Single image super-resolution via a holistic attention network. In ECCV, 2020. 2 [81] OpenAI. Gpt-4 technical report. ArXiv, abs/2303.08774, 2023. 3 [82] Jinshan Pan, Deqing Sun, Hanspeter Pfister, and MingHsuan Yang. Blind image deblurring using dark channel prior. In CVPR, 2016. 3 [83] Xingang Pan, Xiaohang Zhan, Bo Dai, Dahua Lin, Chen Change Loy, and Ping Luo. Exploiting deep generative prior for versatile image restoration and manipulation. arXiv preprint arXiv:2003.13659, 2020. 2 [84] Yali Peng, Lu Zhang, Shigang Liu, Xiaojun Wu, Yu Zhang, and Xili Wang. Dilated residual networks with symmetric skip connection for image denoising. Neurocomputing, 345:67–76, 2019. 2 [85] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In ICML, 2021. 3 [86] Stefan Roth and Michael J Black. Fields of experts: A framework for learning image priors. In CVPR, 2005. 1 [87] Leonid I Rudin, Stanley Osher, and Emad Fatemi. Nonlinear total variation based noise removal algorithms. Physica D: nonlinear phenomena, 60(1-4):259–268, 1992. 1 [88] Tamar Rott Shaham, Tali Dekel, and Tomer Michaeli. Singan: Learning a generative model from a single natural image. In ICCV, 2019. 1, 3 [89] Qi Shan, Jiaya Jia, and Aseem Agarwala. High-quality motion deblurring from a single image. Acm transactions on graphics (tog), 27(3):1–10, 2008. 3 [90] Wenzhe Shi, Jose Caballero, Ferenc Husza´r, Johannes Totz, Andrew P Aitken, Rob Bishop, Daniel Rueckert, and Zehan Wang. Real-time single image and video super-resolution using an efficient sub-pixel convolutional neural network. In CVPR, 2016. 4 [91] Abhishek Singh and Narendra Ahuja. Super-resolution using sub-band self-similarity. In ACCV, 2015. 1, 3 [92] Ying Tai, Jian Yang, Xiaoming Liu, and Chunyan Xu. Memnet: A persistent memory network for image restoration. In ICCV, pages 4539–4547, 2017. 2 [93] Radu Timofte, Eirikur Agustsson, Luc Van Gool, MingHsuan Yang, and Lei Zhang. Ntire 2017 challenge on single
+
+image super-resolution: Methods and results. In CVPRW, 2017. 6, 7 [94] Radu Timofte, Vincent De Smet, and Luc Van Gool. Anchored neighborhood regression for fast example-based super-resolution. In ICCV, 2013. 2 [95] Radu Timofte, Vincent De Smet, and Luc Van Gool. A+: Adjusted anchored neighborhood regression for fast superresolution. In ACCV, 2014. 2 [96] Dmitry Ulyanov, Andrea Vedaldi, and Victor Lempitsky. Deep image prior. In CVPR, 2018. 1, 3 [97] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Lukasz Kaiser, and Illia Polosukhin. Attention is all you need. arXiv preprint arXiv:1706.03762, 2017. 3 [98] Longguang Wang, Yingqian Wang, Xiaoyu Dong, Qingyu Xu, Jungang Yang, Wei An, and Yulan Guo. Unsupervised degradation representation learning for blind superresolution. In CVPR, 2021. 2 [99] Longguang Wang, Yingqian Wang, Zhengfa Liang, Zaiping Lin, Jungang Yang, Wei An, and Yulan Guo. Learning parallax attention for stereo image super-resolution. In CVPR, 2019. 2 [100] Longguang Wang, Yingqian Wang, Zaiping Lin, Jungang Yang, Wei An, and Yulan Guo. Learning a single network for scale-arbitrary super-resolution. In ICCV, 2021. 2 [101] Xintao Wang, Ke Yu, Chao Dong, and Chen Change Loy. Recovering realistic texture in image super-resolution by deep spatial feature transform. In CVPR, 2018. 6 [102] Xintao Wang, Ke Yu, Shixiang Wu, Jinjin Gu, Yihao Liu, Chao Dong, Yu Qiao, and Chen Change Loy. Esrgan: Enhanced super-resolution generative adversarial networks. In ECCVW, 2018. 2 [103] Zhou Wang, Alan C Bovik, Hamid R Sheikh, and Eero P Simoncelli. Image quality assessment: from error visibility to structural similarity. IEEE transactions on image processing, 13(4):600–612, 2004. 6 [104] Yunxuan Wei, Shuhang Gu, Yawei Li, Radu Timofte, Longcun Jin, and Hengjie Song. Unsupervised real-world image super resolution via domain-distance aware training. In CVPR, 2021. 2 [105] Bin Xia, Yapeng Tian, Yucheng Hang, Wenming Yang, Qingmin Liao, and Jie Zhou. Coarse-to-fine embedded patchmatch and multi-scale dynamic aggregation for reference-based super-resolution. In AAAI, 2022. 2 [106] Bin Xia, Yulun Zhang, Shiyin Wang, Yitong Wang, Xinglong Wu, Yapeng Tian, Wenming Yang, and Luc Van Gool. Diffir: Efficient diffusion model for image restoration. arXiv preprint arXiv:2303.09472, 2023. 2 [107] Zhenda Xie, Zheng Zhang, Yue Cao, Yutong Lin, Jianmin Bao, Zhuliang Yao, Qi Dai, and Han Hu. Simmim: A simple framework for masked image modeling. In CVPR, 2022. 3 [108] Zhiwei Xiong, Xiaoyan Sun, and Feng Wu. Image hallucination with feature enhancement. In CVPR, 2009. 2 [109] Li Xu, Shicheng Zheng, and Jiaya Jia. Unnatural l0 sparse representation for natural image deblurring. In CVPR, 2013. 3
+
+12
+
+[110] Liu Yihao, He Jingwen, Gu Jinjin, Kong Xiangtao, Qiao Yu, and Dong Chao. Degae: A new pretraining paradigm for low-level vision. In CVPR, 2023. 3
+[111] Tao Yu, Zhihe Lu, Xin Jin, Zhibo Chen, and Xinchao Wang. Task residual for tuning vision-language models. In CVPR, 2023. 3
+[112] Syed Waqas Zamir, Aditya Arora, Salman Khan, Munawar Hayat, Fahad Shahbaz Khan, and Ming-Hsuan Yang. Restormer: Efficient transformer for high-resolution image restoration. In CVPR, 2022. 2
+[113] Roman Zeyde, Michael Elad, and Matan Protter. On single image scale-up using sparse-representations. In Curves and Surfaces: 7th International Conference, Avignon, France, June 24-30, 2010, Revised Selected Papers 7, pages 711– 730. Springer, 2012. 6
+[114] Jiale Zhang, Yulun Zhang, Jinjin Gu, Yongbing Zhang, Linghe Kong, and Xin Yuan. Accurate image restoration with attention retractable transformer. arXiv preprint arXiv:2210.01427, 2022. 6
+[115] Jiale Zhang, Yulun Zhang, Jinjin Gu, Yongbing Zhang, Linghe Kong, and Xin Yuan. Accurate image restoration with attention retractable transformer. In ICLR, 2023. 2
+[116] Jeffrey O Zhang, Alexander Sax, Amir Zamir, Leonidas Guibas, and Jitendra Malik. Side-tuning: a baseline for network adaptation via additive side networks. In ECCV, 2020. 3
+[117] Kai Zhang, Yawei Li, Wangmeng Zuo, Lei Zhang, Luc Van Gool, and Radu Timofte. Plug-and-play image restoration with deep denoiser prior. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2021. 2
+[118] Kai Zhang, Wangmeng Zuo, Yunjin Chen, Deyu Meng, and Lei Zhang. Beyond a gaussian denoiser: Residual learning of deep cnn for image denoising. IEEE transactions on image processing, 26(7):3142–3155, 2017. 2
+[119] Kai Zhang, Wangmeng Zuo, Shuhang Gu, and Lei Zhang. Learning deep cnn denoiser prior for image restoration. In CVPR, 2017. 3
+[120] Kai Zhang, Wangmeng Zuo, and Lei Zhang. Ffdnet: Toward a fast and flexible solution for cnn-based image denoising. IEEE Transactions on Image Processing, 27(9):4608–4622, 2018. 2
+[121] Kai Zhang, Wangmeng Zuo, and Lei Zhang. Learning a single convolutional super-resolution network for multiple degradations. In CVPR, 2018. 2
+[122] Lei Zhang, Xiaolin Wu, Antoni Buades, and Xin Li. Color demosaicking by local directional interpolation and nonlocal adaptive thresholding. Journal of Electronic imaging, 20(2):023016–023016, 2011. 6
+[123] Yulun Zhang, Kunpeng Li, Kai Li, Lichen Wang, Bineng Zhong, and Yun Fu. Image super-resolution using very deep residual channel attention networks. In ECCV, 2018. 2
+[124] Yulun Zhang, Kunpeng Li, Kai Li, Bineng Zhong, and Yun Fu. Residual non-local attention networks for image restoration. arXiv preprint arXiv:1903.10082, 2019. 2
+[125] Yulun Zhang, Yapeng Tian, Yu Kong, Bineng Zhong, and Yun Fu. Residual dense network for image superresolution. In CVPR, 2018. 2
+
+[126] Yulun Zhang, Yapeng Tian, Yu Kong, Bineng Zhong, and Yun Fu. Residual dense network for image restoration. IEEE Transactions on Pattern Analysis and Machine Intelligence, 43(7):2480–2495, 2020. 2
+[127] Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. Learning to prompt for vision-language models. International Journal of Computer Vision, 130(9):2337– 2348, 2022. 3
+[128] Shangchen Zhou, Jiawei Zhang, Wangmeng Zuo, and Chen Change Loy. Cross-scale internal graph neural network for image super-resolution. NeurlPS, 2020. 2
+[129] Song Chun Zhu and David Mumford. Prior learning and gibbs reaction-diffusion. IEEE Transactions on Pattern Analysis and Machine Intelligence, 19(11):1236–1250, 1997. 1
+
+13
+

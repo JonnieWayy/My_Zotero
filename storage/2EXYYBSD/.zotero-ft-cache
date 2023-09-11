@@ -1,0 +1,80 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2302.12192
+
+Help | Advanced Search
+Search
+Computer Science > Machine Learning
+(cs)
+[Submitted on 23 Feb 2023]
+Title: Aligning Text-to-Image Models using Human Feedback
+Authors: Kimin Lee , Hao Liu , Moonkyung Ryu , Olivia Watkins , Yuqing Du , Craig Boutilier , Pieter Abbeel , Mohammad Ghavamzadeh , Shixiang Shane Gu
+Download a PDF of the paper titled Aligning Text-to-Image Models using Human Feedback, by Kimin Lee and 8 other authors
+Download PDF
+
+    Abstract: Deep generative models have shown impressive results in text-to-image synthesis. However, current text-to-image models often generate images that are inadequately aligned with text prompts. We propose a fine-tuning method for aligning such models using human feedback, comprising three stages. First, we collect human feedback assessing model output alignment from a set of diverse text prompts. We then use the human-labeled image-text dataset to train a reward function that predicts human feedback. Lastly, the text-to-image model is fine-tuned by maximizing reward-weighted likelihood to improve image-text alignment. Our method generates objects with specified colors, counts and backgrounds more accurately than the pre-trained model. We also analyze several design choices and find that careful investigations on such design choices are important in balancing the alignment-fidelity tradeoffs. Our results demonstrate the potential for learning from human feedback to significantly improve text-to-image models. 
+
+Subjects: 	Machine Learning (cs.LG) ; Artificial Intelligence (cs.AI); Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2302.12192 [cs.LG]
+  	(or arXiv:2302.12192v1 [cs.LG] for this version)
+  	https://doi.org/10.48550/arXiv.2302.12192
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Kimin Lee [ view email ]
+[v1] Thu, 23 Feb 2023 17:34:53 UTC (20,327 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Aligning Text-to-Image Models using Human Feedback, by Kimin Lee and 8 other authors
+    PDF
+    Other formats 
+
+( license )
+Current browse context:
+cs.LG
+< prev   |   next >
+new | recent | 2302
+Change to browse by:
+cs
+cs.AI
+cs.CV
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

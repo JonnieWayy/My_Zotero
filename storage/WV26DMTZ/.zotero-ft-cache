@@ -1,0 +1,341 @@
+Diffusion Models for High-Resolution Solar Forecasts
+
+arXiv:2302.00170v1 [cs.LG] 1 Feb 2023
+
+Yusuke Hatanaka 1 2 Yannik Glaser 1 Geoff Galgon 2 Giuseppe Torri 3 2 Peter Sadowski 1 2
+
+Abstract
+Forecasting future weather and climate is inherently difﬁcult. Machine learning offers new approaches to increase the accuracy and computational efﬁciency of forecasts, but current methods are unable to accurately model uncertainty in high-dimensional predictions. Score-based diffusion models offer a new approach to modeling probability distributions over many dependent variables, and in this work, we demonstrate how they provide probabilistic forecasts of weather and climate variables at unprecedented resolution, speed, and accuracy. We apply the technique to day-ahead solar irradiance forecasts by generating many samples from a diffusion model trained to super-resolve coarse-resolution numerical weather predictions to high-resolution weather satellite observations.
+1. Introduction
+Current methods for forecasting weather and climate rely on numerical simulations of the Earth’s atmosphere. These simulations characterize the atmosphere in terms of coarse three-dimensional (3D) grid cells and use physical models to describe the time evolution of atmospheric variables such as temperature, pressure, and water vapor. The only obvious way to improve these models is to perform the simulations at higher spatiotemporal resolution at an ever-increasing computational cost. Forecast uncertainties are estimated by running a simulation multiple times with perturbed inputs to generate an ensemble of potential outcomes. An ensemble typically consists of tens of samples — enough to estimate the variance of a forecast, but not enough to estimate the risk of rare events. For example, the National Oceanic and Atmospheric Administration’s Global Ensemble Forecast System (NOAA, 2022) comprises 21 samples.
+1Information and Computer Sciences, University of Hawaii Manoa, Honolulu, Hawaii, USA 2Nimbus AI LLC, Honolulu, Hawaii, USA 3Atmospheric Sciences, University of Hawaii Manoa, Honolulu, Hawaii, USA. Correspondence to: Peter Sadowski <peter.sadowski@hawaii.edu>.
+
+Machine learning can improve these forecast models in two ways: (1) by improving the forecast models directly by correcting limitations of the physics-based models, and (2) via super-resolution of coarse-grained forecast model outputs, an approach known as downscaling in the geophysical sciences. Large quantities of data exist for training these models, from both observations and simulations, with videolike spatiotemporal structures that make them amenable to modeling with deep convolutional neural networks. Recent examples from the literature include precipitation forecasting over local regions using a mix of radar and satellite data (Sønderby et al., 2020; Ravuri et al., 2021), and forecasting global atmospheric variables using reanalysis data (Pathak et al., 2022; Bi et al., 2022; Lam et al., 2022).
+
+21.8399°N 0.7
+
+21.6728°N
+
+0.6
+
+0.5
+
+21.5056°N
+
+0.4
+
+0.3
+
+21.3384°N
+
+0.2
+
+0.1
+
+21.1711528°N.356°W 158.153°W 157.949°W 157.746°W 157.543°W 0.0
+
+Figure 1. Instantaneous cloud cover over the Hawaiian island of Oahu, sampled from a score-based diffusion model trained on satellite data with 0.5 km resolution. The high cloud density on the windward (east) side of the Koolau mountain range (center), is characteristic of mountainous tropical islands at these latitudes.
+However, the high degree of aleatoric uncertainty, or inherent unpredictability, presents a challenge for machine learning models. Small differences in the initial atmospheric conditions can cause large differences in outcomes, so limitedprecision computational models need a way of characterizing uncertainty over a high-dimensional joint distribution of dependent variables. The most common modeling approach is to assume the predicted variables are each conditionally independent given the input of initial conditions, but this approach can fail in modeling the risks of important weather events resulting in part from the variables’ joint relation-
+
+Diffusion Models for High-Resolution Solar Forecasts
+
+ships. For example, a model might accurately predict the rainfall at each individual location in a region reasonably well (i.e. the marginal distributions) but fail to quantify the risk of ﬂooding which requires modeling the joint distribution of rainfall over a watershed integrated over time. Some work has attempted to model this uncertainty using variational autoencoders (VAEs) (Kingma & Welling, 2013) or generative adversarial networks (GANs) (Ravuri et al., 2021), but in this work, we make the case for using diffusion models to model uncertainty in weather forecasts.
+Score-based diffusion models have emerged as a remarkably effective approach to approximating distributions over natural images. Prominent examples include Dall-E 2 (Ramesh et al., 2021), GLIDE (Nichol et al., 2021), and Imagen (Saharia et al., 2022), which generate realistic images from text captions by combining large language models with diffusion models that sample (conditionally) from a highdimensional image distribution. In this work, score-based diffusion models are trained on satellite images to perform super-resolution of numerical weather forecasts. A probabilistic forecast is generated by rapidly sampling from the conditional distribution deﬁned by the diffusion model. Experimental results on day-ahead solar irradiance forecasting for the Hawaiian island of Oahu demonstrate increased accuracy along with quantiﬁed uncertainty. Our results suggest that this approach could be useful for a wide range of applications in the geophysical sciences, such as predicting precipitation and evapotranspiration or the effects of climate change on local weather patterns.
+2. Related Work
+2.1. Score-Based Diffusion Models
+Diffusion models are generative in that they describe a probability distribution p(x), where x can be a high-dimensional random variable, for example, an image or the state of a physical system. In general, learning a probability distribution over a high-dimensional space from data is extremely challenging because the number of required samples grows exponentially with dimensionality. However, learning is possible when the data lives on low-dimensional manifolds, such as natural images and other data with spatial and temporal structures.
+The last decade has seen a number of innovative deeplearning approaches to address the problem of learning a generative model in high dimensions. These include autoregressive models (Uria et al., 2016), GANs, VAEs, and ﬂow-based models (Rezende & Mohamed, 2015; Dinh et al., 2016), all of which have been used heavily in scientiﬁc applications. Score-based diffusion models are a special case of reversible generative models, which parameterize a oneto-one mapping between a known distribution and the data
+
+distribution. Previous reversible generative models such as NICE (Dinh et al., 2014), Real NVP (Dinh et al., 2016), and GLOW (Kingma & Dhariwal, 2018) can be trained by directly maximizing the data likelihood, but require significant computation for each parameter training update and scale poorly to large datasets. Score-based diffusion models provide an efﬁcient stochastic gradient learning algorithm by approximating the score function (the gradient of the log probability density ∇x log p(x)) rather than the probability density function p(x). The score function is easier to learn because local updates can be made during training without the need to ensure the probability density function integrates to one.
+
+A score-based diffusion model consists of a neural network representing a time-dependent function with the same input and output dimensions, sθ(x, t) : (RD, [0, T ]) → RD, parameterized by θ. For image data, this is typically implemented as a U-Net to model the local structure in images. The data-generating process can be deﬁned by sampling xT from a standard multivariate normal distribution and then solving the following ordinary differential equation in the reverse time direction to generate a sample at t = 0, x0:
+
+dx
+
+dt = −sθ(x, t)a(t) + b(x, t),
+
+(1)
+
+where a(t) and b(x, t) are pre-speciﬁed drift and diffusion coefﬁcients that determine the shape of the prior. Because the data-generating process is reversible, we can compute the likelihood pθ(x) of any data point x. But rather than maximizing the training data likelihood directly, it is more efﬁcient to optimize a score-based objective such as the “denoising” objective suggested by Song et al. (2021):
+
+J = Ex0 EtExt
+
+a(t)
+
+sθ(xt, t) − ∇xt log p(xt|x0)
+
+2 2
+
+(2)
+
+where the outer expectation is over the training data set, the second expectation is over time t ∼ U(0, T ), and the inner expectation is over a distribution of sample corruptions in which the training sample x0 is propagated through a stochastic noising process for time t (in practice, this is just x0 plus some Gaussian noise which increases with t). The objective is efﬁcient to optimize using stochastic gradient descent. At each iteration, samples are drawn from each of the three distributions, and parameters are updated with gradient descent. The result is a simple, intuitive, training algorithm: Gaussian noise is added to data samples and the parameterized model is trained to denoise the samples. This objective has been shown to upper bound the negative log-likelihood of the training data (Song et al., 2021) and thus the model learns to approximate a high-dimensional joint distribution. In this work, we generate many samples from such a model to provide a probabilistic forecast.
+
+Diffusion Models for High-Resolution Solar Forecasts
+
+Figure 2. A score-based diffusion model samples from a high-dimensional data distribution by ﬁrst sampling from a reference distribution, then solving the reverse-time ODE deﬁned by Eq. 1 to obtain a sample from the learned distribution. In this example, a 128 × 128 pixel “noise” image is sampled from a multivariate Gaussian (Iteration 0) and iteratively reﬁned by a neural network to obtain a sample of a realistic-looking weather satellite radiance image of Oahu (Iteration 800).
+
+2.2. Solar Irradiance Forecasting
+Solar irradiance is a particularly interesting forecasting application since better forecasting can reduce the risks to electricity grid stability that are associated with increasing grid penetration of non-dispatchable solar photovoltaics (PV). The last few years have seen a number of applications of computer vision techniques to solar irradiance forecasting, including optical ﬂow models (Wood-Bradley et al., 2012) or more recently deep learning (Zhang et al., 2018; Sun et al., 2018; Hart et al., 2020; Berthomier et al., 2020; Kellerhals et al., 2022), including GANs (Nie et al., 2021). However, none of these approaches provide fully-probabilistic predictions that have the ability to estimate the risk of many PV sites being cloudy at once; this work is the ﬁrst to propose a method for estimating this risk in a tractable way.
+We evaluate our approach on the Hawaiian island of Oahu (population 1,000,000 and the site of ICML 2023), where the problems and opportunities of renewable energy are ampliﬁed. The isolation of each Hawaiian island’s electrical grid and a dependence on imported petroleum result in high electricity prices, with Hawaii consumers paying $0.30/kWh in 2021, twice that of customers in California (geopolitical events in May 2022 caused this to increase 34% to $0.42/kWh (Bureau of Labor Statistics, U.S. Department of Labor, 2022)). On the other hand, Hawaii’s low latitude makes solar an attractive alternative energy source, and Honolulu has more PV production per capita than any other city in the United States, with PV systems installed on nearly a third of single-family residential homes (Penn & Fremson, 2022; Hawaiian Electric, 2022). This results in large spikes in energy demand when clouds pass over solar generation sites and dense population areas. Predicting these events could enable grid operators to mitigate their impact through demand response strategies such as starting new generators, charging batteries, and turning off water heaters and HVAC systems.
+
+3. Methods
+3.1. Model
+In experiments we use two cascaded diffusion models (Ho et al., 2021), where the ﬁrst model generates 64 × 64 pixel images, then a second model performs super-resolution to produce 128 × 128 pixel images (Fig. 3). Both diffusion models are conditioned on the same coarse-resolution atmospheric variables output by numerical simulations. At training time, the model is conditioned on atmospheric variables from ERA5 reanalysis data. The trained model is then evaluated for two different applications: (1) historical cloud cover prediction by conditioning on held-out reanalysis data; (2) future cloud cover prediction by conditioning on forecasts from GFS. GFS and ERA5 use the same underlying physics models, so the same atmospheric variables are available at approximately the same resolution.
+A U-Net architecture (Ronneberger et al., 2015) is used for each diffusion model (Figure 4). It utilizes the skip connections to preserve the context at different spacial levels, while the network progressively encodes the image to capture information on wider range. The speciﬁc U-net conﬁgurations largely follow details provided in Ho et al. (2021) for the 64×64→128×128 ImageNet model. Brieﬂy, each downsampling and upsampling block adjusts the spatial dimensionality by a factor of 2 while the channel count is modiﬁed by a multiplier Mn. The atmospheric conditioning information is injected as a ﬂat vector into each block in the network. Our full cascaded diffusion model implementation is based on the publicly available code by Wang (2022).
+3.2. Data
+Three types of data are used for experiments. The model is trained to predict cloud cover images derived from GOES satellite data from reanalysis data. Then this trained model is used to super-resolve GFS forecasts. Model training was performed on data from January 2019 – June 2021, and all model evaluations were performed on data from July 2021 – June 2022.
+
+Diffusion Models for High-Resolution Solar Forecasts
+
+coarse resolution atmospheric variables
+cloud cover diffusion model
+
+64x64
+
+super resolution diffusion model
+
+128x128
+
+Figure 3. Coarse resolution output from a numerical weather prediction model is converted to a high resolution cloud cover image using two diffusion models. The ﬁrst model takes the atmospheric variables and generates a 64 × 64 pixel cloud cover image. The second model is conditioned on the same atmospheric variables, and increases the resolution to 128 × 128 pixels.
+
+N2, M1 R1
+
+N2, 2×M1 R1
+
+(N2/2), M2 R2
+
+(N2/2), 2×M2 R2
+
+(N2/4), M3 R3
+
+(N2/4), 2×M3 R3
+
+R4
+
+R4
+
+(N2/8), M4
+
+(N2/8), 2×M4
+
+UNet1: N=64, M = {1,2,4,8}, R = {3,3,3,3}
+
+UNet2: N=128, M = {1,2,4,8}, R = {2,4,8,8}
+
+Figure 4. Both diffusion models use a U-net architecture. Figure details: Vertical lines are downsampling/ upsampling steps. Dotted horizontal lines concatenations. Solid horizontal lines are Rn resnet blocks.
+
+aVreertical
+
+lines are downsampling/ upsampling steps, and dotted horizon-
+
+tal lines are concatenations. Rn and Mn denote the number of
+
+residual blocks and the channel-dimension multiplier, respectively.
+
+N is the dimension of the input image, i.e., N = 64 for the ﬁrst
+
+diffusion model, and N = 128 for the super-resolution diffusion
+
+model.
+
+3.2.1. GOES SATELLITE DATA
+The National Oceanographic and Atmospheric Administration’s GOES-17 (GOES-West) satellite provides highresolution atmospheric measurements over the Paciﬁc Ocean in near real-time with the explicit goal of improving weather forecasting capabilities. Its Advanced Baseline Imager conducts full-disk observations once every 10 minutes, measuring 16 spectral bands from visible to long-wave infrared. We use Band 2 (0.60 − 0.68 µm), which has 0.5 km spatial resolution and matches the peak absorption range of crystalline silicon photovoltaic (PV) cells. Data from 2019– 2022 was downloaded from the Google Cloud Platform.
+From the GOES-17 measurements of solar radiance, we estimated total cloud cover for each pixel using a ﬂat-ﬁelding algorithm. Working with this representation of the data has three advantages. First, total cloud cover does not drastically change throughout the day, as is the case with solar radiance or ground irradiance. Second, total cloud cover can be com-
+
+bined with data-driven clear-sky radiation models such as Perez et al. (1990) to predict solar irradiance on the ground. This approach is more accurate than the non-data-driven estimates of global horizontal solar irradiance provided by numerical weather prediction. Third, total cloud cover is a variable provided by both GFS and ERA5, making it easy to compare our predictions with those predictions.
+For each timestamp, the zenith solar angle was calculated relative to the center of the island of Oahu and removed if its value is more than 80 degrees, in order to avoid noisy data points. This resulted in a dataset of 51,830 training data and 22,807 test data. See Fig. 7 for some of the random data examples from the training dataset. Both the training and the test set include hours between 6 am and 6 pm, although the range varies depending on the season.
+3.2.2. ERA5 REANALYSIS DATA
+Historical reanalysis data was taken from the European Center for Medium-range Weather Forecasts (ECMWF) Reanalysis v5 (ERA5) (Hersbach et al., 2020). Reanalysis data are produced through a blend of observational data and short-range weather forecasts that get assimilated and the result is incorporated into one regularly spaced grid. While most reanalysis products are available at spatial and temporal resolutions much coarser than typical short-range weather forecasts, they can nevertheless provide an overall understanding of past weather conditions, and they can be used to initialize numerical simulations. ERA5 is available at a grid resolution of 31 km and a temporal resolution of 1 hour, and they cover a period from 1950 to the present.
+The diffusion model is conditioned on ﬁve atmospheric variables over a 3 × 3 grid covering the island of Oahu, for a total of 45 values. The ﬁve atmospheric variables describe the cloud structure and moisture ﬂux: (1–3) cloud cover at different levels of the atmosphere (low, medium, and high cloud cover), (4) the total cloud cover (which is simply the sum of low, medium, and high), and (5) the vertically-integrated eastward water vapor ﬂux. For each
+
+Diffusion Models for High-Resolution Solar Forecasts
+
+of the variables, we extract the 3 × 3 region that covers the island of Oahu.
+3.2.3. GFS HISTORICAL FORECASTS
+Historical GFS forecasts were downloaded from the NCAR Research Data Archive. We used the same-day forecast issued at 12:00 UTC (2:00 am Hawaii Standard Time) for the instantaneous total cloud cover at 21:00 UTC (11:00 am HST). This is a scenario highly relevant to decisions on whether to discharge energy from batteries during the morning energy demand peak depending on subsequent expected PV generation at midday. These forecasts have a coarse resolution of 0.25◦ (∼27 km in Hawaii), and we use the same 5 atmospheric features over the same 3 × 3 grid covering Oahu for input to the diffusion model in the forecasting experiments.
+4. Results
+4.1. ERA5 super-resolution
+On the held out test set, we evaluated predictions from the diffusion model using the total cloud cover derived from satellite data as ground-truth. Diffusion model predictions were produced by sampling many cloud cover images for a given timestep (N=45), conditioning on the atmospheric variables provided by ERA5, and taking the mean image. The root mean squared error (RMSE) was used to measure prediction error.
+The diffusion model prediction error was compared to two baseline prediction methods: (1) the coarse resolution total cloud cover from ERA5, and (2) a high resolution mean over all satellite-derived cloud cover images in the training set from the same time of day; we refer to this as the persistence model. The diffusion model takes the former as an input, but can improve upon this prediction by incorporating learned patterns that account for local topography. This can be clearly seen in Figure 6, where the samples tend to have clouds accumulated at the mountainous regions of the island. The persistence model also includes these features, but is unable to account for any variations in weather. The diffusion model accounts for both of these factors and has lower RMSE (Table 1). A paired t-test between the RMSEs of the diffusion model and those of the persistence model was conducted because the mean RMSE values were close; the differences were statistically signiﬁcant (p < .01) in both experiments, since the test dataset is a large sample.
+4.2. GFS forecasts
+The diffusion model was then conditioned on GFS data to generate high-resolution forecasts for 11 am local time each day. In this experiment, we used N=90 samples from the diffusion model, as additional samples continued to increase
+
+RMSE
+
+prediction accuracy (Figure 5), and samples are computationally inexpensive, taking only seconds to generate. Once again the mean of the diffusion samples had lower RMSE than both the coarse resolution forecast it was conditioned on (GFS), and the time-conditioned persistence model.
+0.28
+0.26
+0.24
+0.22
+0.20 0 20 sam40ple size60 80
+Figure 5. Prediction error in RMSE vs. the number of samples (N) from the diffusion model. The prediction error is an average over the held-out test set.
+5. Conclusion
+Machine learning methods developed for super-resolution or video-prediction are well-suited for problems in weather and climate forecasting. We have proposed a method for using score-based diffusion models to super-resolve the output of numerical weather models and provide fully-probabilistic predictions of both historical and future weather patterns. In experiments, we evaluated this approach for day-ahead solar forecasts on the island of Oahu, and showed that the learned diffusion model exhibits three desirable qualities: (1) each sample is a realistic-looking image; (2) the samples are diverse; and (3) the mean of the samples is good point-estimate with lower RMSE than both coarse resolution numerical weather prediction alone and a high-resolution persistence baseline.
+In follow-up work, we are evaluating this approach for estimating the risks that would otherwise require running a large ensemble of numerical simulations. Sampling from a diffusion model takes only seconds, and can learn patterns in data that are inaccessible to coarse-grained simulations, so if the model is accurate enough it could provide a powerful tool for estimating the risk of rare events. Such a tool could be useful at multiple scales in weather and climate modeling.
+6. Acknowledgements
+Support for this work comes from NSF #OIA-2149133. Technical support and advanced computing resources from
+
+Diffusion Models for High-Resolution Solar Forecasts
+
+Table 1. Test set prediction error in RMSE for the diffusion model, persistence model, ERA5, and GFS. All RMSEs were computed using the satellite-derived cloud cover as ground truth. In the historical prediction scenario, the results are averaged over all daylight hours, while the future prediction (forecast) scenario includes only examples for 11 am local time. The difference between the diffusion model and persistence model is statistically signiﬁcant in both the historical and future prediction scenarios, with the p-value computed from a paired t-test between the means. A more detailed breakdown of these results is available in the Appendix.
+
+PREDICTION
+HISTORICAL FUTURE (11AM)
+
+WEATHER MODEL
+ERA5 GFS
+
+DIFFUSION
+0.207± 0.075 0.198± 0.075
+
+PERSISTENCE
+0.223± 0.090 0.202± 0.089
+
+ERA5
+0.362± 0.190 —
+
+GFS
+— 0.358± 0.229
+
+P-VALUE
+< 5 × 10−4 0.008
+
+ground truth sample 1
+
+sample 2
+
+sample 3
+
+sample 4
+
+sample 5
+
+sam(pNl=e4m5e) an
+
+ERA5
+
+RMSE=0.32
+
+RMSE=0.15
+
+data 1
+
+0.41
+
+0.38
+
+data 2
+
+0.62
+
+0.27
+
+data 3
+
+0.32
+
+0.28
+
+data 4
+
+0.34
+
+0.15
+
+data 5
+
+Figure 6. Cloud coverage over Oahu (ground truth) is predicted by sampling repeatedly from a diffusion model (samples 1-5) and computing the mean (sample mean). This prediction has lower pixel-wise RMSE than the coarse-resolution weather data (ERA5) that the diffusion model is conditioned on because the diffusion model has learned about local weather patterns from high-resolution satellite data. We show only the top-ﬁve best images in terms of RMSE in this plot (samples 1-5 for each row), and provide the entirety of the generated images in appendix Fig.8 for some of these data points.
+
+University of Hawaii Information Technology Services – Cyberinfrastructure, funded in part by the National Science Foundation CC* awards #2201428 and #2232862 are gratefully acknowledged.
+References
+Berthomier, L., Pradel, B., and Perez, L. Cloud cover nowcasting with deep learning. In 2020 Tenth International Conference on Image Processing Theory, Tools and Applications (IPTA), pp. 1–6. IEEE, 2020.
+Bi, K., Xie, L., Zhang, H., Chen, X., Gu, X., and Tian, Q. Pangu-weather: A 3d high-resolution model for fast and accurate global weather forecast. arXiv preprint
+
+arXiv:2211.02556, 2022.
+Bureau of Labor Statistics, U.S. Department of Labor. Average energy prices for the united states, regions, census divisions, and selected metropolitan areas. https://www.bls.gov/regions/ midwest/data/averageenergyprices_ selectedareas_table.htm, 2022. Accessed: 2022-06-26.
+Dinh, L., Krueger, D., and Bengio, Y. NICE: Non-linear independent components estimation. International Conference on Learning Representations Workshop, 2014. arXiv preprint arXiv:1410.8516.
+Dinh, L., Sohl-Dickstein, J., and Bengio, S. Density estima-
+
+Diffusion Models for High-Resolution Solar Forecasts
+
+tion using Real NVP. arXiv preprint arXiv:1605.08803, 2016.
+Hart, K., Sadowski, P., and Torri, G. Nowcasting solar radiance over Oahu. In AI for Earth Sciences Workshop at NeurIPS, 2020.
+
+Nie, Y., Scott, A., Zelikman, E., and Brandt, A. Sky image prediction using generative adversarial networks for solar forecasting. In ICML 2021 Workshop on Tackling Climate Change with Machine Learning, 2021. URL https://www.climatechange.ai/ papers/icml2021/54.
+
+Hawaiian Electric. 2021/2022 sustainability report. https://view.hawaiianelectric.com/ 2021-2022-sustainability-report/page/ 4-5, 2022. Accessed: 2022-06-26.
+
+NOAA. Global Ensemble Forecast System (GEFS), 2022. URL https://www.ncei.noaa.gov/ products/weather-climate-models/ global-ensemble-forecast.
+
+Hersbach, H., Bell, B., Berrisford, P., Hirahara, S., Hora´nyi, A., Mun˜oz-Sabater, J., Nicolas, J., Peubey, C., Radu, R., Schepers, D., Simmons, A., Soci, C., Abdalla, S., Abellan, X., Balsamo, G., Bechtold, P., Biavati, G., Bidlot, J., Bonavita, M., De Chiara, G., Dahlgren, P., Dee, D., Diamantakis, M., Dragani, R., Flemming, J., Forbes, R., Fuentes, M., Geer, A., Haimberger, L., Healy, S., Hogan, R. J., Ho´lm, E., Janiskova´, M., Keeley, S., Laloyaux, P., Lopez, P., Lupu, C., Radnoti, G., de Rosnay, P., Rozum, I., Vamborg, F., Villaume, S., and The´paut, J.-N. The era5 global reanalysis. Quarterly Journal of the Royal Meteorological Society, 146(730): 1999–2049, 2020. doi: https://doi.org/10.1002/qj.3803. URL https://rmets.onlinelibrary.wiley. com/doi/abs/10.1002/qj.3803.
+Ho, J., Saharia, C., Chan, W., Fleet, D. J., Norouzi, M., and Salimans, T. Cascaded diffusion models for high ﬁdelity image generation. arXiv preprint arXiv:2106.15282, 2021.
+Kellerhals, S. A., De Leeuw, F., and Rodriguez Rivero, C. Cloud nowcasting with structure-preserving convolutional gated recurrent units. Atmosphere, 13(10):1632, 2022.
+Kingma, D. P. and Dhariwal, P. Glow: Generative ﬂow with invertible 1x1 convolutions. Advances in neural information processing systems, 31, 2018.
+Kingma, D. P. and Welling, M. Auto-encoding variational bayes. arXiv preprint arXiv:1312.6114, 2013.
+Lam, R., Sanchez-Gonzalez, A., Willson, M., Wirnsberger, P., Fortunato, M., Pritzel, A., Ravuri, S., Ewalds, T., Alet, F., Eaton-Rosen, Z., et al. Graphcast: Learning skillful medium-range global weather forecasting. arXiv preprint arXiv:2212.12794, 2022.
+Nichol, A., Dhariwal, P., Ramesh, A., Shyam, P., Mishkin, P., McGrew, B., Sutskever, I., and Chen, M. Glide: Towards photorealistic image generation and editing with text-guided diffusion models. arXiv preprint arXiv:2112.10741, 2021.
+
+Pathak, J., Subramanian, S., Harrington, P., Raja, S., Chattopadhyay, A., Mardani, M., Kurth, T., Hall, D., Li, Z., Azizzadenesheli, K., Hassanzadeh, P., Kashinath, K., and Anandkumar, A. Fourcastnet: A global data-driven highresolution weather model using adaptive fourier neural operators. arXiv preprint arXiv:2202.11214, 2022.
+Penn, I. and Fremson, R. Hit hard by high energy costs, hawaii looks to the sun. The New York Times, 2022. ISSN 0362-4331. URL https://www.nytimes.com/2022/05/30/ business/hawaii-solar-energy.html.
+Perez, R., Ineichen, P., Seals, R., Michalsky, J., and Stewart, R. Modeling daylight availability and irradiance components from direct and global irradiance. Solar energy, 44 (5):271–289, 1990.
+Ramesh, A., Pavlov, M., Goh, G., Gray, S., Voss, C., Radford, A., Chen, M., and Sutskever, I. Zero-shot textto-image generation. In International Conference on Machine Learning, pp. 8821–8831. PMLR, 2021.
+Ravuri, S., Lenc, K., Willson, M., Kangin, D., Lam, R., Mirowski, P., Fitzsimons, M., Athanassiadou, M., Kashem, S., Madge, S., Prudden, R., Mandhane, A., Clark, A., Brock, A., Simonyan, K., Hadsell, R., Robinson, N., Clancy, E., Arribas, A., and Mohamed, S. Skilful precipitation nowcasting using deep generative models of radar. Nature, 597(7878):672–677, 2021.
+Rezende, D. and Mohamed, S. Variational inference with normalizing ﬂows. In International conference on machine learning, pp. 1530–1538. PMLR, 2015.
+Ronneberger, O., Fischer, P., and Brox, T. U-net: Convolutional networks for biomedical image segmentation. In International Conference on Medical image computing and computer-assisted intervention, pp. 234–241. Springer, 2015.
+Saharia, C., Chan, W., Saxena, S., Li, L., Whang, J., Denton, E., Ghasemipour, S. K. S., Ayan, B. K., Mahdavi, S. S., Lopes, R. G., Salimans, T., Ho, J., Fleet, D. J., and Norouzi, M. Photorealistic text-to-image diffusion
+
+Diffusion Models for High-Resolution Solar Forecasts
+models with deep language understanding. arXiv preprint arXiv:2205.11487, 2022.
+Sønderby, C. K., Espeholt, L., Heek, J., Dehghani, M., Oliver, A., Salimans, T., Agrawal, S., Hickey, J., and Kalchbrenner, N. Metnet: A neural weather model for precipitation forecasting. arXiv preprint arXiv:2003.12140, 2020.
+Song, Y., Durkan, C., Murray, I., and Ermon, S. Maximum likelihood training of score-based diffusion models. Advances in Neural Information Processing Systems, 34: 1415–1428, 2021.
+Sun, Y., Venugopal, V., and Brandt, A. R. Convolutional neural network for short-term solar panel output prediction. In 2018 IEEE 7th World Conference on Photovoltaic Energy Conversion (WCPEC)(A Joint Conference of 45th IEEE PVSC, 28th PVSEC & 34th EU PVSEC), pp. 2357– 2361. IEEE, 2018.
+Uria, B., Coˆte´, M.-A., Gregor, K., Murray, I., and Larochelle, H. Neural autoregressive distribution estimation. The Journal of Machine Learning Research, 17 (1):7184–7220, 2016.
+Wang, P. Imagen - pytorch. https://github.com/ lucidrains/imagen-pytorch, 2022.
+Wood-Bradley, P., Zapata, J., Pye, J., et al. Cloud tracking with optical ﬂow for short-term solar forecasting. In Proceedings of the 50th Conference of the Australian Solar Energy Society. Australian Solar Energy Society, 2012.
+Zhang, J., Verschae, R., Nobuhara, S., and Lalonde, J.-F. Deep photovoltaic nowcasting. Solar Energy, 176:267– 276, 2018.
+
+A. Appendix
+
+Diffusion Models for High-Resolution Solar Forecasts
+
+Figure 7. Random data examples of the cloud coverage over the island of Oahu.
+
+Table 2. Hourly performance of our diffusion model on historical prediction.
+
+HOUR
+6AM 7AM 8AM 9AM 10AM 11AM 12AM 1PM 2PM 3PM 4PM 5PM 6PM
+TOTAL
+
+WEATHER MODEL
+ERA5 ERA5 ERA5 ERA5 ERA5 ERA5 ERA5 ERA5 ERA5 ERA5 ERA5 ERA5 ERA5
+ERA5
+
+DIFFUSION
+0.246± 0.077 0.237± 0.072 0.222± 0.076 0.202± 0.071 0.191± 0.067 0.188± 0.067 0.190± 0.064 0.191± 0.066 0.189± 0.064 0.198± 0.072 0.215± 0.078 0.250± 0.088 0.295± 0.086
+0.207± 0.075
+
+PERSISTENCE
+0.258± 0.084 0.248± 0.075 0.241± 0.079 0.219± 0.082 0.205± 0.085 0.202± 0.089 0.205± 0.092 0.208± 0.091 0.205± 0.088 0.218± 0.092 0.241± 0.092 0.271± 0.082 0.300± 0.076
+0.223± 0.090
+
+ERA5
+0.343± 0.150 0.343± 0.157 0.331± 0.173 0.336± 0.190 0.343± 0.204 0.357± 0.201 0.376± 0.204 0.385± 0.201 0.388± 0.200 0.384± 0.191 0.372± 0.179 0.365± 0.158 0.377± 0.142
+0.362± 0.190
+
+P-VALUE
+0.002 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4 < 5 × 10−4
+0.04
+< 5 × 10−4
+
+Diffusion Models for High-Resolution Solar Forecasts
+
+Ground Truth (data 1)
+
+Sample Mean (N=45)
+
+Ground Truth (data 2)
+
+Sample Mean (N=45)
+
+Figure 8. All of the generated samples for historical prediction (data 1 and 2 in Fig. 6).
+

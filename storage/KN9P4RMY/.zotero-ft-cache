@@ -1,0 +1,302 @@
+arXiv:2212.09611v1 [cs.CL] 19 Dec 2022
+
+Optimizing Prompts for Text-to-Image Generation
+Yaru Hao∗, Zewen Chi∗, Li Dong, Furu Wei Microsoft Research
+https://github.com/microsoft/LMOps
+Abstract
+Well-designed prompts can guide text-to-image models to generate amazing images. However, the performant prompts are often model-speciﬁc and misaligned with user input. Instead of laborious human engineering, we propose prompt adaptation, a general framework that automatically adapts original user input to model-preferred prompts. Speciﬁcally, we ﬁrst perform supervised ﬁne-tuning with a pretrained language model on a small collection of manually engineered prompts. Then we use reinforcement learning to explore better prompts. We deﬁne a reward function that encourages the policy to generate more aesthetically pleasing images while preserving the original user intentions. Experimental results on Stable Diffusion show that our method outperforms manual prompt engineering in terms of both automatic metrics and human preference ratings. Moreover, reinforcement learning further boosts performance, especially on out-of-domain prompts. The pretrained checkpoints are available at https://aka.ms/promptist. The demo can be found at https://aka.ms/promptist-demo.
+1 Introduction
+Generative foundation models can be prompted to follow user instructions, including language models [BMR+20, CND+22, SPN+22], and text-to-image models [RPG+21, RDN+22, SCS+22, RBL+22]. It has been recognized that prompt design plays an essential role in the generation quality. We need to adjust the prompt to make the model better understand our intentions and produce higher-quality results [RM21, ZMH+22]. The problem is severe in text-to-image models because the capacity of their text encoders, such as CLIP text encoder [RKH+21] in Stable Diffusion [RBL+22], is relatively small. Empirical observations also conﬁrm that common user input is often insufﬁcient to produce aesthetically pleasing images with current models.
+Prior efforts implement manual prompt engineering towards speciﬁc text-to-image models [LC21, Opp22, Par22], typically adding some modiﬁers to the original input. However, it is laborious and sometimes infeasible to conduct manual prompt engineering. Besides, the manually engineered prompts often cannot be transferred between various model versions. Therefore, it is necessary to ﬁnd a systematic way to automatically align user intentions and various model-preferred prompts.
+In this work, we propose a prompt adaptation framework for automatic prompt engineering via reinforcement learning. Speciﬁcally, we ﬁrst perform supervised ﬁne-tuning with a pretrained language model (e.g., GPT) on a small collection of manually engineered prompts. The ﬁnetuned model is used to initialize the prompt policy network for reinforcement learning. Next, the model is trained by exploring optimized prompts of user inputs, where diverse beam search [VCS+16] is used to ensure generation quality and diversity. The training objective is to maximize the reward, which is deﬁned as a combination of relevance scores and aesthetic scores of generated images. The relevance score reﬂects how much the original user intentions are retained after prompt adaptation. The aesthetic score indicates what degree the generated images are aesthetically pleasing.
+∗ Equal contribution.
+
+Stage 1: Supervised Fine-Tuning
+Human Input
+
+LM as Promptist
+
+Optimized Prompt
+
+Stage 2: Reinforcement Learning
+
+Human Input
+
+LM as Promptist
+
+Optimized Prompt
+
+Train with PPO Text-to-Image
+Text-to-Image
+
+Aesthetic Score
+Relevance Score
+
+Reward
+
+Figure 1: Overview of PROMPTIST training: (1) supervised ﬁne-tuning (SFT) on manually engineered prompts; (2) reinforcement learning (RL) to increase the rewards of generated images after prompt optimization.
+
+We conduct experiments with the publicly available Stable Diffusion models [RBL+22]. We evaluate our method using both the automatic reward metric and human preference ratings. Experimental results show that the optimized prompts outperform human-engineered ones and the original inputs. Human preference ratings also show consistent improvements across in-domain and out-of-domain prompts. Moreover, we ﬁnd that reinforcement learning is more favorable than supervised ﬁne-tuning, especially on out-of-domain user inputs. Overall, we show that language models can serve as a prompt interface that optimizes user input into model-preferred prompts.
+
+2 Methods
+
+The goal of our prompt adaptation framework is to automatically perform prompt engineering. Given user input of the text-to-image generator, our model learns to generate model-preferred prompts that obtain better output images while preserving their original intentions. Figure 1 presents the overview of our method. The prompt optimization model is named PROMPTIST, which is built upon a pretrained language model, such as GPT [BMR+20]. We ﬁrst collect a set of human-engineered examples and use them to conduct supervised ﬁne-tuning (Section 2.1). Next, we perform reinforcement learning (Section 2.3) to maximize the target reward (Section 2.2), which improves both relevance and quality of generated images.
+
+2.1 Supervised Fine-tuning
+
+Initialized with a pretrained generative language model, the policy model is ﬁrst ﬁnetuned on a set of prompt pairs before reinforcement learning. A parallel prompt corpus D = {(x, y)} contains prompt pairs of original user inputs x and manually engineered examples y. The training objective is to maximize the log-likelihood with teacher forcing:
+
+LSFT = −E(x,y)∼D log p(y|x)
+
+(1)
+
+where the ﬁnetuned weights are used to initialize the policy network in reinforcement learning.
+
+Collect Human Demonstrations We collect human-engineered prompts from Lexica2. Most prompts are composed of two parts, i.e., main content that describes the user’s intention, and some modiﬁers that customize the art style, such as artist names, and popular elements. We use the
+2https://lexica.art
+
+2
+
+crawled human-engineered prompts as targets. In order to have parallel data, we use three methods to construct their source inputs. First, we extract the main contents by trimming the modiﬁers and regard them as original user inputs. Second, we randomly remove or shufﬂe some modiﬁers and use the remaining texts as source inputs. Third, we use OpenAI GPT to rephrase the main contents and the human-engineered prompts, respectively. We ﬁnd that the template “[Input] Rephrase:” works well in practice and translates input to a more user-friendly version.
+
+2.2 Reward Deﬁnition
+
+We measure the quality of optimized prompts from two aspects, namely relevance and aesthetics. The goal motivates us to deﬁne the reward function R(·) from the above two perspectives.
+
+First, we measure whether the generated images are relevant to the original input prompt after prompt
+adaptation. To be speciﬁc, we ﬁrst sample images by the text-to-image model conditioned on the the optimized prompt, respectively. Then, we compute CLIP [RKH+21] similarity scores to measure
+how relevant the generated images and the original input prompts are. The resulting relevance score
+is deﬁned as:
+
+frel(x, y) = Eiy∼G(y)[min(20 ∗ gCLIP(x, iy) − 5.6, 0)]
+
+(2)
+
+where iy ∼ G(y) means sampling images iy from the text-to-image model G with y as input prompt, and gCLIP(·, ·) stands for the CLIP similarity function. Notice that we always compute the similarity between the generated images and the original input prompt, which ensures the relevance score reﬂects the user preferences. If the relevance score is relatively reasonable, we encourage the model to generate more aesthetically pleasing images.
+Second, we employ the aesthetic predictor3 to quantify aesthetic preferences. The predictor builds a linear estimator on top of a frozen CLIP model, which is trained by human ratings in the Aesthetic Visual Analysis [MMP12] dataset. The aesthetic score is deﬁned as:
+
+faes(x, y) = Eix∼G(x),iy∼G(y)[gaes(iy) − gaes(ix)]
+
+(3)
+
+where gaes(·) denotes the aesthetic predictor, and iy, ix are the images generated by the prompts y and x, respectively. Notice that both gCLIP(·) and gaes(·) require the CLIP model, so we can share the CLIP forward pass during reward computation.
+
+Finally, we deﬁne the overall reward by combining the above scores with an additional KL penalty, which is between the policy model πθ and the supervised ﬁnetuned model πSFT with coefﬁcient η:
+
+R(x,
+
+y)
+
+=
+
+faes(x,
+
+y)
+
++
+
+frel(x,
+
+y)
+
+−
+
+ηlog
+
+πθ (y|x) πSFT(y|x)
+
+(4)
+
+The KL term is added to mitigate the overoptimization issue [OWJ+22].
+
+2.3 Reinforcement Learning
+
+Starting from the supervised ﬁne-tuning, we further ﬁnetune our model with reinforcement learning. We employ proximal policy optimization (PPO) [SWD+17], which is empirically data-efﬁcient
+and of reliable performance. As a text generation problem, prompt optimization can be viewed as a Markov decision process (MDP) S, A, r, fst, γ with a ﬁnite state space S, action space A, reward function r, state-transition probability function fst, and a discount term γ. In an episode of prompt adaptation, the initial state x ∈ S is the input prompt with n tokens x = (x1, . . . , xn) where each token x is from a ﬁnite vocabulary V. At t-th time step, the agent selects an action yt ∈ V according to the current policy model yt ∼ π(y|x, y<t). With a deterministic state transition, the next state is (x, y<t+1) = (x1, . . . , xn, y1, . . . , yt). The episode ends when the agent selects an end-of-sentence action. The goal of the agent is to maximize the accumulated expected reward Ex,y t γtr(x, y<t) = Ex,yR(x, y).
+Let πθ denote the policy model to be trained, we maximize the the accumulated expected reward over a training set D = {x}:
+
+J = Ex∼D ,y∼πθ [R(x, y)]
+
+(5)
+
+3https://github.com/christophschuhmann/improved-aesthetic-predictor
+
+3
+
+We implement both the policy model πθ and the value function model as generative language models, with the language modeling head and the regression head, respectively. The parameters of the two models are initialized from the supervised ﬁnetuned policy model πSFT and are optimized during reinforcement learning. The supervised ﬁnetuned model πSFT and the score function model are frozen during training. Besides, we employ the clipped probability ratios [SWD+17] to avoid large policy updates.
+3 Experiments
+We conduct experiments on the publicly available text-to-image model Stable Diffusion v1.44. We use the DPM solver [LZB+22] to accelerate image sampling and set the denoising steps to 20.
+3.1 Data Collection
+For supervised ﬁne-tuning, we collect 90k target prompts and construct four types of source prompts as described in Section 2.1, obtaining 360k paired data in total. At the reinforcement learning stage, we only require source prompts and the policy can explore better rephrasings itself. We use three types of data: (1) in-domain prompts from DiffusionDB [WMM+22], we use the user input for exploration and the manually engineered prompt for comparison, (2) out-of-domain image captions from COCO dataset [CFL+15], (3) ImageNet-21k image labels, the sizes of which are 600k, 600k and 40k respectively.
+3.2 Settings
+For the policy model, we use GPT-2 [RWC+19] with 1.5B parameters, which is a multi-layer Transformer [VSP+17] decoder pretrained with causal language modeling.
+Supervised Fine-Tuning We ﬁnetune GPT-2 to predict the target prompt conditioned on the source prompt with teacher forcing. The input format is [Source] Rephrase:[Target]. We use a batch size of 256, a learning rate of 5e-5, and a max length of 512. We ﬁnetune the model for 15k steps and choose a slightly underﬁtting checkpoint according to the validation loss.
+Reinforcement Learning We train the policy with Proximal Policy Optimization [SWD+17, PPO]. The value and policy network are initialized from the supervised ﬁnetuned model. The parameters of the value function are separated from the policy to avoid excessive competition between two objectives. To guarantee the quality and diversity of exploration, we adopt diverse beam search [VCS+16] with a beam size of 8 and a diversity penalty of 1.0. In order to prevent the model from only exploring long completions, the maximum generation length at each step is set to a random value from 15 to 75. We randomly choose one of the returned prompts to update the policy. We generate three images per prompt and compute the average reward to reduce variance. We train the policy for 12k episodes, four PPO epochs per batch with one minibatch each, with a batch size of 512 and a constant learning rate of 5e-5. The value loss coefﬁcient and the KL reward coefﬁcient are kept at 2.3 and 0.2 respectively.
+Evaluation In order to evaluate how text-to-image models beneﬁt from the prompt adaptation, we compare the reward value computed by two automatic predictors speciﬁed in Section 2.2. In addition, we use human preference ratings to demonstrate real user feedback. We adopt beam search with a beam size of 8 and a length penalty of 1.0. We evaluate our method on held-out data from training distribution, including in-domain data from DiffusionDB and out-of-domain COCO data. The former has corresponding manually engineered prompts for comparison, and the latter is used to verify whether our method can generalize to new domains. Except for the user input and manually engineered baseline, we also consider the supervised ﬁnetuned model as a baseline that can reﬂect the importance of reinforcement learning.
+3.3 Results
+Optimized prompts bring higher reward improvements than manual engineering. We evaluate optimized prompts on held-out data by generating three images for each prompt and computing
+4https://huggingface.co/CompVis/stable-diffusion-v1-4
+4
+
+Reward
+0.15
+
+0.05
+
+Reward
+
+-0.05 -0.15 -0.25 -0.35
+
+User Input Human Engineered Prompt Supervised Fine-Tuning Promptist (Ours)
+
+-0.45 In-Domain
+
+Out-of-Domain
+
+Figure 2: Reward comparison of optimized prompts with other baselines on in-domain and out-ofdomain data, which indicates that the text-to-image model beneﬁts a lot from our method.
+
+In-Domain SFT RL Gain 0.29 0.36 +24%
+
+Out-of-Domain SFT RL Gain 0.28 0.48 +71%
+
+Table 1: Absolute reward improvements of supervised ﬁne-tuning and reinforcement learning. It is observed that RL generally outperforms SFT-only and performs better on out-of-domain data.
+
+the average reward value. Results in Figure 2 show that the reward value can be improved regardless of the engineering method, which suggests the misalignment problem between user-friendly prompts and model-preferred prompts is serious. Compared with the strong baseline of manually engineered prompts, optimized prompts can still achieve considerable reward improvements. Furthermore, optimized prompts perform even better on out-of-domain data. It can be seen that automated prompt engineering can well align prompts between two different domains from users and text-to-image models respectively.
+We provide some images generated by user input and optimized prompts in Figure 2. We observe that images generated by user input are intuitively uninspiring while optimized prompts not only retain the original intentions but also induce the model to produce more remarkable results. For example, generated images are crude when prompted with “A rabbit is wearing a space suit”. After prompt optimization, generated images become more bright and expressive.
+Reinforcement learning can further boost the reward value. As shown in Table 1, reinforcement learning brings 24% and 71% average improvements on in-domain and out-of-domain data. Reinforcement learning in our method is supposed to perform better on out-of-domain data through explorations. To quantify its effect, we compute the ratio of reward improvements after ﬁne-tuning and reinforcement learning. In-domain prompts from DiffusionDB are very similar to the data we used in supervised ﬁne-tuning, so reward improvements are relatively saturated in the ﬁrst stage and improvements of reinforcement learning on them are correspondingly smaller. Oppositely, out-ofdomain data such as COCO captions are more similar to user input and unseen during the ﬁrst stage. The policy must learn to adapt better to new domains through exploration, so their improvements on these prompts are more obvious. It indicates that given appropriate human queries, reinforcement learning can optimize them to adapt to different domains and boost reward improvements.
+3.4 Human Evaluation
+The reward function of our model is deﬁned by two automatic metrics, aesthetic score and relevance score predicted by neural networks, which may have some discrepancies from real human feedback. Therefore, we additionally evaluate whether optimized prompts actually make humans more satisﬁed. We generate two images for each prompt, using the original user input and the optimized prompt. Afterward, three annotators are asked to rank the two groups of images in preference order and we
+5
+
+User Input A rabbit is wearing a space suit
+
+Optimized Prompt
+A rabbit is wearing a space suit, digital Art, Greg rutkowski, Trending cinematographic artstation
+
+Several railroad tracks with one train passing by
+
+several railroad tracks with one train passing by, hyperdetailed, artstation, cgsociety, 8 k
+
+The roof is wet from the rain
+
+the roof is wet from the rain, intricate, elegant, highly detailed, digital painting, artstation, concept art, smooth, sharp focus, illustration,
+
+Cats dancing in a space club
+
+Cats dancing in a space club, digital painting, artstation, concept art, soft light, hdri, smooth, sharp focus, illustration, fantasy,
+
+Table 2: Images generated by user input and optimized prompts using Stable Diffusion. We observe that optimized prompts can generate more aesthetically pleasing images.
+6
+
+CHART TITLE
+
+>=<
+
+3
+
+49% CH21A%RT TI3T0%LE
+
+CHART TITLE
+
+2
+
+Optimized vs. User Input
+
+67%
+
+> 12=% 2<1%
+
+Optimized vs. Manua>lly E=ngin<eered
+
+In-Domain 13
+
+49%72% 21% 133%0%15% 3
+
+49%
+
+21% 30%
+
+Out-of-Domain2
+
+67%
+
+12% 21% 2
+
+67% —— 12% 21%
+
+Table
+
+3:
+
+Human
+
+e1valuation
+
+resu7l2ts%.
+
+The
+
+differe1n3t%co1l5o%rs1represent
+
+72% how many
+
+13% 15% images generated
+
+by
+
+corresponding prompts are considered more aesthetically pleasing. The orange block means that both
+
+prompts produce equally pleasing images.
+
+calculate the average preference distribution. Evaluation results are shown in Table 3. We observe that annotators generally prefer images generated by optimized prompts over their original input. Compared with manually engineered prompts, optimized prompts yield less gain over user input. It suggests that the aesthetic score can measure the quality of generated images to some extent, it would be better if human feedback is included in the reward function.
+4 Related Work
+Prompt engineering. Manual prompt engineering is a natural way to optimize prompts. Manually designed cloze-style prompts have been used to probe knowledge from pre-trained language models [PRR+19, DDH+22]. In addition to knowledge probing, models are also prompted to handle a wide range of tasks with manually designed preﬁx prompts [BMR+20]. Despite the success of manually-crafted prompts, designing prompts takes time and experience [SLT+21] and can be sub-optimal [JXAN20]. Thus, various methods focus on automatically searching prompts by mining [JXAN20], paraphrasing [HBG21], and text generation [GFC21]. Besides, continuous prompt methods treat the prompts as additional continuous parameters of pre-trained models and directly optimize the parameters on downstream tasks [LL21, TMC+21, ZYLL22]. However, continuous prompt methods require access to manipulating the model, and the learned prompts lack interpretability. In contrast, our methods directly optimize prompts in text format, which can ﬁt in black-box downstream systems such as text-to-image models.
+Learning from human preference. Our work is related to research on learning from human preference, which has been widely studied in machine learning problems. Recent research on reinforcement learning from human feedback (RLHF) has shown promising results on machine learning problems, ranging from classical RL tasks [CLB+17, ILP+18] to a wide range of natural language processing tasks, including text summarization [SOW+20, ZSW+19], dialogue [JGS+19], and general text generation tasks [OWJ+22].
+5 Conclusion
+We propose to automatically optimize prompts for text-to-image models so that the user input and model-preferred prompts can be well aligned. We evaluate our method with Stable Diffusion. Experimental results show that our model outperforms human prompt engineering and supervised ﬁnetuning, in terms of automatic metrics and human evaluation. The exploration nature of reinforcement learning enables the model to go beyond teacher forcing, which improves generalization over outof-domain examples. The proposed method is ﬂexible to align human intentions and model-favored languages. Although our experiments are conducted on text-to-image models, the framework can be easily applied to other tasks. Rather than using automatic score functions as rewards, we can directly use human feedback as supervision to train a reward model [OWJ+22]. Moreover, using a larger-size language model as the prompt interface tends to improve the optimization quality.
+References
+[BMR+20] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sand-
+7
+
+hini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel Ziegler, Jeffrey Wu, Clemens Winter, Chris Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. Language models are few-shot learners. In Advances in Neural Information Processing Systems, volume 33, pages 1877–1901. Curran Associates, Inc., 2020.
+[CFL+15] Xinlei Chen, Hao Fang, Tsung-Yi Lin, Ramakrishna Vedantam, Saurabh Gupta, Piotr Dollár, and C. Lawrence Zitnick. Microsoft COCO captions: Data collection and evaluation server. 2015.
+[CLB+17] Paul F Christiano, Jan Leike, Tom Brown, Miljan Martic, Shane Legg, and Dario Amodei. Deep reinforcement learning from human preferences. Advances in neural information processing systems, 30, 2017.
+[CND+22] Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung Won Chung, Charles Sutton, Sebastian Gehrmann, Parker Schuh, Kensen Shi, Sasha Tsvyashchenko, Joshua Maynez, Abhishek B Rao, Parker Barnes, Yi Tay, Noam M. Shazeer, Vinodkumar Prabhakaran, Emily Reif, Nan Du, Benton C. Hutchinson, Reiner Pope, James Bradbury, Jacob Austin, Michael Isard, Guy Gur-Ari, Pengcheng Yin, Toju Duke, Anselm Levskaya, Sanjay Ghemawat, Sunipa Dev, Henryk Michalewski, Xavier García, Vedant Misra, Kevin Robinson, Liam Fedus, Denny Zhou, Daphne Ippolito, David Luan, Hyeontaek Lim, Barret Zoph, Alexander Spiridonov, Ryan Sepassi, David Dohan, Shivani Agrawal, Mark Omernick, Andrew M. Dai, Thanumalayan Sankaranarayana Pillai, Marie Pellat, Aitor Lewkowycz, Erica Oliveira Moreira, Rewon Child, Oleksandr Polozov, Katherine Lee, Zongwei Zhou, Xuezhi Wang, Brennan Saeta, Mark Díaz, Orhan Firat, Michele Catasta, Jason Wei, Kathleen S. Meier-Hellstern, Douglas Eck, Jeff Dean, Slav Petrov, and Noah Fiedel. PaLM: Scaling language modeling with pathways. ArXiv, abs/2204.02311, 2022.
+[DDH+22] Damai Dai, Li Dong, Yaru Hao, Zhifang Sui, Baobao Chang, and Furu Wei. Knowledge neurons in pretrained transformers. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 8493–8502, Dublin, Ireland, May 2022. Association for Computational Linguistics.
+[GFC21] Tianyu Gao, Adam Fisch, and Danqi Chen. Making pre-trained language models better few-shot learners. In Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers), pages 3816–3830, Online, August 2021. Association for Computational Linguistics.
+[HBG21] Adi Haviv, Jonathan Berant, and Amir Globerson. BERTese: Learning to speak to BERT. In Proceedings of the 16th Conference of the European Chapter of the Association for Computational Linguistics: Main Volume, pages 3618–3623, Online, April 2021. Association for Computational Linguistics.
+[ILP+18] Borja Ibarz, Jan Leike, Tobias Pohlen, Geoffrey Irving, Shane Legg, and Dario Amodei. Reward learning from human preferences and demonstrations in atari. In S. Bengio, H. Wallach, H. Larochelle, K. Grauman, N. Cesa-Bianchi, and R. Garnett, editors, Advances in Neural Information Processing Systems, volume 31. Curran Associates, Inc., 2018.
+[JGS+19] Natasha Jaques, Asma Ghandeharioun, Judy Hanwen Shen, Craig Ferguson, Agata Lapedriza, Noah Jones, Shixiang Gu, and Rosalind Picard. Way off-policy batch deep reinforcement learning of implicit human preferences in dialog. arXiv preprint arXiv:1907.00456, 2019.
+[JXAN20] Zhengbao Jiang, Frank F. Xu, Jun Araki, and Graham Neubig. How Can We Know What Language Models Know? Transactions of the Association for Computational Linguistics, 8:423–438, 07 2020.
+8
+
+[LC21] Vivian Liu and Lydia B. Chilton. Design guidelines for prompt engineering text-toimage generative models, 2021.
+[LL21] Xiang Lisa Li and Percy Liang. Preﬁx-tuning: Optimizing continuous prompts for generation. In Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers), pages 4582–4597, Online, August 2021. Association for Computational Linguistics.
+[LZB+22] Cheng Lu, Yuhao Zhou, Fan Bao, Jianfei Chen, Chongxuan Li, and Jun Zhu. Dpmsolver: A fast ode solver for diffusion probabilistic model sampling in around 10 steps. arXiv preprint arXiv:2206.00927, 2022.
+[MMP12] Naila Murray, Luca Marchesotti, and Florent Perronnin. Ava: A large-scale database for aesthetic visual analysis. In 2012 IEEE conference on computer vision and pattern recognition, pages 2408–2415. IEEE, 2012.
+[Opp22] Jonas Oppenlaender. A taxonomy of prompt modiﬁers for text-to-image generation, 2022.
+[OWJ+22] Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll L Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with human feedback. arXiv preprint arXiv:2203.02155, 2022.
+[Par22] Guy Parsons. The dall·e 2 prompt book, 2022.
+[PRR+19] Fabio Petroni, Tim Rocktäschel, Sebastian Riedel, Patrick Lewis, Anton Bakhtin, Yuxiang Wu, and Alexander Miller. Language models as knowledge bases? In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP), pages 2463–2473, Hong Kong, China, November 2019. Association for Computational Linguistics.
+[RBL+22] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. High-resolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 10684–10695, June 2022.
+[RDN+22] Aditya Ramesh, Prafulla Dhariwal, Alex Nichol, Casey Chu, and Mark Chen. Hierarchical text-conditional image generation with clip latents, 2022.
+[RKH+21] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger, and Ilya Sutskever. Learning transferable visual models from natural language supervision. In Marina Meila and Tong Zhang, editors, Proceedings of the 38th International Conference on Machine Learning, volume 139 of Proceedings of Machine Learning Research, pages 8748–8763. PMLR, 18–24 Jul 2021.
+[RM21] Laria Reynolds and Kyle McDonell. Prompt programming for large language models: Beyond the few-shot paradigm, 2021.
+[RPG+21] Aditya Ramesh, Mikhail Pavlov, Gabriel Goh, Scott Gray, Chelsea Voss, Alec Radford, Mark Chen, and Ilya Sutskever. Zero-shot text-to-image generation. arXiv, abs/2102.12092, 2021.
+[RWC+19] Alec Radford, Jeff Wu, Rewon Child, David Luan, Dario Amodei, and Ilya Sutskever. Language models are unsupervised multitask learners. 2019.
+[SCS+22] Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily Denton, Seyed Kamyar Seyed Ghasemipour, Burcu Karagol Ayan, S. Sara Mahdavi, Rapha Gontijo Lopes, Tim Salimans, Jonathan Ho, David J Fleet, and Mohammad Norouzi. Photorealistic text-to-image diffusion models with deep language understanding, 2022.
+9
+
+[SLT+21] Richard Shin, Christopher Lin, Sam Thomson, Charles Chen, Subhro Roy, Emmanouil Antonios Platanios, Adam Pauls, Dan Klein, Jason Eisner, and Benjamin Van Durme. Constrained language models yield few-shot semantic parsers. In Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing, pages 7699–7715, Online and Punta Cana, Dominican Republic, November 2021. Association for Computational Linguistics.
+[SOW+20] Nisan Stiennon, Long Ouyang, Jeffrey Wu, Daniel M. Ziegler, Ryan Lowe, Chelsea Voss, Alec Radford, Dario Amodei, and Paul F. Christiano. Learning to summarize with human feedback. In Advances in Neural Information Processing Systems 33: Annual Conference on Neural Information Processing Systems 2020, NeurIPS 2020, December 6-12, 2020, virtual, 2020.
+[SPN+22] Shaden Smith, Mostofa Patwary, Brandon Norick, Patrick LeGresley, Samyam Rajbhandari, Jared Casper, Zhun Liu, Shrimai Prabhumoye, George Zerveas, Vijay Korthikanti, Elton Zhang, Rewon Child, Reza Yazdani Aminabadi, Julie Bernauer, Xia Song, Mohammad Shoeybi, Yuxiong He, Michael Houston, Saurabh Tiwary, and Bryan Catanzaro. Using DeepSpeed and Megatron to train Megatron-Turing NLG 530B, a large-scale generative language model, 2022.
+[SWD+17] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. Proximal policy optimization algorithms. ArXiv, abs/1707.06347, 2017.
+[TMC+21] Maria Tsimpoukelli, Jacob L Menick, Serkan Cabi, SM Eslami, Oriol Vinyals, and Felix Hill. Multimodal few-shot learning with frozen language models. Advances in Neural Information Processing Systems, 34:200–212, 2021.
+[VCS+16] Ashwin K. Vijayakumar, Michael Cogswell, Ramprasaath R. Selvaraju, Qing Sun, Stefan Lee, David J. Crandall, and Dhruv Batra. Diverse beam search: Decoding diverse solutions from neural sequence models. ArXiv, abs/1610.02424, 2016.
+[VSP+17] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. Attention is all you need. In Advances in Neural Information Processing Systems, pages 5998–6008. Curran Associates, Inc., 2017.
+[WMM+22] Zijie J. Wang, Evan Montoya, David Munechika, Haoyang Yang, Benjamin Hoover, and Duen Horng Chau. DiffusionDB: A large-scale prompt gallery dataset for text-to-image generative models. arXiv:2210.14896 [cs], 2022.
+[ZMH+22] Yongchao Zhou, Andrei Ioan Muresanu, Ziwen Han, Keiran Paster, Silviu Pitis, Harris Chan, and Jimmy Ba. Large language models are human-level prompt engineers, 2022.
+[ZSW+19] Daniel M Ziegler, Nisan Stiennon, Jeffrey Wu, Tom B Brown, Alec Radford, Dario Amodei, Paul Christiano, and Geoffrey Irving. Fine-tuning language models from human preferences. arXiv preprint arXiv:1909.08593, 2019.
+[ZYLL22] Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. Learning to prompt for vision-language models. International Journal of Computer Vision, 130(9):2337– 2348, 2022.
+10
+

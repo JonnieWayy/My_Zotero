@@ -1,0 +1,155 @@
+arXiv:2308.02561v1 [cs.AI] 3 Aug 2023
+
+Large-scale Generative Simulation Artificial Intelligence: the Next Hotspot in Generative AI
+Qi Wang,1 Yanghe Feng,2 Jincai Huang,2∗ Yiqin Lv,3 Zheng Xie,1 Xiaoshan Gao4∗
+1Kaiyuan Mathematical Sciences Institute,Changsha, 410000, China 2College of Systems Engineering, National University of Defense Technology, Changsha, 410073, China
+3College of Sciences, National University of Defense Technology, Changsha, 410073, China 4Chinese Academy of Sciences, Peking, 100190, China
+∗Correspondence Authors: huangjincai@nudt.edu.cn; xgao@mmrc.iss.ac.cn.
+Introduction
+Nowadays, big data, deep learning models, optimization methods, and computational power are essential in promoting the development of artificial intelligence. Recent advances are focused on generative artificial intelligence (GenAI), which paves unprecedented paths to exploring the mechanisms behind the creation of new things (texts, images, videos, or other contents) rather than simply performing discriminative learning tasks.
+GenAI’s emergence, e.g., the large model, has changed the landscape of deep learning research and inevitably influenced individuals in both work and life. Furthermore, GenAI holds tremendous potential to reshape robotics research, national governance, and life sciences. Consequently, a pressing question arises: ”Will GenAI inspire a new round of technological revolution?” In answer to this question, the commentary pursues deeper insights into generative modeling, highlights critical considerations when building future GenAI models, identifies ex-
+1
+
+isting dilemmas and nominates the next hotspot for generalizing large models to more practical scenarios. Throughout the commentary, we use x ∈ X , y ∈ Y, and z ∈ Z to denote the explanatory variable, response variable, and latent variable, respectively. For tasks or operators on datasets τ , we represent them as distributions in the form of p (τ ).
+GenAI can do more than AIGC
+Now widespread popularity of GenAI models stems from their ability of artificial intelligence generated content (AIGC). Technically, the deep generative model empowers GenAI’s numerous capabilities beyond standard AIGC. Among them, we stress three practical ones in Fig. (1.a): data compression, representation disentanglement, and causal inference.
+In the big data era, minimizing the number of bits required to store and transmit information, known as data compression, is crucial. This function is particularly essential in time-sensitive services with memory constraints, such as edge computing. Some generative models, such as the vector quantized variational autoencoder or deep variational information bottleneck models, excel in data compression by finding insufficient statistics of high-dimensional signals. Representation disentanglement refers to the ability to infer statistically independent latent variables that explain different aspects of data generation, e.g., style, color, and pose. It closely relates to the controllable generation, e.g., obtaining samples with only one aspect varied. Causality is also a significant concern in GenAI, and generative models are advantageous in handling highdimensional variables and discovering structures of causal graphs, allowing for understanding causal effects. Importantly, GenAI with causality enables counterfactual predictions, which renders the potential consequences of a specific intervention that we have yet to execute. For example, with p (y|x, do (z = z0)), policymakers can evaluate the influence of socio-economic policies, denoted by z0, without incurring additional costs.
+Despite these fascinating capabilities, there remain several tricky questions in the field. (i)
+2
+
+Is fully representation disentanglement achievable with generative models? (ii) How can we identify causal generative models in the presence of small-scale datasets and many unobserved confounders?
+Experimental design matters in GenAI’s adaptability and robustness
+Let us rethink the critical factors contributing to GPT-like models’ success. In addition to prompt engineering, the languages’ generative process must be capable of capturing the masked input-output coupling pattern in the corpus, mapping these linked entities to a knowledge base, and continually improving its performance by incorporating new input-output pairs. Hence, when users initiate queries for specific contextual terms, the knowledge base can effectively locate the precise information and provide feedback.
+The above process inspires the task distribution design for GenAI. Task diversity nurtures the generalization capability of models across various scenarios, as this aligns with traditional statistical learning theory. The sampled tasks should be representative, covering a broad range of scenarios, particularly in zero-shot or few-shot learning. However, increasing task diversity requires larger model sizes and comes at the cost of higher computational expenses. For instance, GPT-3 has 175 billion parameters and has been trained on over 570GB of text data from diverse tasks. Generating tasks is problem-specific, and masked learning has emerged as one of the most popular heuristics. Nevertheless, exhaustively exploring all scenarios in training large models can be computationally demanding. As an example, consider Fig. (1.b), where the number of masked scenarios to complete grows exponentially with respect to the complexity of data |X | in a combinatorial sense.
+Conversely, we raise two key issues: (i) Is there a principle to balance average performance and adaptability to worst-case scenarios, particularly when loss values exhibit heavy tails? (ii)
+3
+
+How can we automatically design task distributions in a dataset or instance-wise sense to improve generalization? These issues require further attention in the development of desirable GenAI.
+Geometric priors can be powerful inductive biases in boosting GenAI
+Generally, we refer to constraints or encoded knowledge in hypotheses space as inductive bias. As stated in Max Welling’s comment (1) on the Bitter Lesson (2), machine learning cannot generalize well without inductive biases. Inductive biases are especially beneficial when dealing with data insufficiency, as it guides the learning process in a more reasonable direction.
+Here we concentrate on the geometric inductive bias, which conserves the geometric structures of datasets. At a high level, these structures resort to symmetry and scale separation principles (3), particularly necessary in generative modeling. Take the equivariance in symmetry as an example: Human cognitive systems can naturally capture the rotation, translation, reflection, and scaling of signals, implying that the reasonable abstraction of concepts is equivariant with respect to these transformations, as shown in Fig. (1.c). Another way to apply geometric priors is selective data augmentation by imposing transformation in the data space, meaning that data itself can be inductive bias in modeling. Generative modeling transformations of the dataset can also be attractive in deep geometric learning. The geometric prior and recent advances have been verified to be effective in GenAI for scientific discoveries, e.g., molecule design and drug development, better capturing the complex interactions between atoms and predicting the properties of drug candidates. This constitutes a promising avenue for the application of geometric priors in the field of AI4Science.
+While geometric priors show promise in GenAI, important questions still need answers: (i) Are there universal routines to automatically generate geometric priors in GenAI applications?
+4
+
+(ii) How can we alleviate the computation burden when incorporating them through constraints or data augmentation? Addressing these questions could help us understand the role of geometric priors in generative modeling and facilitate their use in practice.
+Multi-views are required to evaluate performance of models for GenAI
+GenAI primarily counts more on the data generation mechanism. Given the inherent subjectivity and variability of specific applications, there exist no universally applicable criteria to evaluate generative performance.
+For reliability and usefulness, we propose to establish multi-view evaluation systems that consider fidelity, diversity, and safety in Fig. (1.d). The fidelity in generation is critical in risk-sensitive applications like dialogue systems in medical science, and standard metrics are log-likelihoods or statistical divergence such as inception score. Diversity is a fundamental characteristic of generative modeling, with the purpose of capturing the complete possible examples in the probability space. At least two factors influence generation diversity: the extent of observability and the complexity of the dataset semantics. Observability extent refers to the level of accessible context details, namely prior information. For example, in image inpainting, the diversity of generated images decreases as more pixels are observed. Empirically in large language models, increasing the corpus’ size and complexity brings more varied and creative text generation. When using the Bayesian framework, efficient probabilistic programming requires stochastic optimization algorithms to avoid posterior or conditional prior collapse to guarantee the diversity (4). Additionally, security is an increasingly important concern in GenAI. For example, dataset bias, such as deliberate manipulation or unintentional sampling bias, can significantly affect the performance and orientation of large language models. Notably, the trend of GenAI is to allow interactions with open environments, incrementally access Internet information, and evolves in a continual learning way, securing generative models from
+5
+
+attacks at a data level seems urgent. Undoubtedly, there is a solid allure for exploring a modelagnostic and domain-agnostic evaluation schema that is end-to-end and integrates multi-views at both the sample and distribution levels.
+Large-scale generative simulation artificial intelligence is on the way
+The concept of GenAI has been developed for decades. Until recently, it has impressed us with substantial breakthroughs in natural language processing and computer vision, actively engaging in industrial scenarios. Noticing the practical challenges, e.g., limited learning resources, and overly dependencies on scientific discovery empiricism, we nominate large-scale generative simulation artificial intelligence (LS-GenAI) as the next hotspot for GenAI to connect.
+The roadmap of GenAI in Fig. (1.e) relies on previously considered elements and can be framed as the doubly generative paradigm for simulation and sequential decision-making. Specifically, the simulation system needs to be identifiable with a few observations, and the decision-making modules can afford fast adaptation utility in time-sensitive scenarios, e.g., autonomous driving. At the intersection of simulation science and artificial intelligence, LSGenAI also has particular use in robotics and life systems, reducing realistic sampling complexity, accelerating scientific progress, and catalyzing discoveries. One prime example of LS-GenAI ’s potential originates from clinical research. In this context, a high-fidelity biomedical simulation system, operating at the individual level, can create environments to allow the examination of the treatment effects on patients and reduce dependencies on expert experience.
+In spite of numerous realistic benefits, developing LS-GenAI is nontrivial. The demands of massive real-world data, the lack of high-fidelity world models, and the weak adaptability of these world models have complicated the process of constructing ubiquitous decision-making systems, e.g., in interventional clinical research. In service of the utilities in LS-GenAI, more
+6
+
+sophisticated simulation and learning tools must be integrated. Apart from building high-fidelity simulation environments, or world models5, it is essential to support customization for different decision-making tasks such that the task of our interest can be among them. Meanwhile, the world exhibits a hierarchical structure, such as the atomic, cellular, tissue, and organismal levels in human body systems, or spatiotemporal scales, and retaining multi-scale in generation augmented by symbolic computation can reveal more accurate complex dynamics. Other demands lie in handling partial observability with the inaccessible inherent system state and unpacking the black box to separate function approximation and causal effects. The primary goals of LS-GenAI are to assist in meaningful experimental design and enable fast adaptation of learned skills. Achieving these will ultimately enrich the utilities of GenAI in a broader range of real-world scenarios.
+References and Notes
+1. W. Max, Do we still need models or just more data and compute?, https://staff.fnwi.uva.nl/m.welling/wp-content/uploads/ Model-versus-Data-AI-1.pdf (2019).
+2. R. Sutton, The bitter lesson., Incomplete Ideas (blog) (2019).
+3. M. M. Bronstein, J. Bruna, T. Cohen, P. Velicˇkovic´, arXiv preprint arXiv:2104.13478 (2021).
+4. Y. Wang, D. Blei, J. P. Cunningham, Advances in Neural Information Processing Systems 34, 5443 (2021).
+Acknowledgements
+We thank Tailin Wu, Xiangming Meng, and Qian Lou for the helpful discussion on large models in an online forum. This commentary is also in memory of dr. Yanghe Feng’s efforts and
+7
+
+contributions to developing intelligent decision-making systems in the field. 8
+
+Frequencies
+Component #1: Fast Adaptation via Generative Modeling (Meta Learning Proobabilistic Models)
+9
+
+Challenges and Opportunities
+
+(a)
+
+50KB
+
+20KB
+
+covid infected
+
+death treatment
+
+#1 data compression
+
+#2 representation disentanglement
+
+confounders, e.g., immunity #3 causal inference
+
+Take the -VAE as an example, the model can not only compress information but also encourages the representation disentanglement for the controllable generation with the rate term.
+
+(b)
+
+Completion:
+
+or
+
+...
+
+Prediction:
+
+Mask Operator:
+
+Masked Result:
+
+#1 adaptability and task complexity
+
+The optimization objective can be reduced to heavy tail phenomenon in some scenarios.
+
+Histogram of Adaptation Loss Values
+Heavy Tails
+Loss Values #2 robustness to worst-cases , here we present examples of masked learning and show
+
+Next Hotspot: Large-scale Generative Simulation Artificial Intelligence (LS-GenAI) Component #2: Generative Modeling in Large-scale Simulation Systems
+
+Generated Large-scale Simulation Systems
+
+Real-World Environment
+
+Inference
+55c
+Generation
+55c
+...
+
+(c)
+
+Label
+
+#1 equivariance
+
+#2 invariance
+
+Equivariance and invariance are typical geometric properties satisfying symmetry and scale separation principles.
+
+(d)
+
+Sample 1
+
+Biased Online Dataset
+
+Malicious Contents
+
+Sample 2 Sample 3
+
+GenAI Modules
+
+# 1 lack of diversity
+
+# 2 low fidelity
+
+# 3 security of generated contents
+
+The image inpainting in MNIST work as an example to show the diversity and fidelity issues of conditional VAE-like models by sampling from the latent space. An example of security can be in online update of GenAI modules, e.g., producing racism comments due to the increase of biased online data.
+
+Sim2Real
+55c
+
+RealAnt from Ote Robotics
+
+(e) Within the doubly generative paradigm, the goal is simultaneously to generate the task distribution and estimate the distribution of quantity given the observed quantity in the scenario .
+
+Figure 1. The Framework and Roadmap of LS-GenAI.
+

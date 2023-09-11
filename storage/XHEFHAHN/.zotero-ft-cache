@@ -1,0 +1,83 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2212.02456
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 5 Dec 2022]
+Title: Solving the Weather4cast Challenge via Visual Transformers for 3D Images
+Authors: Yury Belousov , Sergey Polezhaev , Brian Pulfer
+Download a PDF of the paper titled Solving the Weather4cast Challenge via Visual Transformers for 3D Images, by Yury Belousov and Sergey Polezhaev and Brian Pulfer
+Download PDF
+
+    Abstract: Accurately forecasting the weather is an important task, as many real-world processes and decisions depend on future meteorological conditions. The NeurIPS 2022 challenge entitled Weather4cast poses the problem of predicting rainfall events for the next eight hours given the preceding hour of satellite observations as a context. Motivated by the recent success of transformer-based architectures in computer vision, we implement and propose two methodologies based on this architecture to tackle this challenge. We find that ensembling different transformers with some baseline models achieves the best performance we could measure on the unseen test data. Our approach has been ranked 3rd in the competition. 
+
+Comments: 	NeurIPS'2022 Competition Track Workshop
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV) ; Artificial Intelligence (cs.AI); Machine Learning (cs.LG); Atmospheric and Oceanic Physics (physics.ao-ph)
+Cite as: 	arXiv:2212.02456 [cs.CV]
+  	(or arXiv:2212.02456v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2212.02456
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Yury Belousov [ view email ]
+[v1] Mon, 5 Dec 2022 17:58:58 UTC (36 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Solving the Weather4cast Challenge via Visual Transformers for 3D Images, by Yury Belousov and Sergey Polezhaev and Brian Pulfer
+    PDF
+    Other formats 
+
+( license )
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2212
+Change to browse by:
+cs
+cs.AI
+cs.LG
+physics
+physics.ao-ph
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

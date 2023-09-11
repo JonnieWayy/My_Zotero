@@ -1,0 +1,79 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2307.15290
+
+Help | Advanced Search
+Search
+Computer Science > Computation and Language
+(cs)
+[Submitted on 28 Jul 2023]
+Title: ChatHome: Development and Evaluation of a Domain-Specific Language Model for Home Renovation
+Authors: Cheng Wen , Xianghui Sun , Shuaijiang Zhao , Xiaoquan Fang , Liangyu Chen , Wei Zou
+Download a PDF of the paper titled ChatHome: Development and Evaluation of a Domain-Specific Language Model for Home Renovation, by Cheng Wen and 5 other authors
+Download PDF
+
+    Abstract: This paper presents the development and evaluation of ChatHome, a domain-specific language model (DSLM) designed for the intricate field of home renovation. Considering the proven competencies of large language models (LLMs) like GPT-4 and the escalating fascination with home renovation, this study endeavors to reconcile these aspects by generating a dedicated model that can yield high-fidelity, precise outputs relevant to the home renovation arena. ChatHome's novelty rests on its methodology, fusing domain-adaptive pretraining and instruction-tuning over an extensive dataset. This dataset includes professional articles, standard documents, and web content pertinent to home renovation. This dual-pronged strategy is designed to ensure that our model can assimilate comprehensive domain knowledge and effectively address user inquiries. Via thorough experimentation on diverse datasets, both universal and domain-specific, including the freshly introduced "EvalHome" domain dataset, we substantiate that ChatHome not only amplifies domain-specific functionalities but also preserves its versatility. 
+
+Comments: 	ChatHome,DSLM for home renovation
+Subjects: 	Computation and Language (cs.CL)
+Cite as: 	arXiv:2307.15290 [cs.CL]
+  	(or arXiv:2307.15290v1 [cs.CL] for this version)
+  	https://doi.org/10.48550/arXiv.2307.15290
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Wei Zou [ view email ]
+[v1] Fri, 28 Jul 2023 04:04:43 UTC (1,457 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled ChatHome: Development and Evaluation of a Domain-Specific Language Model for Home Renovation, by Cheng Wen and 5 other authors
+    PDF
+    Other formats 
+
+( license )
+Current browse context:
+cs.CL
+< prev   |   next >
+new | recent | 2307
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

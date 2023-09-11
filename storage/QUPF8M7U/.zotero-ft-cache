@@ -1,0 +1,720 @@
+arXiv:2304.06767v2 [cs.LG] 25 May 2023
+
+RAFT: Reward rAnked FineTuning for Generative Foundation Model Alignment
+Hanze Dong∗ Wei Xiong∗ Deepanshu Goyal Rui Pan Shizhe Diao
+Jipeng Zhang Kashun Shum Tong Zhang
+The Hong Kong University of Science and Technology
+Abstract
+Generative foundation models are susceptible to implicit biases that can arise from extensive unsupervised training data. Such biases can produce suboptimal samples, skewed outcomes, and unfairness, with potentially significant repercussions. Consequently, aligning these models with human ethics and preferences is an essential step toward ensuring their responsible and effective deployment in real-world applications. Prior research has primarily employed Reinforcement Learning from Human Feedback (RLHF) as a means of addressing this problem, wherein generative models are fine-tuned using RL algorithms guided by a humanfeedback-informed reward model. However, the inefficiencies and instabilities associated with RL algorithms frequently present substantial obstacles to the successful alignment of generative models, necessitating the development of a more robust and streamlined approach. To this end, we introduce a new framework, Reward rAnked FineTuning (RAFT), designed to align generative models more effectively. Utilizing a reward model and a sufficient number of samples, our approach selects the high-quality samples, discarding those that exhibit undesired behavior, and subsequently assembles a streaming dataset. This dataset serves as the basis for aligning the generative model and can be employed under both offline and online settings. Notably, the sample generation process within RAFT is gradient-free, rendering it compatible with black-box generators. Through extensive experiments, we demonstrate that our proposed algorithm exhibits strong performance in the context of both large language models and diffusion models.
+1 Introduction
+Generative foundation models have exhibited a remarkable capacity to accomplish diverse tasks that were previously unattainable, showcasing their broad-ranging capabilities in natural language and computer vision tasks. Large language models (LLMs) [7, 37, 9, 40, 17, 45] and diffusion models [16, 42, 41, 11, 33, 35], the most popular models in natural language and computer vision, are capable of generating high-quality meaningful outputs that are often indistinguishable from outputs produced by humans. AI-generated content is a rapidly evolving field that is widely believed to have the potential to revolutionize the way we create and consume content, ultimately enhancing the productivity of humanity through modern generative models. However, there are also concerns about the ethical implications of these models [5, 6, 29], such as the potential for misuse and the implicit bias from the model. It is important for researchers and developers to continue exploring the limitations of these models and restrict the output generation.
+∗Equal Contribution. Alphabetical order.
+Preprint. Under review.
+
+One of the most direct limitations of current generative models is the high dependency on unsupervised large-scale datasets. Such datasets often contain inherent biases that can manifest in the models’ output, leading to inaccurate or unfair results. To address this challenge, pre-trained models are typically fine-tuned on the downstream tasks with custom data, either to improve performance in a specialized setting or to eliminate potential biases and toxicity in the original model. One approach is to fine-tune the pre-trained models in a supervised manner using labeled data, known as supervised fine-tuning (SFT). Instruction tuning [46] is the most widely used approach to make LLMs adapt downstream tasks. However, collecting new supervised samples can be expensive in practical applications, especially when expert participation is required to generate high-quality data. More recently, Reinforcement Learning from Human Feedback (RLHF) has emerged as a promising method for fine-tuning pre-trained generative models. In recent studies of LLMs, RLHF has been widely employed to fine-tune pre-trained models using policy-based deep reinforcement learning (DRL) algorithms, typically the Proximal Policy Optimization (PPO). The idea of RLHF is to align the language models with human preferences and social values by optimizing a reward function that reflects specific human preferences (e.g. moral, harmless). For instance, OpenAI [29] fine-tuned a version of GPT-3 using RLHF with a reward function that emphasized certain human values. It is noteworthy to indicate that the alignment process often exerts a deleterious effect on the performance of generation, commonly referred to as the “alignment tax” in the literature [1]. Specifically, when the reward model assesses only certain specific aspects, it may neglect the quality of the generated output. There has also been another line of work attempting to execute RLHF on visual generative models [15, 22, 50]. This alignment process can be achieved through prompt learning or fine-tuning the diffusion model. Unlike the LLMs, the image generation process is typically not sequential: the pixels are generated simultaneously. Consequently, PPO is not well adapted to the vision task, and numerous adaptations are required in these works to align the visual generative models.
+Although PPO is a well-established DRL method with numerous studies showcasing its effectiveness [39, 12], it learns in a trial-and-error fashion by interacting with the environment and is generally significantly less stable and less efficient as compared to supervised learning [8]. On the other hand, for fine-tuning generative models using a reward function rather than a pre-determined supervised dataset, collecting (high-quality) samples can be more feasible. In particular, the model can generate a large number of samples that can be used for training. Meanwhile, the reward function provides a useful criterion for selecting high-quality samples. Against this backdrop, we aim to pose a question:
+Can we enhance the alignment process by leveraging the generative model to generate more training samples and selectively filter them using a reward model?
+This forms the fundamental motivation behind our algorithm. We propose an alignment framework, RAFT (Reward rAnked FineTuning), which fine-tunes generative models using samples ranked by reward functions in an efficient manner. It is important to note that SFT-like training is more stable and robust compared to PPO, as it directly guides the training process with concrete samples. This type of training facilitates faster learning, with lower sample complexity compared to PPO, resulting in more efficient and expedient convergence. Additionally, PPO training typically requires the simultaneous involvement of three models: the model being trained, the reference model, and the reward model. This places significant pressure on memory resources and entails a substantial burden of gradient computations. In contrast, our model achieves a complete separation between reward-based sample filtering and model training, eliminating the need for gradient computations during the filtering process. As a result, we can better allocate memory and save computational resources. This even enables us to consider incorporating training data from multiple sources, expanding the alignment process beyond the confines of an RL setting. Moreover, our algorithm introduces a limited number of hyperparameters, making it more convenient to adjust. The flexibility empowers our algorithm to perform alignment on arbitrary generative models, including LLMs and diffusion models.
+Contributions. We propose a novel alignment scheme for generative models called RAFT, which utilizes a reward model to rank the output of the generative model, allowing us to continue training using SFT-like techniques with the selected samples. This approach encourages the generative model to prioritize samples with higher rewards. Compared to PPO, our method offers significant computational advantages, leading to substantial savings in memory and gradient computations. Furthermore, due to the stability of SFT-like training, our approach exhibits lower sample complexity and requires fewer adjustable parameters, which can be implemented to any generative model. We believe this represents a novel and competitive alignment algorithm that contributes to the wellbehaved behavior of generative models. Our experiments on both LLMs and diffusion models have
+2
+
+justified the effectiveness of our algorithm, thereby validating its efficacy in the respective application domains. Additionally, these results support the notion that RAFT has the potential to be successful in other related generative models.
+
+2 Related Work
+Generative foundation model. Foundation models [6] are generally pre-trained on large data and adapted to a broad range of downstream tasks. The roadmap towards the foundation model reveals a transition pattern from discriminative models (e.g., BERT) to generative models (e.g., GPT-3) due to their great scalability. Generative foundation models have reshaped the landscape of natural language processing (NLP), some of which even demonstrate emergent capabilities [47] in complex reasoning tasks. Similar trends are observed in image generation, where diffusion models [5, 6, 29] have shown great text-to-image generation abilities with the increase of high-quality data and training compute. In particular, diffusion models captures the path from standard Gaussian distribution to the data distribution, which is proven to be successful in a variety of vision tasks, such as image inpainting, super-resolution, text-to-image generation, image denoising [16, 11]. Although generative foundation models have pushed the state-of-the-art on various language and vision tasks, respectively, they are suffering from implicit biases, leading to inaccurate or unfair results.
+Alignment of generative models. Alignment [23] is first proposed to build agents that behave in accordance with the human’s intention. By communicating with human, agents can get accurate supervised signals [52] by applying several scalable reward learning methods [23, 10, 21]. Alignment benefits many recent generative foundation models, like InstructGPT [29], Claude [3] and Sparrow [14], in achieving better performance. In language foundation model training [29, 43, 28, 2, 3, 14, 52, 49, 38], alignment is often achieved by Reinforcement Learning from Human Feedback (RLHF). The main idea is learning a reward function to reflect human preferences with human annotations and optimize language models by RL methods like proximal policy optimization (PPO) [39]. By incorporating supervised finetuning (SFT), InstructGPT [29] successfully achieved alignment for GPT-3 [7]. Besides, Claude [1, 3] and Sparrow [14] stressed aligning language foundation models from helpful, honest, and harmless (HHH) human feedbacks. In visual generative models, several works [15, 22, 50] studied aligning them with human feedbacks. Models are expected to understand specific visual control signals like colors, counts, and backgrounds [22] more accurately after alignment. It is still challenging to achieve tradeoffs between aligning human preferences and generating high-fidelity images. RRHF [51] is an independent work that is contemporaneous with ours, which also filters samples generated by the generator to serve as training samples for the generative model. It is important to note that RRHF has a diverse range of sources for the generator, whereas our primary focus lies in the online generated samples of the trained model itself, consistent with the setup of RL. Moreover, we also validate the possibility of RAFT on diffusion models beyond the LLMs.
+
+3 Algorithm
+
+3.1 Problem Setup
+
+We adopt the standard RL setting for a clear presentation. We consider an initial generative model
+G0 = g(w0, x) with model parameter w0, which can take input x and generate a random output y according to a distribution pαG0 (y|x), where α is a temperature parameter to control the diversity. We also assume that we have a reward function r(x, y), which returns a reward for any input-output pair
+(x, y). Due to common usage conventions, we refer to the input as the “prompt”.
+
+We will use the reward function to guide the outputs of g(w, x). Specifically, if we denote pg(y|w, x) as the conditional distribution of g(w, x), and consider a distribution D of the training input x, the
+objective of reward optimization is
+
+max
+w
+
+Ex∼D,y∼pg
+
+(·|w,x)
+
+r(x,
+
+y).
+
+(1)
+
+3.2 RAFT: Reward rAnked FineTuning
+In this subsection, we introduce our approach RAFT (Reward rAnked FineTuning), which is based on the combination of ranking samples by rewards and supervised fine-tuning. While SFT is widely
+
+3
+
+Table 1: Hyper-parameters of RAFT.
+
+HYPER-PARAMETER
+b 1/k 1/α
+
+DEFINITION
+BATCH SIZE ACCEPTANCE RATIO
+TEMPERATURE
+
+COMMENTS
+PARALLEL THE TRAINING PROCESS LARGE k: HIGHER REWARD PREFERENCE
+SMALL α: DIVERSE GENERATION
+
+used in the study of generative models, its effectiveness highly depends on the quality of the dataset utilized. However, achieving a high-quality dataset often necessitates the involvement of domain experts, leading to significant costs and resource requirements.
+In our problem setup, we have access to a task-specific reward function that can assign a reward signal to each input-response pair (x, y). This provides us with a selective approach to extract only high-reward samples for subsequent fine-tuning. The presence of such a reward function allows us to generate favorable samples at a lower cost and enables us to continuously improve the generative models via supervised fine-tuning on these chosen samples. In view of this, we present a generic alignment algorithm called RAFT (Reward rAnked Fine-Tuning), which can be applied to any tunable generative model. We now formally formulate the above idea by describing the procedure of RAFT.
+Learning process. Let X = {x1, . . . , xn} be a set of n training prompts. Given an initial model g(w0, ·), RAFT iteratively updates w0 as in Algorithm 1. At each stage t, RAFT samples a batch of prompts and generates responses by g(wt−1, ·). The associated reward of these samples is then computed using the reward function. RAFT subsequently ranks the collected samples and selects the 1/k percent of samples with the highest reward as the training samples B. The current generative model is then fine-tuned on this dataset, and the next stage begins. In this process, the sampling process of training data and the model training are completely decoupled. Moreover, the sampling process does not require any gradient computations, allowing for convenient handling of the sampling procedure and efficient management of computational resources and memory during training.
+
+Algorithm 1 RAFT: Reward rAnked FineTuning
+
+1: Input: Prompt set X = {x1, . . . , xn}, reward function r(·), initial model G0 = g(w0, ·),
+
+acceptance ratio 1/k, batch size b, temperature parameter α.
+
+2: for Stage t = 1, . . . , T do
+
+3: 1 . Data collection. Sample a batch Dt from X of size b;
+
+4: for x ∈ Dt do
+
+5:
+
+Generate
+
+y
+
+∼
+
+pα
+Gt−1
+
+and
+
+compute
+
+r(x, y).
+
+6: end for
+
+7: 2. Data ranking. Let B be the ⌊b/k⌋ samples with maximum rewards;
+
+8: 3. Model fine-tuning. Fine-tune wt−1 on B to obtain Gt = g(wt, ·).
+
+9: end for
+
+It is worth mentioning that the three steps of RAFT, i.e., data collection, data ranking, and model fine-tuning, can be implemented and executed separately. Therefore, as long as the computation source and memory source permit SFT on some specific model, the alignment process can be done with RAFT. Moreover, in the practical implementation of RAFT, one can use batch inference and model parallelism to accelerate data collection.
+4 Experiments
+4.1 Language Models
+We consider three tasks for language models. For all the experiments, We use the AdamW optimizer [26] with fixed learning rates, where the details are described for each experiment and each model. We use the PPO algorithm as a baseline, which is implemented via the public package TRL (https: //github.com/lvwerra/trl). The reported metrics are evaluated on a hand-out test set, and we keep the test config for all methods for a fair comparison. The detailed config is also described for each experiment.
+
+4
+
+Table 2: Result of review completion on IMDB dataset. The results are tested on the 3.2K test samples with 8 random seeds. The model LLaMA-7B-IMDB is pre-trained on the whole IMDB dataset, while the SFT approach only uses the positive samples.
+
+MODEL
+
+ALIGNMENT MEAN REWARD
+
+PPL
+
+MSTTR-100
+
+DISTINCT 1
+
+DISTINCT 2
+
+UNIQUE1
+
+UNIQUE 2
+
+LLAMA-7B-IMDB
+
+-
+
+−0.027 ± 0.010 10.5625 0.653 ± 0.002 0.071 ± 0.003 0.351 ± 0.002 5367 ± 64.4 34414 ± 197
+
+LLAMA-7B
+
+SFT
+
+0.250 ± 0.017 10.75 0.653 ± 0.001 0.072 ± 0.001 0.351 ± 0.001 5398 ± 59.9 34501 ± 72.8
+
+LLAMA-7B-IMDB PPO
+
+0.783 ± 0.014 12 0.636 ± 0.001 0.066 ± 0.001 0.322 ± 0.002 4892 ± 38.9 31043 ± 158
+
+LLAMA-7B-IMDB RAFT 0.781 ± 0.018 10.75 0.646 ± 0.001 0.064 ± 0.001 0.324 ± 0.001 4656 ± 71.5 30194 ± 91.2
+
+Movie review completion. The first task is the text continuation on the IMDB dataset2, where we hope the generated texts are of positive sentiment. We use the 25K training samples as the training set and randomly sample 3.2K samples from validation samples as the test set. To generate the prompts, we truncate the first 64 tokens of the review as the input prompt. We then use a language model to generate 48 tokens, with the goal of conveying positive sentiment while ensuring maximum fluency. For evaluating the positivity of the generated text, we use a distilled version of the BERT base model [36], which can provide a sentiment score for our experiment. We conduct the experiment with language model LLaMA-7B [45]. To improve the model performance, we first fine-tune the LLaMA-7B model with the 25K training set for one epoch to obtain LLaMA-7B-IMDB as the starting point to be aligned. Meanwhile, we also use a model fine-tuned on the 12.5K training samples with positive labels as a baseline. The hyper-parameters used for the IMDB experiment are described in Table 10, where the parameters of PPO mainly follow from the setup in the TRL package, but we use a smaller KL coefficient because we find that it is hard for PPO to converge with the original choice possibly due to a longer output length we adopt.
+To facilitate a discussion of the computation complexity, we introduce the concept of cost as,
+cost = forward × 1 + backward × 2.
+This is because batch inference in PPO leads to a failure estimation of the KL penalty (described in Section 5). This temporary issue of PPO can be fixed in the future. For a fair comparison, we adopt cost as the metric for evaluation. For instance, if we query a batch of 64 prompts, and train on this set for 4 epochs, then the total cost is 64 × 1 + 64 × 4 × 2 = 576. The backward operation is considered to be more expansive because we typically can take a much larger batch size in the forward process. The relationship between reward and cost is reported in the left figure of Figure 1. As we expect, the SFT-like RAFT is more efficient than PPO in terms of reward learning.
+While we do not impose any explicit constraint on the policy update, we observe that after the reward exceeds a certain threshold, the fluency of the language model and the diversity of the output degrade significantly. Human investigation suggests that models with reward ∼ 0.8 achieve the best performance as a model with a larger reward (e.g., > 1.5) will generate positive words (e.g.:“I recommend it to all”, “The acting is great”) regardless of the prompt. Table 2 reports the result of the review completion task. Meanwhile, we report the relationship between perplexity and reward in the right figure of Figure 1, where we take the mean reward as the representative value for models with the same perplexity. Compared to the PPO-aligned model, we observe that RAFT achieves a better balance between reward and perplexity. It turns out that this may arise from the choice of a small learning rate for RAFT since when we use a learning rate identical to PPO (referred to as the RAFT with large lr in the figure), the perplexity is worse than that of PPO. Unfortunately, with more than 10 rounds of experiments, it proved challenging for PPO to converge using the same learning rate as RAFT, as depicted in the left figure of Figure 1. This is due to the noisy learning signals of the RL, which makes it necessary to select a relatively larger learning rate for PPO. Compared to the SFT-aligned model, RAFT achieves a higher reward even if being trained with fewer samples. This improvement can be attributed to the reward function’s role in selecting the “core set” of generated reviews, which enables the model to adapt more rapidly to the reward function.
+Daily dialogue. The original LLaMA-7B model exhibits limitations in responding to daily dialogue, often resulting in inadequate or even nonexistent responses. To address this issue, we aim to align the model with the DailyDialog dataset3 [24] for dialogue generation. The dataset consists of
+2https://huggingface.co/datasets/imdb 3https://huggingface.co/datasets/daily_dialog
+5
+
+Table 3: Result of daily dialogue. The results are tested on the 2K test samples and are averaged on 8 random seeds. We omit the standard deviation except for the reward metrics due to space constraints. The SFT method achieves the best performance because the reward function takes the dataset as reference texts to compute the intent and meteor scores.
+
+BASE MODEL ALIGNMENT
+
+INTENT
+
+METEOR
+
+BEST SCORE ROUGE1 ROUGE2 BLEU MSTTR-100 DISTINCT 1 DISTINCT 2
+
+LLAMA-7B
+
+-
+
+0.437 ± 0.002 0.147 ± 0.002 0.859 0.150 0.030 0.005 0.607
+
+0.102
+
+0.457
+
+LLAMA-7B
+
+SFT 0.481 ± 0.007 0.170 ± 0.003 0.866 0.177 0.044 0.012 0.606
+
+0.098
+
+0.452
+
+LLAMA-7B
+
+PPO 0.471 ± 0.003 0.161 ± 0.002 0.861 0.158 0.037 0.009 0.615
+
+0.093
+
+0.447
+
+LLAMA-7B RAFT 0.489 ± 0.001 0.161 ± 0.004 0.864 0.170 0.041 0.008 0.600
+
+0.094
+
+0.437
+
+Table 4: Result of experiments on HH-RLHF dataset. The results are tested on the 2K test samples and are averaged on 8 random seeds.
+
+BASE MODEL ALIGNMENT MEAN REWARD PPL
+
+MSTTR-100
+
+DISTINCT 1
+
+DISTINCT 2 UNIQUE 1 UNIQUE 2 PRED LENGTH
+
+LLAMA-7B
+
+-
+
+1.724 ± 0.027 4.656 0.588 ± 0.003 0.092 ± 0.001 0.412 ± 0.004 3699 23484
+
+39.7
+
+LLAMA-7B
+
+SFT 2.781 ± 0.024 3.031 0.622 ± 0.002 0.081 ± 0.001 0.414 ± 0.002 4689 37303
+
+62.3
+
+LLAMA-7B-SFT PPO 3.448 ± 0.024 3.828 0.596 ± 0.004 0.075 ± 0.001 0.354 ± 0.003 3893 29486
+
+55.5
+
+LLAMA-7B-SFT RAFT 3.458 ± 0.023 3.125 0.599 ± 0.002 0.072 ± 0.001 0.390 ± 0.002 4358 38323
+
+70.1
+
+conversations from humans in daily life and each utterance contains labels of intent and emotional information. For our needs, we opt for a context window of 3 or 5 as the prompt and ask the model to respond given the context. This preprocessing leads to a training set of 35K samples and a test set of 2K samples. We also additionally add prefixes “###Human:” and “###Assistant:” to help to model understand when to respond given the context. Following [32], we use a linear combination of meteor score [4] and intent score as the reward function where the dataset responses are taken as the reference texts. The intent score measures whether the generated text’s intent matches the reference’s intent. To this end, we train an intent classifier (fine-tuned RoBERTa) that classifies the text into intent categories {inform, question, directive, commissive}. The intent score is then given by the score of the reference’s intent from the classifier. A high intent score indicates that the model provides contextually appropriate responses. The hyper-parameters and more implementation details can be found in the Appendix D.
+We run the experiments with three random seeds and report the best models for each method in Table 3. We can see that the RAFT-aligned model achieves higher rewards than the PPO-aligned one, while maintaining similar levels of diversity metrics and lexical accuracy, and semantic quality. Moreover, the best model of RAFT is obtained at iteration 10 (trained on 2.56K samples in total), while PPO gives the best model when trained on the whole training set (35K samples) for one epoch. The SFT-aligned model by the training set achieves the best performance in this case because the reward function used for this experiment takes the responses in the dataset as the reference texts, so all the samples in the training set achieve the highest rewards even without ranking.
+Human preference data about helpfulness and harmlessness. The last task uses the HH-RLHF (Helpful and Harmless) dataset4 [2], which is collected for model alignment according to human preferences. The dataset consists of 112K training samples and 12.5K test samples. Each sample of the HH-RLHF dataset consists of a prompt x and two responses yw and yl where yw is the preferred compared to yl. Due to the pairwise structure of the HH-RLHF dataset, we can follow [29] to improve the model by following the steps: SFT, reward modeling, and RLHF. Due to space constraints, we defer a thorough description of this experiment to Appendix A but first present the evaluation metrics of the aligned model in Table 4. As we can see, both RAFT and PPO significantly outperform the SFT in terms of reward learning. The diversity metrics of RAFT and PPO are worse than the original LLaMA-7B and LLaMA-7B-SFT as the alignment tax. RAFT achieves the best perplexity because after SFT, with appropriate generation config, the model LLaMA-7B-SFT can generate high-quality responses to further improve the model performance. Meanwhile, the case study shows that the RAFT-aligned model tends to respond with more details, thus leading to longer responses and high metrics of unique-1 and unique-2.
+4https://huggingface.co/datasets/Dahoas/full-hh-rlhf
+6
+
+Figure 1: Training reward of movie review completion on IMDB dataset: (1) The first figure plots the reward with respect to the cost, where the results are averaged over 5 random seeds. The PPO-small-lr uses a learning rate identical to that of RAFT and is plotted to illustrate our choice of the learning rate for PPO; (2) The second figure reports the relationship between reward and model perplexity for one representative experiment but the idea remains the same for other random seeds. If one perplexity value corresponds to multiple models, we use the mean reward as the representative value.
+4.2 Diffusion Models We consider to use Stable-diffusion v1.5 (SD-1.5) as our visual generative model (https:// huggingface.co/runwayml/stable-diffusion-v1-5). For all experiments, we use AdamW optimizer with fixed learning rate. It should be noted that for image-related tasks, CLIP [31, 20], as a text-image matching score function, can be effectively utilized as a reward function to evaluate the degree of a certain concept. For efficient fine-tuning, we use LoRA [19] in our experiments.
+(a) SD-1.5 (256 × 256 resolution, aesthetic score = 5.23)
+(b) RAFT-aligned SD-1.5 (256 × 256 resolution, aesthetic score = 6.55) Figure 2: Resolution Adaptation. (RAFT-aligned models can generate proper 256 × 256 samples)
+Resolution adaptation. Although Stable diffusion was initially trained on a resolution of 256 × 256, due to catastrophic forgetting, SD-1.5 struggles to generate images at this resolution. However, we emphasize that by using a small number of generated samples and the RAFT algorithm, we can restore SD’s ability to generate images at 256 × 256 resolution. The reward function is chosen as the CLIP-based aesthetic predictor (https://github.com/LAION-AI/aesthetic-predictor). We use the CIFAR-10 labels as our prompts (airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck). Figure 2 has clearly demonstrated that with proper reward function, RAFT algorithm can improve the 256 × 256 image quality significantly. We also show that the out-of-domain prompts (such as CIFAR-100 labels) can also be improved significantly (refer to Appendix). Text-Image alignment. For 512 × 512 resolution, SD-1.5 generally produces satisfactory outcomes. The main determinant affecting the generated outputs of SD-1.5 lies in the presentation method
+7
+
+SD-1.5 SAMPLES “Edward Hopper style vase”
+
+RAFT-ALIGNED SD-1.5 SAMPLES “Edward Hopper style vase”
+
+“A golden compass”
+
+“A golden compass”
+
+“Monet style cat”
+
+“Monet style cat”
+
+“Da Vinci style apple”
+
+“Da Vinci style apple”
+
+“An astronaut holding a fish”
+
+“An astronaut holding a fish”
+
+Figure 3: Text-Image Alignment with RAFT. (512×512 resolution)
+of prompts, which is because of the inductive bias in training data. Thus, the observed bias in the generated samples is more directly associated with the prompt delivery process. For example, the generator usually puts too much importance on the “style” information and ignore the objects. In such cases, we employ CLIP to evaluate the generated results and utilize the RAFT algorithm to achieve better alignment between the image and text prompts. Specifically, we use the OpenCLIP score with prompt input as the reward function (https://github.com/mlfoundations/open_clip). Figure 3 provide an illustrative case to demonstrate the lack of proper alignment between SD-1.5 and textual data. It is fortunate that our proposed RAFT algorithm can facilitate the attainment of well-aligned outputs through fine-tuning.
+8
+
+5 Discussion and Extension
+
+Simple parameter configuration. Traditionally, the PPO algorithm [39] has been the prominent approach in the area of RLHF for maximizing rewards (1). In practice, to prevent the model from moving too far from the initial model w0, PPO optimizes the following modified reward function:
+
+r˜(x,
+
+a)
+
+=
+
+r(x,
+
+a)
+
+−
+
+β
+
+log
+
+pαGt (y|x) pαG0 (y|x)
+
+,
+
+(2)
+
+where β > 0 is a hyper-parameter to control the penalization of the KL divergence between the current policy and the initial policy. Despite that PPO is a well-established DRL method, it requires intricate parameter configurations and extensive code-level tricks to converge. Meanwhile, PPO learns in a trial-and-error manner by interacting with the environment, which is less stable and efficient than supervised learning [8]. On the contrary, RAFT is easy to implement and relies on much fewer hyper-parameters, as summarized in Table 1. Specifically, RAFT’s hyper-parameters include (1) batch-size, (2) acceptance ratio, which determines the degree of reward preference, with a smaller ratio leading to the acceptance of only highly rewarding samples, (3) temperature, which regulates the level of randomness, with a larger temperature leading to more diverse samples. In general, the hyper-parameters of RAFT are explainable and clean.
+
+Computational consideration. Although RAFT is less sample-efficient in data collection (forward operation) because it discards most of the generated samples, this actually benefits backward propagation because we only train on a subset of the generated dataset. Since backward propagation is typically more computationally expensive than forward operation, this can provide some computational advantages for RAFT as a by-product. Another advantage of RAFT is that its three steps – data collection, data ranking, and model fine-tuning – can be performed separately. As a result, RAFT only needs to load one model at a time, which reduces the GPU memory requirement. In contrast, the PPO-based alignment approach used in LLM typically requires loading three models: the language model, the reference model (for KL estimation), and the reward model (when the reward model itself is an LLM). Therefore, PPO usually requires much more GPU memory to align the generative model.
+
+Advanced generation strategy. It turns out that the performance of RAFT heavily relies on the quality of generated samples. In Section 3, we mainly adjust the temperature parameter in our experimental setup. As an extension, we may consider more advanced search methods, including the beam search [34], top-k sampling [13], top-p sampling [18], contrastive search [44], best-of-n sampling [28]. We have adopted the top-k sampling as well as a lower temperature in the test settings for all methods to generate samples with higher quality (see Appendix D for details).
+
+Regularization. In practice, the reward function is usually imperfect, and overfitting the reward can be at the cost of the quality of response measured by other metrics such as fluency or diversity. We may leverage a KL penalty as in (2) to obtain a modified reward target. We defer a detailed discussion of these extensions in Appendix C and leave a comprehensive study of their impacts for future study.
+
+6 Conclusion
+In this paper, we introduced Reward rAnked FineTuning (RAFT), an alternative method for aligning generative models to human preference using a reward function. As compared to the popular PPO algorithm, RAFT is clean and easy to implement with a simple parameter configuration. Moreover, the SFT-like RAFT typically converges more robustly and faster than the DRL approach PPO in reward learning. Notably, since the data generation and fine-tuning of RAFT are decoupled, RAFT can be implemented with less GPU memory source and enjoys greater flexibility in terms of data sources. We hope that RAFT can enrich the toolbox of RLHF and inspire further research and development in the model alignment of building foundational generative models.
+One potential limitation is that the reward model is usually not robust enough to capture the ground truth reward. During the alignment process, it becomes essential to prevent the model from falling into adversarial examples that can deceive the reward model. This necessitates the incorporation of early stopping to a certain extent. We emphasize the need for further investigation into the implications arising from the imperfect nature of the reward model.
+
+9
+
+References
+[1] Amanda Askell, Yuntao Bai, Anna Chen, Dawn Drain, Deep Ganguli, Tom Henighan, Andy Jones, Nicholas Joseph, Ben Mann, Nova DasSarma, et al. A general language assistant as a laboratory for alignment. arXiv preprint arXiv:2112.00861, 2021.
+[2] Yuntao Bai, Andy Jones, Kamal Ndousse, Amanda Askell, Anna Chen, Nova DasSarma, Dawn Drain, Stanislav Fort, Deep Ganguli, Tom Henighan, et al. Training a helpful and harmless assistant with reinforcement learning from human feedback. arXiv preprint arXiv:2204.05862, 2022.
+[3] Yuntao Bai, Saurav Kadavath, Sandipan Kundu, Amanda Askell, Jackson Kernion, Andy Jones, Anna Chen, Anna Goldie, Azalia Mirhoseini, Cameron McKinnon, et al. Constitutional ai: Harmlessness from ai feedback. arXiv preprint arXiv:2212.08073, 2022.
+[4] Satanjeev Banerjee and Alon Lavie. METEOR: An automatic metric for MT evaluation with improved correlation with human judgments. In Proceedings of the ACL Workshop on Intrinsic and Extrinsic Evaluation Measures for Machine Translation and/or Summarization, pages 65–72, Ann Arbor, Michigan, June 2005. Association for Computational Linguistics. URL https://www.aclweb.org/anthology/W05-0909.
+[5] Emily M Bender, Timnit Gebru, Angelina McMillan-Major, and Shmargaret Shmitchell. On the dangers of stochastic parrots: Can language models be too big? In Proceedings of the 2021 ACM conference on fairness, accountability, and transparency, pages 610–623, 2021.
+[6] Rishi Bommasani, Drew A Hudson, Ehsan Adeli, Russ Altman, Simran Arora, Sydney von Arx, Michael S Bernstein, Jeannette Bohg, Antoine Bosselut, Emma Brunskill, et al. On the opportunities and risks of foundation models. arXiv preprint arXiv:2108.07258, 2021.
+[7] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are few-shot learners. Advances in neural information processing systems, 33:1877–1901, 2020.
+[8] Leshem Choshen, Lior Fox, Zohar Aizenbud, and Omri Abend. On the weaknesses of reinforcement learning for neural machine translation. arXiv preprint arXiv:1907.01752, 2019.
+[9] Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung Won Chung, Charles Sutton, Sebastian Gehrmann, et al. Palm: Scaling language modeling with pathways. arXiv preprint arXiv:2204.02311, 2022.
+[10] Paul Christiano, Buck Shlegeris, and Dario Amodei. Supervising strong learners by amplifying weak experts. arXiv preprint arXiv:1810.08575, 2018.
+[11] Prafulla Dhariwal and Alexander Nichol. Diffusion models beat gans on image synthesis. Advances in Neural Information Processing Systems, 34:8780–8794, 2021.
+[12] Logan Engstrom, Andrew Ilyas, Shibani Santurkar, Dimitris Tsipras, Firdaus Janoos, Larry Rudolph, and Aleksander Madry. Implementation matters in deep policy gradients: A case study on ppo and trpo. arXiv preprint arXiv:2005.12729, 2020.
+[13] Angela Fan, Mike Lewis, and Yann Dauphin. Hierarchical neural story generation. arXiv preprint arXiv:1805.04833, 2018.
+[14] Amelia Glaese, Nat McAleese, Maja Tre˛bacz, John Aslanides, Vlad Firoiu, Timo Ewalds, Maribeth Rauh, Laura Weidinger, Martin Chadwick, Phoebe Thacker, et al. Improving alignment of dialogue agents via targeted human judgements. arXiv preprint arXiv:2209.14375, 2022.
+[15] Yaru Hao, Zewen Chi, Li Dong, and Furu Wei. Optimizing prompts for text-to-image generation. arXiv preprint arXiv:2212.09611, 2022.
+[16] Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. Advances in Neural Information Processing Systems, 33:6840–6851, 2020.
+10
+
+[17] Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor Cai, Eliza Rutherford, Diego de Las Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan Clark, et al. Training compute-optimal large language models. arXiv preprint arXiv:2203.15556, 2022.
+[18] Ari Holtzman, Jan Buys, Li Du, Maxwell Forbes, and Yejin Choi. The curious case of neural text degeneration. arXiv preprint arXiv:1904.09751, 2019.
+[19] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. Lora: Low-rank adaptation of large language models. arXiv preprint arXiv:2106.09685, 2021.
+[20] Gabriel Ilharco, Mitchell Wortsman, Ross Wightman, Cade Gordon, Nicholas Carlini, Rohan Taori, Achal Dave, Vaishaal Shankar, Hongseok Namkoong, John Miller, Hannaneh Hajishirzi, Ali Farhadi, and Ludwig Schmidt. Openclip, July 2021. URL https://doi.org/10.5281/ zenodo.5143773. If you use this software, please cite it as below.
+[21] Geoffrey Irving, Paul Christiano, and Dario Amodei. Ai safety via debate. arXiv preprint arXiv:1805.00899, 2018.
+[22] Kimin Lee, Hao Liu, Moonkyung Ryu, Olivia Watkins, Yuqing Du, Craig Boutilier, Pieter Abbeel, Mohammad Ghavamzadeh, and Shixiang Shane Gu. Aligning text-to-image models using human feedback. arXiv preprint arXiv:2302.12192, 2023.
+[23] Jan Leike, David Krueger, Tom Everitt, Miljan Martic, Vishal Maini, and Shane Legg. Scalable agent alignment via reward modeling: a research direction. arXiv preprint arXiv:1811.07871, 2018.
+[24] Yanran Li, Hui Su, Xiaoyu Shen, Wenjie Li, Ziqiang Cao, and Shuzi Niu. Dailydialog: A manually labelled multi-turn dialogue dataset. In Proceedings of The 8th International Joint Conference on Natural Language Processing (IJCNLP 2017), 2017.
+[25] Pengfei Liu, Weizhe Yuan, Jinlan Fu, Zhengbao Jiang, Hiroaki Hayashi, and Graham Neubig. Pre-train, prompt, and predict: A systematic survey of prompting methods in natural language processing. ACM Computing Surveys, 55(9):1–35, 2023.
+[26] Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101, 2017.
+[27] Andrew L. Maas, Raymond E. Daly, Peter T. Pham, Dan Huang, Andrew Y. Ng, and Christopher Potts. Learning word vectors for sentiment analysis. In Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies, pages 142– 150, Portland, Oregon, USA, June 2011. Association for Computational Linguistics. URL http://www.aclweb.org/anthology/P11-1015.
+[28] Reiichiro Nakano, Jacob Hilton, Suchir Balaji, Jeff Wu, Long Ouyang, Christina Kim, Christopher Hesse, Shantanu Jain, Vineet Kosaraju, William Saunders, et al. Webgpt: Browser-assisted question-answering with human feedback. arXiv preprint arXiv:2112.09332, 2021.
+[29] Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with human feedback. Advances in Neural Information Processing Systems, 35:27730–27744, 2022.
+[30] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever, et al. Language models are unsupervised multitask learners. OpenAI blog, 1(8):9, 2019.
+[31] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In International conference on machine learning, pages 8748–8763. PMLR, 2021.
+[32] Rajkumar Ramamurthy, Prithviraj Ammanabrolu, Kianté Brantley, Jack Hessel, Rafet Sifa, Christian Bauckhage, Hannaneh Hajishirzi, and Yejin Choi. Is reinforcement learning (not) for natural language processing?: Benchmarks, baselines, and building blocks for natural language policy optimization. arXiv preprint arXiv:2210.01241, 2022.
+11
+
+[33] Aditya Ramesh, Prafulla Dhariwal, Alex Nichol, Casey Chu, and Mark Chen. Hierarchical text-conditional image generation with clip latents. arXiv preprint arXiv:2204.06125, 2022.
+[34] Raj Reddy. Speech understanding systems: A summary of results of the five-year research effort at carnegie mellon university. Pittsburgh, Pa, 1977.
+[35] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. Highresolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 10684–10695, 2022.
+[36] Victor Sanh, Lysandre Debut, Julien Chaumond, and Thomas Wolf. Distilbert, a distilled version of bert: smaller, faster, cheaper and lighter. ArXiv, abs/1910.01108, 2019.
+[37] Teven Le Scao, Angela Fan, Christopher Akiki, Ellie Pavlick, Suzana Ilic, Daniel Hesslow, Roman Castagne, Alexandra Sasha Luccioni, François Yvon, Matthias Galle, et al. Bloom: A 176b-parameter open-access multilingual language model. arXiv preprint arXiv:2211.05100, 2022.
+[38] Jeremy Scheurer, Jon Ander Campos, Tomasz Korbak, Jun Shern Chan, Angelica Chen, Kyunghyun Cho, and Ethan Perez. Training language models with language feedback at scale. arXiv preprint arXiv:2303.16755, 2023.
+[39] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347, 2017.
+[40] Shaden Smith, Mostofa Patwary, Brandon Norick, Patrick LeGresley, Samyam Rajbhandari, Jared Casper, Zhun Liu, Shrimai Prabhumoye, George Zerveas, Vijay Korthikanti, et al. Using deepspeed and megatron to train megatron-turing nlg 530b, a large-scale generative language model. arXiv preprint arXiv:2201.11990, 2022.
+[41] Jiaming Song, Chenlin Meng, and Stefano Ermon. Denoising diffusion implicit models. arXiv preprint arXiv:2010.02502, 2020.
+[42] Yang Song, Jascha Sohl-Dickstein, Diederik P Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. Score-based generative modeling through stochastic differential equations. arXiv preprint arXiv:2011.13456, 2020.
+[43] Nisan Stiennon, Long Ouyang, Jeffrey Wu, Daniel Ziegler, Ryan Lowe, Chelsea Voss, Alec Radford, Dario Amodei, and Paul F Christiano. Learning to summarize with human feedback. Advances in Neural Information Processing Systems, 33:3008–3021, 2020.
+[44] Yixuan Su, Tian Lan, Yan Wang, Dani Yogatama, Lingpeng Kong, and Nigel Collier. A contrastive framework for neural text generation. arXiv preprint arXiv:2202.06417, 2022.
+[45] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothee Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971, 2023.
+[46] Jason Wei, Maarten Bosma, Vincent Y Zhao, Kelvin Guu, Adams Wei Yu, Brian Lester, Nan Du, Andrew M Dai, and Quoc V Le. Finetuned language models are zero-shot learners. arXiv preprint arXiv:2109.01652, 2021.
+[47] Jason Wei, Yi Tay, Rishi Bommasani, Colin Raffel, Barret Zoph, Sebastian Borgeaud, Dani Yogatama, Maarten Bosma, Denny Zhou, Donald Metzler, Ed H. Chi, Tatsunori Hashimoto, Oriol Vinyals, Percy Liang, Jeff Dean, and William Fedus. Emergent abilities of large language models. Transactions on Machine Learning Research, 2022. URL https://openreview. net/forum?id=yzkSU5zdwD. Survey Certification.
+[48] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Ed Chi, Quoc Le, and Denny Zhou. Chain of thought prompting elicits reasoning in large language models. arXiv preprint arXiv:2201.11903, 2022.
+[49] Jeff Wu, Long Ouyang, Daniel M Ziegler, Nisan Stiennon, Ryan Lowe, Jan Leike, and Paul Christiano. Recursively summarizing books with human feedback. arXiv preprint arXiv:2109.10862, 2021.
+12
+
+[50] Xiaoshi Wu, Keqiang Sun, Feng Zhu, Rui Zhao, and Hongsheng Li. Better aligning text-toimage models with human preference. arXiv preprint arXiv:2303.14420, 2023.
+[51] Zheng Yuan, Hongyi Yuan, Chuanqi Tan, Wei Wang, Songfang Huang, and Fei Huang. Rrhf: Rank responses to align language models with human feedback without tears. arXiv preprint arXiv:2304.05302, 2023.
+[52] Daniel M Ziegler, Nisan Stiennon, Jeffrey Wu, Tom B Brown, Alec Radford, Dario Amodei, Paul Christiano, and Geoffrey Irving. Fine-tuning language models from human preferences. arXiv preprint arXiv:1909.08593, 2019.
+13
+
+A More Experimental Results with LLMs
+All the experiments are conducted using 8×A100 (40G) with 600G RAM, and half-precision training (bf16). The code will be publicly available on GitHub in the final version.
+In Section 5, we discuss the implementation of PPO, which necessitates the loading of multiple LLMs concurrently and thus requires a significant amount of memory. Even with half-precision training, the out-of-memory error happens when we compute intermediate values during the training (e.g. attention scores). Following TRL, we use Parameter-Efficient Fine-Tuning (PEFT) in our experiment with the peft library, and perform Low-Rank Adaptation (LoRA) [19] for PPO with all the experiments. We will also conduct a case study for RAFT with LoRA training, using the HH-RLHF dataset, to obtain a more comprehensive comparison.
+In the rest of this section, we present a thorough description of the experiments on the HH-RLHF dataset.
+
+A.1 SFT and Reward Modeling on HH-RLHF Dataset
+We follow the training procedure outlined by Ouyang et al. [29]. First, we perform SFT on the 112K positive training samples of the HH-RLHF dataset. Then, we use 100K pairwise samples as the training set and a handout evaluation set of 12.5K samples to train the reward model, by adopting the following loss:
+loss(θ) = −Ex,yw,yl∼Dtrain log(σ(rθ(x, yw) − rθ(x, yl))) ,
+where rθ(x, y) is the predicted reward of the model for prompt x and response y, and Dtrain is the empirical distribution of the training set. Here yw is the preferred response, and σ(·) is the sigmoid function. We report the hyper-parameters in Table 5 where we adopt the same parameters for two reward models and report evaluation loss and accuracy in Figure 4.
+
+Table 5: Hyper-parameters reward modeling on HH-RLHF dataset.
+
+MODELS SFT
+REWARD MODELING
+
+HYPER-PARAMETER
+LEARNING RATE DECAY MODE EPOCH BATCH SIZE
+LORAL RANK r LORA ALPHA LORA DROPOUT LEARNING RATE DECAY MODE
+EPOCH
+
+VALUE
+2 × 10−5 LINEAR DECAY
+1 32
+16 32 0.1 3 × 10−5 LINEAR DECAY 1
+
+GPT-Neo-2.7B achieves an evaluation accuracy of 68.27%, comparable to the GPT-J-6B model5. Moreover, LLaMA-7B achieves an evaluation accuracy of 79.52% that significantly outperforms GPT-Neo-2.7B. However, the PPO model requires loading the language model and reward model at the same time. During our current implementation with TRL, we encountered an out-of-memory error when attempting to train the model using 8×A100 (40G). It became evident that this issue arose during the computation of certain intermediate variables, rendering the training process infeasible. Therefore, we choose the GPT-Neo-2.7B as our reward model in this experiment. Notably, since the data generation, data ranking, and SFT in RAFT can be performed separately, as long as we can fine-tune the model, we can also align the model with RAFT.
+5https://huggingface.co/Dahoas/gptj-rm-static
+14
+
+Figure 4: Evaluation loss and evaluation accuracy of reward modeling. The best LLaMA-7B model achieves an accuracy of 79.52% on the 12.5K validation samples, while the best GPE-NEO-2.7B model achieves an accuracy of 68.27%.
+A.2 Reward Maximization: Setup and Implementation Details
+Prompt dataset. We use a context window of 256 tokens and discard the prompts with more tokens to reduce the burden on the GPU memory resources. This results in a prompt set of 82,147 samples (originally 112K).
+Parameter tuning. For the RAFT algorithm, we start to search the learning rate with 2 × 10−5 and ultimately adopt it since it already provides satisfactory alignment performance. We suspect that this is because LLaMA-7B-SFT can already generate high-quality samples and SFT on the generated samples does not hurt the fluency and diversity that much so a larger learning rate also works. For the PPO algorithm, we adopt most of the parameter settings in the IMDB and Daily dialogue experiments, which prove to converge nicely. We primarily tune the weight of the KL penalty due to the different output lengths. We also tune the learning rate. To this end, we start with an experiment without KL penalty, and find that the KL estimation can be of the order ∼ 400 at most when it achieves the highest training reward. Therefore, we search the KL coefficient β in {0.001, 0.01}, where we run each experiment three times independently for up to 80 iterations (i.e., one epoch of the prompt set, roughly 20 hours) and takes β = 0.001 eventually (the same as [2]). For the KL regularization, we follow [52] to set the KL coefficient to be dynamically adapted (the default setting of TRL package). For the learning rate, we experiment with {1 × 10−5, 5 × 10−6} but find that the smaller learning rate does not bring improvement on the training stability or model performance. Thus, we eventually use 1 × 10−5.
+For the generation configuration, we allow the model to generate up to 128 new tokens given the prompt. For RAFT algorithm, we use a lower temperature 0.85 for a more stable generation quality. For PPO algorithm, we follow the setting in TRL package and do not tune the generation configuration because it seems that the KL estimation can fail when we use a more complicated generation configuration. For instance, we attempt to force the model to generate at least 60 tokens to provide more details, but almost half of the KL estimation becomes negative. We also follow the setting in TRL to use a random generation length for PPO, which is randomly sampled from [64, 128] because we find that a fixed generation length can more easily employ the imperfections of the reward modeling as detailed below.
+Imperfect reward modeling. It proves challenging to optimize the reward signal while improving the model performance. This is because the reward model we use for the experiment is far from perfect (with 68.27% evaluation accuracy). While we observe that RAFT achieves good performance (in both reward learning and human investigation) in all the experiments with appropriate hyper-parameters and data cleaning process, the PPO-aligned model may overfit the reward function by exploiting these imperfections, which leads to undesired behaviors. Specifically, during the training process of RAFT, we observe that the training reward is positively correlated with response length, which may suggest that the used reward function prefers responses with more details. However, the PPO models can overfit this feature of the reward model by using repetitions of “:):):)” or “;););)” for a higher reward. To address this issue, we monitor the diversity metric for each iteration and such overfitting behavior
+15
+
+can be detected as a sudden decrease in these metrics (due to the repetition of the same strings). Once such an undesired pattern happens, we consider the training fails and restart the training. Moreover, we impose the following postprocessing procedure for both RAFT and PPO.
+Postprocessing. To improve the model performance, we adopt a maximum new token parameter of 128. In some cases, the initial checkpoint LLaMA-7B-SFT replies to the prompt (chat history) with multiple rounds of conversation. We adopt the same postprocessing for both RAFT and PPO by splitting the responses according to ###Human and deleting all the special notations at the end of the responses. Meanwhile, we truncate the trajectory of MDP for the PPO accordingly. We further filter the collected dataset of RAFT to delete the repetition of #, which is applicable because of the decoupled nature between the data generation and fine-tuning in RAFT.
+RAFT variant. Algorithm 2 presents a variant of RAFT, where we generate k responses for each input prompt and select the response with the highest reward. This is the first version of RAFT, primarily motivated by the best-of-k sampling [28]. Since a global ranking process in Algorithm 1 tends to be more efficient than such a local ranking process within a prompt, we adopt the global ranking as our main algorithm. However, since we model the reward function for the HH-RLHF dataset by a comparison of responses within a prompt, such a local ranking is more appropriate, and we adopt it for this experiment.
+
+Figure 5: Reward curves of RAFT and PPO for the HH-RLHF experiment where the results are averaged over 3 random seeds: (1) The first figure plots the training reward curve of PPO and RAFT with respect to the cost. Since we adopt different temperature parameters for two algorithms, their training rewards are not comparable directly. Therefore, we normalize both reward sequences for the figure to illustrate the convergence behaviors; (2) The second figure reports the reward curves of RAFT, including the training reward, the reward of the best-of-k policy (i.e. the mean reward of the samples used for SFT), and the evaluation reward on the hand-out dataset. Note that we use a smaller temperature for evaluation thus leading to a higher reward.
+
+Algorithm 2 RAFT with local ranking
+
+1: Input: Prompt set X = {x1, . . . , xn}, reward function r(·), initial model G0 = g(w0, ·),
+
+acceptance ratio 1/k, batch size b, temperature parameter α.
+
+2: for Stage t = 1, . . . , T do
+
+3: 1 . Data collection. Sample a batch Dt from X of size b;
+
+4: B = ∅
+
+5: for x ∈ Dt do
+
+6:
+
+2. Data ranking. Generate y1, . . . , yk ∼ pαGt Let y be the output yj with the largest reward
+
+r(x, yj) and insert (x, y) into B;
+
+7: end for
+
+8: 3. Model fine-tuning. Fine-tune wt−1 on B to obtain Gt = g(wt, ·).
+
+9: end for
+
+16
+
+Table 6: Complete table of results on HH-RLHF dataset. The results are tested on the 2K test samples and are averaged on 8 random seeds. The LLaMA-7B-SFT is the SFT-aligned model.
+
+BASE MODEL ALIGNMENT MEAN REWARD PPL
+
+MSTTR-100
+
+DISTINCT 1
+
+DISTINCT 2 UNIQUE 1 UNIQUE 2 PRED LENGTH
+
+LLAMA-7B
+
+-
+
+1.724 ± 0.027 4.656 0.588 ± 0.003 0.092 ± 0.001 0.412 ± 0.004 3699 23484
+
+39.7
+
+LLAMA-7B
+
+SFT
+
+2.781 ± 0.024 3.031 0.622 ± 0.002 0.081 ± 0.001 0.414 ± 0.002 4689 37303
+
+62.3
+
+LLAMA-7B-SFT
+
+PPO
+
+3.448 ± 0.024 3.828 0.596 ± 0.004 0.075 ± 0.001 0.354 ± 0.003 3893 29486
+
+55.5
+
+LLAMA-7B-SFT RAFT-LORA 3.444 ± 0.028 3.156 0.601 ± 0.002 0.073 ± 0.001 0.389 ± 0.002 4401 37586
+
+69.0
+
+LLAMA-7B-SFT RAFT 3.451 ± 0.025 3.281 0.609 ± 0.002 0.074 ± 0.001 0.396 ± 0.002 4703 40920
+
+72.6
+
+LLAMA-7B-SFT RAFT 3.458 ± 0.023 3.125 0.599 ± 0.002 0.072 ± 0.001 0.390 ± 0.002 4358 38323
+
+70.1
+
+A.3 Result and Discussion
+Model summary. Table 6 lists the metrics of the representative models of each method, where the models are considered the best models across all independent runs of experiments. As we can see, both RAFT and PPO achieve high rewards and outperform the SFT-aligned model and also the original LLaMA model. In comparison, RAFT tends to reply with more details, as the response of RAFT is usually longer (further shown in the case study presented in Table 9). RAFT also achieves a better perplexity, even though with a learning rate comparable to PPO. We suspect that this is because the base model LLaMA-7B-SFT can already output samples of high quality and fine-tuning on these samples does not hurt the fluency. This can be partially proved by the model improvement from the original LLaMA to the SFT-aligned model. Finally, as the alignment tax, the diversity of the output usually decreases for both methods compared to the starting point. RAFT achieves a competitive trade-off between output diversity and reward learning, including both the model from full training and the model from LoRA training.
+Training curves. We report the reward curves of PPO and RAFT in Figure 5. The left figure plots the normalized training rewards of PPO and RAFT in terms of the cost (introduced in Section A), averaged across three random seeds. The SFT-like RAFT converges faster than PPO and this partially compensates for the cost of additional generated samples at each iteration, leading to a lower cost. It is worth noting that the practical gap between PPO and RAFT is much larger than their difference in cost. This is because we can set per-GPU batch size as 8 for RAFT, while we can only set it as 3 for PPO, leading to a much slower speed of PPO. We suspect this is because the implementation of PPO is far more complicated than RAFT and requires more intermediate variables. To better illustrate the convergence behavior of RAFT, we report both the reward of the trained model (training reward and eval reward) and the best-of-k model in the right figure. As we can see, the trained model improves steadily by SFT on the subset generated by the best-of-k model and filtered by the reward model. The best-of-k model also benefits from such an improvement of the trained model in turn. Eventually, both of trained model and the best-of-k model converge.
+Learning stability. RAFT converges nicely for all the experiments with the hyper-parameters specified in Table 12, including both the full training and LoRA training, demonstrating the stability of SFT-based learning. In contrast, the reported results of PPO in this section were averaged across three successful experiments. We observe that the PPO training can fail for one of the following reasons. First, the training reward of PPO sometimes collapses suddenly in the middle of training, where the responses become simple repetitions of certain strings, or the model refuses to reply to the prompt. Second, the KL estimation fails easily when we modify the generation configuration (e.g. an attempt to force the model to generate longer responses by specifying the “minimum length”), which may suggest that we should use the simple generation strategy for PPO training. Finally, as we mentioned in the last subsection, the PPO-aligned model sometimes will converge to the model that achieves a high reward by repeating “:)”. We detect such a phenomenon by a sudden drop in the diversity metric and restart the training. We notice that these issues mainly arise due to the difference between the standard RL setting and RLHF for LLMs, where the former always pursues a higher reward, and the latter faced an imperfect RL formulation, so a higher reward might not necessarily lead to better performance. Meanwhile, since the generation and backward propagation of PPO are tightly coupled together, the additional data-cleaning processes (generation configuration tuning, special notations cleaning) are hard to apply.
+17
+
+B Examples
+B.1 LLM Samples
+For LLM, we provide examples of experiments on IMDB, Daily Dialogue, and HH-RLHF.
+IMDB Movie Review Examples
+Prompt 1: Just saw this movie yesterday night and I almost cried. No, it wasn’t because it got me utterly petrified, no. It was absolutely HORRENDOUS! Sometimes, you see movies that make you wonder what will become of the human race in the near future - this movie
+Responses: Reference: is one of those. It’s as though the writer, actors, director, et al, just came together and copied and pasted scenes of their favorite horror flicks, zipped it all together and said “hey, here’s Satan’s whip!!!” After seeing this movie, I could not help but be tormented by the sight of people whom call themselves “actors”; waltzing around like they’re some kind of talented artistic interpreters. LLaMA: is the answer. It was a movie that made me laugh, cry, and terrified me to the core. I was literally screaming and crying throughout the movie. I have watched many horror movies in my life LLaMA-SFT: is one of those. It’s a story about a group of students that go to the school camp and have a s¨essionön surviving. However, when they enter the camp, they all find themselves trapped in this cre LLaMA-PPO: was one of them. I’m not sure if the movie was supposed to be funny when the whole cast of zombies were strolling around in the street, but I was laughing all the way through it. I recommend LLaMA-RAFT: will make you believe that it is inevitable! The scenery, the acting, the story - perfect! I’m not a big fan of horror movies, but this one really got to me. I can’t say too much
+Prompt 2: First of all let us discuss about the story. It is a copy of the movie “Hitch” with an added Indian Flavor to it. One guy, who is a Love guru, and another man who is seemingly a sucker when it comes to ladies, and how this seemingly
+Responses: Reference: sucker becomes a charmer with the help of the love guru forms the story. Salman Khan is the love guru, and Govinda is the lame guy. Now coming to artists’ performance, Salman Khan overacts throughout the movie, he tries to be funny, but fails big time. You can see Salman shouting throughout the movie, no real acting is seen in his performance. Govinda pairs opposite Katrina Kaif(Oh, my god, she is one heck of a girl. LLaMA: sucker gains confidence and becomes a match made in heaven for the love guru. The story is very predictable and you can guess what is going to happen in the end, but the twists and turns in between make it LLaMA-SFT: sucker, in fact is the love guru in disguise. It is the typical Hindi movie story. And you know what, that is OK. Director, Aditya Chopra, has not tried to make an LLaMA-PPO: ordinary guy helps him with his love problems. It is a very funny movie with a superb performance by the character actor Nitin. He is a treat to watch in this movie. It is a must watch movie of the LLaMA-RAFT: sucker is transformed into a Love guru. I found the movie funny, and also very entertaining. The movie has a good story line, and the acting by the lead actors is also good
+Prompt 3: This low budget crocodile movie really delivers the goods. The fact that it was inspired by true events would mean little if you wound up with a fake looking crocodile, bad C.G.I., or an obvious studio setting. Fortunately none of the above are involved with this ter
+Responses: Reference: rific, very realistic film. The crocodile is real, there is no C.G.I., and the on location filming takes place in an actual Australian swamp. The actors were obviously inspired to create as much realism as possible in their performances, and they succeed. LLaMA: rific movie. The movie opens with a film crew arriving at the beach to film a documentary about crocodiles. The main character is a photographer who is doing research on the creatures. The crew are surprised when LLaMA-SFT: rific movie. It has a very dark atmosphere, which makes the movie very spooky and thrilling. It’s a great story as well, with many twists and shocks. I loved this movie, it’s LLaMA-PPO: rific film. It has authentic looking Africa settings and a very impressive crocodile. It has a great story with lots of suspense and tense moments. It has an excellent cast with seasoned veterans and up and com LLaMA-RAFT: rific movie. The crocodile is not only convincing, but looks real enough to be scary. The action is fast paced, and the script is full of great one liners. The cast is excellent, and
+Table 7: Representative examples of IMDB experiments with randomly sampled prompts.
+18
+
+Daily Dialogue Examples
+Prompt 1: Human: A reasonable number of sick days will be covered by the company. Any extended illness will be covered by insurance. Have you read the other terms of the contract? Assistant: Yes, I have. Human: Do you have any other questions? Assistant: Just one. I noticed an item about flex-time. Is that a possibility for me? Human: Yes, it is, but you’ll have to discuss the details with your manager. Assistant:
+Responses: Reference: That’s acceptable. LLaMA: I understand. I’ll see him tomorrow. LLaMA-SFT: That’s fine. I’m very satisfied with the contract. Thanks for your help. LLaMA-PPO: I understand. I hope I will be able to take advantage of flex-time. LLaMA-RAFT: That’s fine. I’m sure we can work something out.
+Prompt 2: Human: Hello, Mr. Black, how are you ? Assistant: Fine, thank you, and how are you ? Human: Very well, thank you. It’s nice to meet you again. I am awfully sorry for not being able to meet you at the airport, as I was busy yesterday. I do hope you had a very enjoyable trip from New York. Assistant:
+Responses: Reference: Yes, a very pleasant journey indeed. Thank you. LLaMA: Thank you very much. I had a very good time in New York myself. LLaMA-SFT: Yes, I did. But I’m glad to meet you again. LLaMA-PPO: It was very pleasant. I had a good time . LLaMA-RAFT: Yes, it was very comfortable. The flight was very pleasant.
+Prompt 3: Human: Anything else ? Assistant: Yes, one last thing. How much holiday time do you give your employees every year ? Human: Our employees receive 15 days of paid vacation every year. If you don’t use the full 15 days, they carry over to the following year . Assistant:
+Responses: Reference: How about sick days? LLaMA: Is there an option for unpaid sick days ? LLaMA-SFT: Do you get an additional 10 days of sick leave? LLaMA-PPO: How about your employees ? LLaMA-RAFT: That’s pretty good. How about sick leave?
+Table 8: Representative examples of daily dialogue experiments with randomly sampled prompts.
+19
+
+HH-RLHF Examples
+Prompt 1: Human: How can I get my girlfriend to cook more? Assistant: Have you tried reminding her of how nice the food tastes? Human: I could do it more. Assistant:
+Responses: LLaMA: When you cook do you use a lot of spices? LLaMA-SFT: That’s an easy one, so it may not be the most effective strategy. Do you know of any other strategies? LLaMA-PPO: That might help. Also, make sure the kitchen is always clean and organized. This will help keep things fresh for cooking. Good luck! LLaMA-RAFT: That’s a good idea! You can also try complimenting her on her cooking, and offering to help her in the kitchen. She might enjoy cooking more if she feels appreciated. You could also suggest recipes that she might like, or help her create a menu. Cooking can be a lot of fun, and it’s a great way to spend time together.
+Prompt 2: Human: How do you get a child to do homework? Assistant: There are many strategies, but you can try asking them why they should do it. Ask them if there’s anything they’d like to gain from doing their homework. Try asking if there’s anything you can do for them, and use those as motivation for them to do their homework. You can also remind them that they’ll be rewarded with extra privileges, like video games, if they do their homework. Alternatively, you can incentivize them by including them in your plans, and offering them rewards if they get good grades. Human: So make it so there is something in it for them? Assistant: There was another one, called the Great Hurricane of 1938, that was bigger and stronger. Human: Are you sure the date is correct? I know there was a strong storm in 1935 that hit the Florida Keys but that was before they started naming storms. Is that the one you are referring to? Assistant:
+Responses: LLaMA: Yes. You can remind them that they can do anything they want, but if they do their homework, you can do things with them. You can also try to make your time together enjoyable if they do their homework and get good grades. LLaMA-SFT: Yes, exactly. In general, it’s important to be clear with your child about why they’re doing something. It’s also important to offer them incentives that are meaningful to them. For example, if you tell your child that they have to do their homework because you said so, that’s not a very good incentive for them. However, if you tell them that they’ll be able to use the LLaMA-PPO: Yes, that’s one strategy you can use. It can help motivate them to do their homework. Good luck with your students! I hope this helps. Have a great day! LLaMA-RAFT: Yes, that’s a good strategy! Kids often think about what they want right now, so offering them something in exchange for doing their homework can be a powerful motivator. You might also want to offer them some kind of reward if they do well on their homework, to encourage them to do their best. Offering them some kind of incentive can help them want to do well, and also it can help you both stay on track.
+Prompt 3: Human: I am doing a project on weather disasters in the United States. Can you tell me what the strongest hurricane was to ever hit the U.S. was? Assistant: I’m going to guess you’re thinking of the Hurricane Katrina in 2005. Human: Well, I’m not really thinking of anything in particular. Was Katrina the strongest hurricane to ever hit the U.S.? Assistant: There was another one, called the Great Hurricane of 1938, that was bigger and stronger. Human: Are you sure the date is correct? I know there was a strong storm in 1935 that hit the Florida Keys but that was before they started naming storms. Is that the one you are referring to? Assistant:
+Responses: LLaMA: Yeah, the Great Hurricane of 1938. LLaMA-SFT: I could search for more information, but I’ll just share what I’ve found. Here’s a review of the conditions in 1935 and 1938. It looks like the storms had similar tracks, but 1938 was stronger in some ways. In 1938 there were more people living on the coast, and the hurricane was more intense. LLaMA-PPO: Yes, the hurricane in 1935 was stronger than Katrina. The 1938 storm was bigger. I hope this helps. Good luck with your project! LLaMA-RAFT: Yes, the 1938 hurricane was the most intense storm that year, and the second-most intense storm ever recorded. It caused over 6,000 deaths. I’m not sure about the Florida Keys storm you mentioned, but it sounds like it was a major storm as well. It’s very interesting that there were two such intense storms in such a short time period.
+Table 9: Representative examples of HH-RLHF experiments with randomly sampled prompts.
+20
+
+B.2 Diffusion Model Samples All the experiments of diffusion models are performed with Nvidia-3090 with 256G RAM. We will release the code and demos for our paper. Specifically, Figure 6 depicts the samples generated during resolution adaptation without any cherrypicking involved. It is evident that our approach has significantly improved the quality of generated samples.
+(a) SD-1.5
+(b) SD-1.5 + RAFT Figure 6: Random 256 × 256 generated results of SD-1.5. Black samples indicate failure cases.
+21
+
+It is worth noting that in our experiments conducted at a resolution of 256×256, significant improvements were observed not only for the prompts used during training but also for other prompts. For instance, when using CIFAR-10 labels as samples, notable improvements in the generated quality were observed when utilizing CIFAR-100 labels (Figure 7). This observation highlights the generalization capability of our RAFT algorithm in enhancing sample quality during the alignment process.
+SD-1.5 + RAFT Figure 7: Resolution Adaptation (256 × 256 generated results of CIFAR-100 out-of-domain prompts)
+22
+
+SD-1.5 SAMPLES “Rembrandt style car”
+
+RAFT-ALIGNED SD-1.5 SAMPLES “Rembrandt style car”
+
+“Submarine”
+
+“Submarine”
+
+“Paul Delaroche style fish”
+
+“Paul Delaroche style fish”
+
+“Jacques-Louis David style big ben”
+
+“Jacques-Louis David style big ben”
+
+“Van Gogh style astronaut”
+
+“Van Gogh style astronaut”
+
+Figure 8: Text-Image Alignment with RAFT Furthermore, we have included additional examples of Text-Image Alignment in Figure 8, further demonstrating the crucial role of RAFT alignment in diffusion models.
+23
+
+C Other Extensions
+
+C.1 Offline RAFT It is important to point out that the RAFT algorithm can also be extended to offline settings.
+
+Algorithm 3 Offline RAFT
+
+1: Input: D = {(x1, y1), . . . , (xn, yn)}, r(·), G0 = g(w0, ·), k, b.
+
+2: Randomly choose k samples from D as B, and save their rewards.
+
+3: for Stage t = 1, . . . , T do
+
+4: Sample a batch Bb from D of size b;
+
+5: for x, y ∈ Bb do
+
+6: Compute reward r(x, y).
+
+7:
+
+if r > min(x′,y′)∈B r(x′, y′) then
+
+8:
+
+Remove argmin(x′,y′)∈B r(x′, y′) from B;
+
+9:
+
+Insert (x, y) and r(x, y) to B.
+
+10:
+
+end if
+
+11: end for
+
+12: Fine-tune wt−1 on B to obtain Gt = g(wt, ·).
+
+13: end for
+
+C.2 Potential Extensions
+It turns out that the performance of the our SFT-like algorithm RAFT heavily relies on the quality of the generated data. In what follows, we discuss several potential approaches to improve the quality of the generated samples for future study.
+Expert Generator as Data Source. The discussion in this paper follows from the standard RL workflow for a better understanding. Thanks to the decoupled nature of data generation and finetuning in RAFT, we can also incorporate other data sources in addition to the trained model itself. For instance, we can leverage some expert generators (e.g. GPT4 or human) to generate (part of) the responses given the prompt. A more straightforward approach is to perform some prompt engineering in the data generation process, where there is rich literature showcasing that it can largely improve the generation quality [25]. It is known that in-context learning [7, 48] improves LLM performance, especially for those challenging logical reasoning tasks. Given the input prompt is x, instead of using x directly, we may add some additional context and input the new prompt x˜ to the model and get the response y. In other words, we can obtain an “expert” generator through proper prompt engineering. For diffusion models, it is also applicable that powerful models (e.g. Midjourney) and proper prompts can provide better generation quality.
+Regularization. We note that we can also incorporate a KL penalty into our reward function. In particular, we can separately compute the log probability of the current model and the reference log probability of the initial model and combine them in the reward computation. Therefore, we still only need to load one model at a time. Then, the RAFT can rank the samples according to the regularized reward, and prevent the model from moving away too far from the initial model.
+
+24
+
+D Parameter Settings
+
+Table 10: Hyper-parameters-IMDB for fine-tuning LLaMA-7B.
+
+MODELS SFT RAFT
+PPO TEST SETTINGS
+
+HYPER-PARAMETER
+LEARNING RATE DECAY MODE EPOCH BATCH SIZE
+BATCH SIZE b UPDATE EPOCHS FOR EACH STAGE
+LEARNING RATE ACCEPTANCE RATIO 1/k
+TEMPERATURE 1/α
+MAX NEW WOKEN
+STEPS PER UPDATE UPDATE EPOCHS FOR EACH STAGE
+LEARNING RATE KL COEFFICIENT DISCOUNT FACTOR
+CLIP RATIO GAE PARAMETER TEMPERATURE 1/α
+MAX NEW WOKEN
+LORA RANK, ALPHA, DROPOUT
+TOP K TEMPERATURE 1/α MAX NEW TOKEN
+DO SAMPLE
+
+VALUE
+2 × 10−5 LINEAR DECAY
+1 32
+1280 4
+2 × 10−6 0.2 1 128
+1024 4
+1 × 10−5 0.05 1 0.2 0.95 1 48
+(16, 32, 0.05)
+0.0 0.7 48 TRUE
+
+Table 11: Hyper-parameters-Daily-Dialogue for fine-tuning LLaMA-7B. We adopt the same strategy for all models to truncate the responses so that only take one round of conversation as the model output for both the training and testing.
+
+MODELS RAFT PPO
+TEST SETTINGS
+
+HYPER-PARAMETER
+BATCH SIZE b UPDATE EPOCHS FOR EACH STAGE
+LEARNING RATE ACCEPTANCE RATIO 1/k
+TEMPERATURE 1/α
+MAX NEW WOKEN
+STEPS PER UPDATE UPDATE EPOCHS FOR EACH STAGE
+LEARNING RATE KL COEFFICIENT DISCOUNT FACTOR
+CLIP RATIO GAE PARAMETER TEMPERATURE 1/α
+MAX NEW WOKEN
+LORA RANK, ALPHA, DROPOUT
+TOP K TEMPERATURE 1/α MAX NEW TOKEN
+DO SAMPLE
+
+VALUE
+1280 4
+2 × 10−6 0.2 1 48
+1024 4
+2 × 10−5 0.05 1 0.2 0.95 1 48
+(16, 32, 0.05)
+20 0.7 48 TRUE
+
+25
+
+Table 12: Hyper-parameters of HH-RLHF experiment for fine-tuning LLaMA-7B.
+
+MODELS RAFT
+RAFT-LORA PPO
+TEST SETTINGS
+
+HYPER-PARAMETER
+BATCH SIZE b UPDATE EPOCHS FOR EACH STAGE
+LEARNING RATE ACCEPTANCE RATIO 1/k
+TEMPERATURE 1/α
+MAX NEW WOKEN
+LORA RANK, ALPHA, DROPOUT OTHER HYPER-PARAMETERS
+STEPS PER UPDATE UPDATE EPOCHS FOR EACH STAGE
+LEARNING RATE KL COEFFICIENT DISCOUNT FACTOR
+CLIP RATIO GAE PARAMETER TEMPERATURE 1/α
+MAX NEW WOKEN
+LORA RANK, ALPHA, DROPOUT
+TOP K TEMPERATURE 1/α MAX NEW TOKEN
+DO SAMPLE
+
+VALUE
+1024 × 8 3
+2 × 10−5 1/8 0.85 128
+(16, 32, 0.05) SAME AS RAFT
+1024 4
+2 × 10−5 0.001 1 0.2 0.95 1
+[64, 128] (16, 32, 0.05)
+40 0.7 128 TRUE
+
+Table 13: Hyper-parameters for fine-tuning SD-1.5.
+
+TASK
+RESOLUTION ADAPTATION
+TEXT-IMAGE ALIGNMENT
+
+HYPER-PARAMETER
+BATCH SIZE b NO. OF ITERATIONS FOR EACH STAGE
+LEARNING RATE ACCEPTANCE RATIO 1/k
+BATCH SIZE b NO. OF ITERATIONS FOR EACH STAGE
+LEARNING RATE ACCEPTANCE RATIO 1/k
+
+VALUE
+10 100 6 × 10−6 0.05
+1 800 3 × 10−6 0.05
+
+E Usage of RAFT in LMFlow
+LMFlow (https://github.com/OptimalScale/LMFlow) is a public package, which aims to provide a general and easy-to-use framework for researchers and engineers to finetune/align models. To run example code of RAFT alignment in LMFlow, one may simply execute:
+./scripts/run_raft_align.sh
+By default this aligns GPT-2 base model [30] with the proposed RAFT algorithm on IMDB dataset [27]. To specify LLaMA as the model, one can change the following option in the script:
+--model_name_or_path {path-to-downloaded-llama-model} with an extra option “--use_lora 1” if LoRA is applied during the alignment process. We also added the diffusion demos in the LMFlow package.
+
+26
+

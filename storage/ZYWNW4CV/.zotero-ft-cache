@@ -1,0 +1,1038 @@
+Can SAM Boost Video Super-Resolution?
+
+arXiv:2305.06524v2 [cs.CV] 12 May 2023
+
+Zhihe Lu*1, Zeyu Xiao*1,2, Jiawang Bai*1,3, Zhiwei Xiong2, and Xinchao Wang1
+1National University of Singapore, 2University of Science and Technology of China, 3Tsinghua University
+
+ABSTRACT
+The primary challenge in video super-resolution (VSR) is to handle large motions in the input frames, which makes it difficult to accurately aggregate information from multiple frames. Existing works either adopt deformable convolutions or estimate optical flow as a prior to establish correspondences between frames for the effective alignment and fusion. However, they fail to take into account the valuable semantic information that can greatly enhance it; and flow-based methods heavily rely on the accuracy of a flow estimate model, which may not provide precise flows given two low-resolution frames.
+In this paper, we investigate a more robust and semantic-aware prior for enhanced VSR by utilizing the Segment Anything Model (SAM), a powerful foundational model that is less susceptible to image degradation. To use the SAM-based prior, we propose a simple yet effective module – SAM-guidEd refinEment Module (SEEM), which can enhance both alignment and fusion procedures by the utilization of semantic information. This light-weight plug-in module is specifically designed to not only leverage the attention mechanism for the generation of semantic-aware feature but also be easily and seamlessly integrated into existing methods. Concretely, we apply our SEEM to two representative methods, EDVR and BasicVSR, resulting in consistently improved performance with minimal implementation effort, on three widely used VSR datasets: Vimeo-90K, REDS and Vid4. More importantly, we found that the proposed SEEM can advance the existing methods in an efficient tuning manner, providing increased flexibility in adjusting the balance between performance and the number of training parameters. Code will be open-source soon.
+KEYWORDS
+Video super-resolution, Segment anything model, Plug-in module, Attention mechanism, Efficient tuning
+1 INTRODUCTION
+Video super-resolution (VSR) [18, 22, 26, 27, 30] is a fundamental low-level vision task that aims to create a more detailed and visually appealing video from a low-resolution version, which has gained increasing popularity in the multimedia field thanks to its practical applications, e.g., video surveillance [66], high-definition television [21], and satellite imagery [9, 41]. The main challenge of VSR is information aggregation given multiple frames with large motions and occluded regions. In general, the aggregation process consists of two key steps: alignment and fusion, for which two types of main-stream methods have been proposed: sliding window-based and bidirectional recurrent structure-based. Concretely, one common practice used in sliding window-based methods is deformable convolutions (DCN) [55, 57], which aims to align multiple features implicitly. In contrast, optical flow estimate [3, 61] is adopted in
+∗equal contribution.
+
+LRx4 frames
+
+SAM masks
+
+HR frames
+
+Figure 1: Illustration of SAM’s robustness on low-resolution video frames. It shows that SAM can accurately segment objects with fine edges, even in low-resolution images. This grounds our motivation to use the SAM-based prior for better video super-resolution.
+bidirectional recurrent structure-based methods to explicitly build the correspondences between frames to enhance alignment and fusion.
+Despite the promising aggregation performance achieved by the two mentioned techniques, they encounter evident limitations. Specifically, DCN-based methods [55] often implicitly align the features of different frames by a normal regression supervision. No extra supplementary information as guidance makes this alignment extremely challenging, often leading to a sub-optimal solution. In contrast, the estimated optical flow [3, 61] as the prior knowledge can improve the alignment as well as the fusion by guiding spatial warping. However, the flow-based methods inevitably face two drawbacks: (i) they heavily rely on the performance of a flow estimate model, which may produce low-quality flows when dealing with degraded, e.g., low-resolution, images [57]; (ii) the optimal flow is a means of modeling motions between frames, but lacks the semantic information, which is naturally helpful for correspondence establishment between the objects existing in continual frames. This encourages us to explore more robust and semantic-aware knowledge to facilitate existing methods.
+In this paper, we for the first time investigate the effectiveness of a semantic-aware prior extracted from a powerful pre-trained foundation model – segment anything model (SAM) [37] for enhanced VSR. Using this SAM-based prior is based on the observation that SAM is robust to the image degradation as shown in Figure 1 due to its impressive representation learned on 1 billion masks and 11 million images with 636 million parameters (ViT-H [12]). Specifically, we obtain this SAM-based prior by simply feeding a degraded
+
+May, 2023, Technical Report
+image, i.e., a low-resolution image in our case, to SAM. SAM can then yield the masks for all possible objects included in the image. However, given these masks, it still needs a specific design to utilize them effectively.
+To leverage the SAM-based prior, we propose a novel plug-in module – SAM-guidEd refinEment Module (SEEM), which can enhance both alignment and fusion procedures by the utilization of semantic information. To be specific, the SEEM is designed to combine the SAM-based representation and the feature of the current frame to generate the semantic-aware feature. This is achieved by leveraging the attention mechanism and several feature mapping operations. Regarding the typical architectures of existing methods, the obtained semantic-aware feature can then be used in different ways for performance enhancement. For sliding window-based methods, we introduce our SEEM to improve three procedures, i.e., alignment, fusion and reconstruction, as shown in Figure 2 (b). In contrast, our SEEM is introduced to bidirectional branches for better feature warping and refinement in recurrent structure-based methods (Figure 2 (c)). It is worth noting that our SEEM exhibits high flexibility in being adopted by various methods thanks to its model-agnostic design, allowing it to be easily integrated into these methods without requiring any modifications to their original architectures. More importantly, the proposed SEEM can advance the existing methods in both full fine-tuning and efficient tuning manners.
+We summarize our contributions as follows.
+• In light of the limitations of existing video super-resolution (VSR) works, we conduct a study to explore the impact of a more robust and semantic-aware prior. Notably, we are the first to incorporate prior knowledge extracted from the segment anything model (SAM), the largest foundation model for segmentation to date, to improve the quality of VSR.
+• We propose a novel SAM-guidEd refinEment Module, referred to as SEEM, which serves as a lightweight plug-in that can be seamlessly integrated into existing methods to enhance their performance.
+• We introduce SEEM to sliding window-based method – EDVR for enhancing various procedures; and to bidirectional recurrent structure-based methods – BasicVSR for semanticaware bidirectional interaction.
+• We conduct extensive experiments on three widely used VSR datasets: Vimeo-90K, REDS and Vid4, demonstrating the superior performance against the baseline methods. Further analysis also shows that our SEEM can advance the existing methods in a parameter-efficient manner, i.e., only the parameters of SEEM are trainable during fine-tuning.
+2 RELATED WORK
+Video Super-resolution. Existing video super-resolution (VSR) methods aim to restore high-resolution (HR) frames by extracting more temporal information using sliding-window and recurrent structures. Specifically, the methods using sliding-window structures, such as 3DSRNet [35], TDAN [55], and EDVR [57], typically recover HR frames from adjacent low-resolution (LR) frames by the dynamical offsets prediction of sampling convolution kernels within
+
+Zhihe Lu*1, Zeyu Xiao*1,2, Jiawang Bai*1,3, Zhiwei Xiong2, and Xinchao Wang1
+a sliding window. To align temporal features, some specifically designed architectures or techniques, e.g., 3D convolution [35], optical flow [36, 54], and deformable convolution [55, 57], are adopted. For example, 3DSRNet [35] employs 3D convolution to extract temporal features, STTN [36] estimates optical flow in both spatial and temporal dimensions, and EDVR [57] utilizes deformable convolution to align temporal features. However, these approaches cannot leverage long-distance temporal features. To that end, recurrent structures based methods [5, 22, 30, 54, 62] are proposed for longdistance temporal modeling. This is often achieved by leveraging the hidden states to build connections across video frames. In particular, BasicVSR [5] introduces a bidirectional recurrent structure that fuses forward and backward propagation features, demonstrating impressive progress. BasicVSR++ [6] advances BasicVSR [5] by introducing the optical flow to the bidirectional recurrent structure. Recently, with Transformer-based approaches [4, 65] being applied in VSR, great successes are achieved by using different attention modules [17, 69] to capture temporal features. In this paper, instead of developing new architectures, we propose to advance VSR by designing a novel plug-in module to use the prior knowledge.
+Prior in Restoration. Image priors that capture various statistics of natural images have been widely developed and adopted in the field of image restoration (IR). Specifically, for different IR tasks, priors are designed based on the characteristics of the imaging and degradation models. For example, in the image super-resolution task, the self-similarity prior has been found effective in producing visually appealing results without extensive training on external data, due to the recurrence of natural images within and across scales [14, 16, 20, 25, 52]. On the other hand, the heavily-tailed gradient prior [51], sparse kernel prior [15], 𝑙0 gradient prior [60], normalized sparsity prior [38] and dark channel prior [44] have been proposed to solve deblurring tasks. Furthermore, for image denoising tasks, assumptions on prior distribution such as smoothness, low rank and self-similarity have been exploited, leading to the development of methods such as total variation [48], waveletdomain processing [11] and BM3D [8]. To address image dehazing problems, existing algorithms often make assumptions on atmospheric light, transmission maps, or clear images. For instance, He et al. [23] propose a dark channel prior based on statistical properties of clear images to estimate the transmission map. Despite the success of these hand-crafted priors, recent research has sought to capture richer image statistics using deep learning models. For instance, deep priors, e.g., DIP [56], SinGAN [50], TNRD [7], and LCM [1], have demonstrated their effectiveness in IR tasks, but their applicability may be limited to the powerless pre-trained models, which are trained on inadequate data. Recently, the first large-scale foundation model for segmentation – segment anything model (SAM) is proposed, with 636 million parameters trained on billionlevel masks, enabling remarkable representation capability. This encourages us to leverage the powerful SAM-based prior for VSR enhancement.
+Large-scale Foundation Models. Large-scale foundation models [10, 34, 37, 46] have gained great success in both natural language processing (NLP) and computer vision (CV). Generally, a foundation model is trained with pre-defined tasks, empowering it to transfer in a zero-shot way or accommodate downstream tasks with efficient
+
+Can SAM Boost Video Super-Resolution?
+
+May, 2023, Technical Report
+
+2 x Conv ResBlocks
+
+(a) SAM-based Representation 𝐼!"$#%
+
+𝐼!"#
+
+Align
+
+Fuse D
+
+𝐼!"&#%
+
+SEEM (b) Apply SEEM to SW-based Methods
+
+𝐼!"$#%
+F D
+B
+SEEM 𝐼!"#
+F D
+B
+SEEM 𝐼!"&#%
+F D
+B
+SEEM
+(c) Apply SEEM to BRS-based Methods
+
+Figure 2: Overview of the framework. (a) We illustrate how to obtain SAM-based representation. (b) We apply the proposed SAM-guided refinement module (SEEM) to the sliding-window based method. (c) We apply SEEM to the bidirectional recurrent structure based method. “F” and “B” are the forward- and backward- propagation. ⊕ represents the concatenation operation. The detailed structure of SEEM is shown in Figure 3.
+
+fine-tuning. Specifically, BERT [10] is pre-trained with mask-andpredict tasks on a large amount of language data, while GPT-3 [2] adopts multi-task pre-training with super-large datasets and the model size of 175 billion parameters. In contrast, CLIP [45] contrastively pre-trains on language and vision modalities, enabling language-prompted image classification. Taking the inspiration of the promptable training fashion of CLIP, SAM [37] pre-trains a segmentation model that achieves the interactive segmentation given prompts. Learning on 1 billion masks on 11 million images with 636 million parameters (ViT-H [13]) enables SAM to segment all possible objects existing in one image without being affected by the quality of the image. We make use of this property to design a novel SAM-guided refinement module to advance existing VSR methods effectively.
+Efficient Tuning. Large-scale foundation models [37, 45] learned on abundant training data, e.g., WebImageText [45] and SA-1B [37], have demonstrated remarkable performance on zero-shot transfer. However, the training of such foundation models is computationally intensive and requires a significant amount of resources. One common way to advance the performance of these models on downstream tasks is efficient tuning by introducing a few new parameters to the original model. That is, only the newly added parameters, e.g., in prompt [31, 32, 70, 71] / adapter-based [19, 67] / residual [64] tuning manner, are updated during the efficient tuning. Specifically, prompt tuning often adds new trainable tokens in the input space [32, 70, 71] or Transformer layers [31] for model adaptation, but it is restricted to textual inputs or Transformer architectures. In contrast, adapter-based [19, 67] tuning designs new modules added in the middle or the output of a pre-trained network, enabling more flexibility. Recent proposed residual tuning [64] opens up a new avenue for efficient tuning by simply adding new tunable parameters to the original ones. In this paper, we have shown that incorporating our proposed SEEM module through both fine-tuning and
+
+efficient tuning can significantly enhance the performance of VSR. Our experiment sheds light on the trade-off between performance and the number of training parameters.
+3 METHODOLOGY
+3.1 Overview
+Inspired by the impressive capability of segment anything model (SAM) to generate high-quality semantic masks without being affected by the image degradation, we propose our method, which leverages this semantic information for VSR. In this section, we introduce how to get SAM-based representation first, followed by detailing the architecture of our proposed SAM-guided refinement module (SEEM) and the way of applying SEEM to two types of main-stream VSR methods: sliding window-based [35, 55, 57], and bidirectional recurrent structure-based [5, 22, 30, 54, 62].
+3.2 SAM-based Representation
+Segment anything model (SAM) [37] is a large-scale foundation model for image segmentation. It differs from general segmentation models in two aspects: (i) it is designed and trained in a promptable fashion, enabling the object segmentation given a simple prompt, e.g., a point / a bounding box / a region mask on an image; (ii) the training is implemented on the current largest segmentation dataset (also built by [37]) with over 1 billion masks on 11 million images in an annotation-and-training loop.
+Specifically, SAM consists of an image encoder, a prompt encoder and a mask decoder. Given an image and a corresponding prompt, they are first encoded by two types of encoders and then decoded by the mask decoder. We notice that SAM is designed to segment interactively, i.e., the object segmentation is instructed by a user prompt. Nevertheless, one can obtain all possible object masks by giving a set of promptable points that cover adequate regions. Note that given multiple points belonging to the same object, SAM will
+
+May, 2023, Technical Report
+
+produce one object mask. In the paper, we acquire the masks for all
+objects existing in the image given a 𝑁𝑔 × 𝑁𝑔 grid with one point in each grid. The shape of the resulting masks is R𝐶×𝐻×𝑊 , where
+𝐶 is the number of masks. With the SAM-based prior 𝑀𝑠𝑎𝑚 ∈ R𝐶×𝐻×𝑊 , we first concate-
+nate it with its corresponding frame, followed by passing through a
+feature combination network to get the SAM-based representation 𝑅𝑠𝑎𝑚 ∈ R𝐷×𝐻×𝑊 . We formulate the process as follows,
+
+𝑅𝑠𝑎𝑚 = 𝑓𝑟 (𝑐𝑜𝑛𝑐𝑎𝑡 (𝐼𝑡 , 𝑀𝑠𝑎𝑚)),
+
+(1)
+
+where 𝑓𝑟 represents the feature combination network consisting of two convolutional layers and one residual block. The illustration of this process is given in Figure 2 (a).
+
+𝐼!"# 𝑅$'&
+
+2 x Conv
+
+CAB
+
+Channel Attention Block
+
+𝐹$%&
+
+Channel-wise Attention
+
+GAP
+
+FC! → FC"
+
+FC
+
+Figure 3: The structure of SAM-guided refinement module (SEEM). 𝑅𝑠𝑎𝑚: SAM-based representation. 𝐹𝑠𝑒𝑚: semanticaware feature. GAP: global average pooling. FC: fullyconnected layer. 𝐹𝐶𝐷 : downsampling FC. 𝐹𝐶𝑈 : upsampling FC. ⊗: Hadamard product. ⊕: concatenation.
+
+3.3 SAM-guided Refinement Module
+
+SAM-guided refinement module (SEEM) is designed to combine the SAM-based representation 𝑅𝑠𝑎𝑚 and the feature of the corresponding frame to produce a semantic-aware feature for enhanced alignment and fusion, which is shown in Figure 3. Specifically, given the feature of a frame and its corresponding SAM-based representation, they are first concatenated as the input for two convolutional layers. The mapped feature will forward through a channel attention block (CAB) [68] to explore the interdependencies among channels for adaptively rescaling channel-wise features. Concretely, with the mapped feature 𝐹𝑚 ∈ R𝐷×𝐻×𝑊 , the channel-wise attention is computed as follows,
+
+𝐹𝑝 = 𝐺𝐴𝑃 (𝐹𝑚), 𝐹𝑝 ∈ R𝐷×1×1,
+
+𝐹𝑑
+
+= 𝜙𝐷 (𝐹𝑝 ), 𝐹𝑑
+
+∈
+
+R
+
+𝐷 𝑟
+
+×1×1,
+
+(2)
+
+𝐹𝑢
+
+=
+
+𝜙𝑈
+
+(𝐹𝑑 ), 𝐹𝑢
+
+∈
+
+𝐷
+R
+
+×1×1,
+
+𝐹𝑎
+
+=
+
+𝜙 (𝐹𝑢 ),
+
+𝐹𝑎
+
+∈
+
+𝐷
+R
+
+×1×1,
+
+where 𝐺𝐴𝑃 is the global average pooling and 𝜙 is the fully-connected
+
+layer.
+
+The channel-wise attention 𝐹𝑎 is then multiplied with the feature 𝐹𝑚 to get the output of CAB as defined below,
+
+𝐹𝑐𝑎𝑏
+
+=
+
+𝐹𝑎
+
+⊙
+
+𝐹𝑚, 𝐹𝑐𝑎𝑏
+
+∈
+
+𝐷×𝐻 ×𝑊
+
+R
+
+,
+
+(3)
+
+Zhihe Lu*1, Zeyu Xiao*1,2, Jiawang Bai*1,3, Zhiwei Xiong2, and Xinchao Wang1
+
+where ⊙ is the Hadamard product. The output of our SEEM is the semantic-aware feature, which is
+obtained by summing up the 𝐹𝑐𝑎𝑏 and 𝐹𝑚, i.e., 𝐹𝑠𝑒𝑚 = 𝐹𝑚 + 𝐹𝑐𝑎𝑏 .
+
+3.4 Apply SEEM to Sliding Window-based
+Methods
+3.4.1 Revisiting EDVR [57]. EDVR [57] is a typical method based on sliding window, which takes 2N+1 low-resolution frames as inputs and generates one high-resolution output. EDVR aligns 2N neighboring frames with the reference frame located in the middle using an alignment module. The aligned features are then combined through a fusion module. Finally, the reconstruction module digests the fused features and outputs one high-resolution frame.
+To be specific, EDVR has proposed two key modules: the PCD alignment module and the TSA fusion module. PCD alignment module advances the normal deformable convolution (DCN) [55] with pyramidal processing [47, 53] and cascading refinement [28, 29]. For simplicity, we give a brief introduction of how DCN works instead of the detailed pyramid and cascading. Concretely, DCN is comprised by two modules: deformable alignment module (DAM) and deformable convolution module (DCM). Given the features of the target frame and the reference frame 𝐹𝑡+𝑖, 𝐹𝑡 (𝑖 ∈ [−𝑁 : +𝑁 ]) as the inputs, DAM aims to generate sampling parameters Θ for 𝐹𝑖 by the following equation,
+
+Θ = 𝑓𝑑𝑎𝑚 (𝐹𝑡+𝑖, 𝐹𝑡 ), Θ = {Δ𝑝𝑛 },
+
+(4)
+
+where Δ𝑝𝑛 is the offset of the convolutional kernel and 𝑛 is the number of kernels. Taking the Θ and 𝐹𝑡 as the inputs for DCM, we can obtain the aligned feature 𝐹𝑡★+𝑖 , as defined below,
+
+★
+
+𝐹
+𝑡
+
++𝑖
+
+=
+
+𝑓𝑑𝑐𝑚 (𝐹𝑡+𝑖, Θ).
+
+(5)
+
+The aligned features {𝐹𝑡★+𝑖 |𝑖 ∈ [−𝑁 : +𝑁 ]} are passing through the TSA fusion module, which considers both temporal and spatial attention. The fusion process is formulated as follows,
+
+𝐹𝑓 𝑢𝑠𝑒 = 𝑓𝑡𝑠𝑎 (𝐹𝑡★+𝑖 |𝑖 ∈ [−𝑁 : +𝑁 ]).
+
+(6)
+
+Finally, the fused feature 𝐹𝑓 𝑢𝑠𝑒 is used to reconstruct the highresolution frame, as shown below,
+
+ℎ𝑟
+𝐼
+𝑡
+
+=
+
+𝑓𝑟𝑒𝑐 (𝐹𝑓 𝑢𝑠𝑒 ),
+
+(7)
+
+where
+
+𝐼 ℎ𝑟
+𝑡
+
+is
+
+the
+
+recovered
+
+high-resolution
+
+frame
+
+and
+
+𝑓𝑟 𝑒𝑐
+
+is
+
+the
+
+reconstruction module.
+
+3.4.2 Equip EDVR with SEEM. We apply our SEEM to boost the performance of EDVR in alignment, fusion and reconstruction, which is shown in Figure 2 (b). Specifically, for alignment, we make the feature of reference frame be semantic-aware such that the Eq. 4 in EDVR is re-formulated as follows,
+
+Θ = 𝑓𝑑𝑎𝑚 (𝐹𝑡+𝑖, 𝑓𝑠𝑒𝑒𝑚 (𝐹𝑡 , 𝑅𝑠𝑎𝑚) + 𝐹𝑡 ),
+
+(8)
+
+where 𝑅𝑠𝑎𝑚 is computed in Eq. 1 and 𝑓𝑠𝑒𝑒𝑚 is our SEEM. We further incorporate our SEEM to facilitate both the fusion
+and reconstruction processes. The formulation is shown below,
+
+𝐹𝑟𝑒𝑐 = 𝑓𝑟𝑒𝑐 ( 𝑓𝑠𝑒𝑒𝑚 (𝐹𝑓 𝑢𝑠𝑒, 𝑅𝑠𝑎𝑚) + 𝐹𝑓 𝑢𝑠𝑒 ),
+
+′
+
+(9)
+
+𝐹𝑟𝑒𝑐 = 𝑓𝑠𝑒𝑒𝑚 (𝐹𝑟𝑒𝑐, 𝑅𝑠𝑎𝑚) + 𝐹𝑟𝑒𝑐 .
+
+Can SAM Boost Video Super-Resolution?
+
+The Design of SEEM. Our SEEM is specifically designed in two aspects: (i) it is an easy plug-in module that can be seamlessly integrated into the existing methods without altering the original architecture, enabling its generalization and scalability; and (ii) the output of the SEEM is added to the current feature as a residual, a technique that has been shown to be empirically effective [19, 24, 64], which can preserve the old knowledge from the pre-trained model as well as explore the task-specific knowledge. Furthermore, SEEM can be trained in a parameter-efficient tuning manner, i.e., only the parameters of SEEM are updated during fine-tuning.
+
+3.5 Apply SEEM to Bidirectional Recurrent
+Structure-based Methods
+3.5.1 Revisiting BasicVSR [5]. We focus on refining a representative method – BasicVSR, among bidirectional recurrent structurebased methods, as an example to manifest how SEEM works in this kind of pipeline. First, we provide a brief overview of how BasicVSR functions. BasicVSR has proposed two key components: bidirectional propagation and flow-based feature-level alignment. Specifically, given a low-resolution frame 𝐼𝑡 and its neighboring frames 𝐼𝑡−1 and 𝐼𝑡+1, the outputs of forward (𝑓𝐹 ) and backward (𝑓𝐵) branches are:
+
+𝑏
+ℎ
+𝑡
+
+=
+
+𝑓𝐵
+
+(𝐼𝑡
+
+,
+
+𝐼𝑡
+
++1,
+
+𝑏
+
+ℎ
+𝑡
+
++1
+
+),
+
+(10)
+
+𝑓
+ℎ
+𝑡
+
+= 𝑓𝐹 (𝐼𝑡 , 𝐼𝑡−1, ℎ𝑡𝑓−1).
+
+The output features are then used in the feature-level alignment. To align the features, the optical flow is first estimated and leveraged for spatial warping. This process can be formulated as follows,
+
+𝑏
+𝑠𝑡
+
+=
+
+𝐹𝑙𝑜𝑤 (𝐼𝑡 , 𝐼𝑡+1),
+
+𝑓
+𝑠
+𝑡
+
+= 𝐹𝑙𝑜𝑤 (𝐼𝑡 , 𝐼𝑡−1),
+
+ℎˆ𝑏𝑡
+
+=
+
+𝑊
+
+𝑟
+
+𝑎𝑝
+
+(ℎ𝑏𝑡 ±1,
+
+𝑏
+𝑠𝑡
+
+),
+
+(11)
+
+ℎˆ𝑓
+𝑡
+
+=
+
+𝑊
+
+𝑟
+
+𝑎𝑝
+
+(ℎ𝑡𝑓±1,
+
+𝑓
+𝑠
+𝑡
+
+),
+
+where 𝐹𝑙𝑜𝑤 is the optical flow estimate model and 𝑊 𝑟𝑎𝑝 is the warping operation. After the feature warping, they also adopt several residual blocks for refinement, as shown below,
+
+ℎ˜𝑏
+𝑡
+
+=
+
+𝑅𝑒
+
+𝑓𝑏
+
+(𝜓
+
+(𝐼𝑡
+
+,
+
+ℎˆ𝑏
+𝑡
+
+)),
+
+(12)
+
+ℎ˜ 𝑓
+𝑡
+
+=
+
+𝑅𝑒
+
+𝑓𝑓
+
+(𝜓
+
+(𝐼𝑡 ,
+
+ℎˆ𝑓
+𝑡
+
+)),
+
+where 𝑅𝑒 𝑓{𝑏,𝑓 } represents a stack of residual blocks and 𝜓 is the
+
+convolutional layer. The ℎ˜𝑏 and ℎ˜𝑓 are then forwarded to the re-
+
+𝑡
+
+𝑡
+
+construction module for the generation of high-resolution frames.
+
+3.5.2 Equip BasicVSR with SEEM. Our SEEM is integrated into
+
+BasicVSR with two purposes: refinement of the warping feature
+
+and enhancement of the representation before reconstruction. To
+
+be specific, given the current frame 𝐼𝑡 and the wrapped features
+
+ℎˆ𝑏 ,
+𝑡
+
+ℎˆ𝑓
+𝑡
+
+,
+
+Eq.
+
+12
+
+is
+
+re-formulated
+
+as
+
+follows
+
+with
+
+the
+
+refinement,
+
+ℎ˜𝑏𝑡 = 𝑅𝑒 𝑓𝑏 (𝑓𝑠𝑒𝑒𝑚 (𝜓 (𝐼𝑡 , ℎˆ𝑏𝑡 ), 𝑅𝑠𝑎𝑚) + 𝜓 (𝐼𝑡 , ℎˆ𝑏𝑡 )),
+
+(13)
+
+ℎ˜ 𝑓
+𝑡
+
+=
+
+𝑅𝑒
+
+𝑓𝑏
+
+( 𝑓𝑠𝑒𝑒𝑚
+
+(𝜓
+
+(𝐼𝑡 ,
+
+ℎˆ𝑓
+𝑡
+
+),
+
+𝑅𝑠𝑎𝑚 )
+
++
+
+𝜓
+
+(𝐼𝑡 ,
+
+ℎˆ𝑓
+𝑡
+
+)).
+
+May, 2023, Technical Report
+
+The refined feature is enhanced by SEEM again,
+
+ℎ˜𝑏′
+𝑡
+
+=
+
+𝑓𝑠𝑒𝑒𝑚 (ℎ˜𝑏𝑡 , 𝑅𝑠𝑎𝑚)
+
++ ℎ˜𝑏𝑡 ,
+
+ℎ˜ 𝑓 ′
+𝑡
+
+=
+
+𝑓𝑠𝑒𝑒𝑚
+
+(ℎ˜ 𝑓
+𝑡
+
+, 𝑅𝑠𝑎𝑚)
+
++ ℎ˜𝑓
+𝑡
+
+.
+
+(14)
+
+4 EXPERIMENTS
+4.1 Datasets and Evaluation
+REDS [43]. It is an NTIRE19 challenge dataset including 300 video sequences, which have been split into three sets for training, validation, and testing purposes. Specifically, there are 240 sequences designated for training, 30 sequences for validation, and an additional 30 sequences for testing. Each video sequence in the dataset consists of 100 frames, each with a resolution of 1280 × 720. The protocol of splitting training and test sets is following past works [5, 39, 57], i.e., selecting four sequences1 as the testing set which is called REDS4. For the training set, it is formed by the remaining 266 sequences from the combined training and validation sets.
+
+Vimeo-90K [61]. This is the current largest video super-resolution dataset with 64,612 sequences for training and 7,824 for testing. Each sequence is comprised of seven individual frames, each with a resolution of 448 × 256.
+
+Evaluation. To ensure a fair comparison, we adopt the evaluation protocol used in previous works [5] to evaluate the performance of the proposed method with 4 × downsampling, i.e., MATLAB bicubic downsample (BI). As per [5, 39], the evaluation metrics are: (i) peak signal-to-noise ratio (PSNR) and (ii) structural similarity index (SSIM) [58].
+
+4.2 Implementation Details
+We choose EDVR [57] and BasicVSR [5] as our baselines. To ensure a fair comparison, we maintain the same network structures as those in the original papers. The training batch sizes are set to 4 for EDVR and 6 for BasicVSR. We use an 8×8 grid with points for SAM to generate masks. Hence, each low-resolution image has a maximum of 64 masks. For those with less than 64 masks, the remaining ones are padded with zeros. As per EDVR [57] and BasicVSR [5], we use RGB patches of size 64×64 as input. The augmentations used in training are random horizontal flips and rotations. Please refer to EDVR [57] and BasicVSR [5] for more training details. We also provide them in supplementary material for convenience.
+
+4.3 Compared Methods
+We compare our method with many existing state of the arts. They can be simply grouped into three categories, namely, single image super-resolution-based (SISR-based) [42, 68], sliding window-based (SW-based) [33, 57, 61], and bidirectional recurrent structure-based (BRS-based) [5, 49]. It is worth noting that we cited the results from the original papers or reproduced the results using the official code released by the authors to ensure a fair comparison.
+
+4.4 Main Results
+4.4.1 Results on REDS4 [43]. In Table 1, we compare our method with two typical baselines as well as other existing methods. Overall,
+1Clips 000,011,015,020 of the REDS training set.
+
+May, 2023, Technical Report
+
+Zhihe Lu*1, Zeyu Xiao*1,2, Jiawang Bai*1,3, Zhiwei Xiong2, and Xinchao Wang1
+
+Table 1: The quantitative comparison on REDS4 [43] dataset for 4× VSR. The results are evaluated on RGB channels.
+
+Category SISR-based SW-based BRS-based
+
+Method
+Bicubic RCAN [68] CSNLN [42] TOFlow [61] DUF [33] EDVR [57]
+EDVR + Ours
+BasicVSR [5]
+BasicVSR + Ours
+
+Clip_000 PSNR ↑ SSIM ↑
+
+24.5500 26.1700 26.1700
+
+0.64890 0.73710 0.73790
+
+26.5200 27.3000 27.7464 27.7738
++0.0274
+
+0.75400 0.79370 0.81529 0.81713
++0.00184
+
+28.4004 0.84342 28.4475 0.84485 +0.0471 +0.00143
+
+Clip_011 PSNR ↑ SSIM ↑
+
+26.0600 29.3400 29.4600
+
+0.72610 0.82550 0.82600
+
+27.8000 28.3800 31.2897 31.3322
++0.0425
+
+0.78580 0.80560 0.87323 0.87412
++0.00089
+
+32.4675 0.89792 32.5952 0.89929 +0.1277 +0.00137
+
+Clip_015 PSNR ↑ SSIM ↑
+
+28.5200 31.8500 32.0000
+
+0.80340 0.88810 0.88900
+
+30.6700 31.5500 33.4808 33.4959
++0.0151
+
+0.86090 0.88460 0.91326 0.91374
++0.00048
+
+34.1752 0.92239 34.2913 0.92402 +0.1161 +0.00163
+
+Clip_020 PSNR ↑ SSIM ↑
+
+25.4100 27.7400 27.6900
+
+0.73860 0.82930 0.82530
+
+26.9200 27.3000 29.5926 29.6091
++0.0165
+
+0.79530 0.81640 0.87762 0.87817
++0.00055
+
+30.6253 0.90004 30.6853 0.90085 +0.0600 +0.00081
+
+Average PSNR ↑ SSIM ↑
+
+26.1400 28.7800 28.8300
+
+0.72920 0.82000 0.81960
+
+27.9800 28.6300 30.5274 30.5528
++0.0254
+
+0.79900 0.82510 0.86985 0.87079
++0.00094
+
+31.4171 0.89094 31.5048 0.89225 +0.0877 +0.00131
+
+Input
+
+BasicVSR
+
+Input
+
+BasicVSR
+
+Vid4: City
+
+Ground-truth
+
+BasicVSR+Ours
+
+Vid4: Foliage
+
+Ground-truth
+
+BasicVSR+Ours
+
+Input
+
+BasicVSR
+
+Input
+
+BasicVSR
+
+REDS: Clip_011
+
+Ground-truth
+
+BasicVSR+Ours
+
+REDS: Clip_020
+
+Ground-truth
+
+BasicVSR+Ours
+
+Figure 4: The qualitative comparison of BasicVSR with and without our SEEM. The top row is tested on Vid4 under two scenes: city and foliage, while the bottom row is evaluated on two clips of REDS. The masks are extracted from the segment anything model. We enlarge the small patches in the images for better observation. Zoom in for more details.
+
+Table 2: The performance of tuning our proposed SEEM only on REDS4 [43] dataset for 4× VSR. The results are evaluated on RGB channels. ∗: freezing the parameters of the model.
+
+Method
+EDVR [57] EDVR∗ + Ours
+
+Clip_000 PSNR ↑ SSIM ↑
+27.7464 0.81529 27.7643 0.81676 +0.0179 +0.00147
+
+Clip_011 PSNR ↑ SSIM ↑
+31.2897 0.87323 31.3171 0.87363 +0.0274 +0.00040
+
+Clip_015 PSNR ↑ SSIM ↑
+33.4808 0.91326 33.4476 0.91322 -0.0332 -0.00004
+
+Clip_020 PSNR ↑ SSIM ↑
+29.5926 0.87762 29.5978 0.87786 +0.0052 +0.00024
+
+Average PSNR ↑ SSIM ↑
+30.5274 0.86985 30.5317 0.87037 +0.0043 +0.00052
+
+our SEEM can boost the baseline methods in all scenarios, i.e., four testing clips in REDS. Regarding the averaged performance on four clips, our SEEM improves EDVR by 0.0254 dB / 0.00094 on PSNR / SSIM and BasicVSR by 0.0877 dB / 0.00131 on PSNR / SSIM. The consistent performance gains on various methods manifest that the utilization of the robust semantic-aware prior knowledge via our
+
+SEEM indeed enhances the quality of VSR. We also present qualitative comparisons in Figure 4 (bottom row), which demonstrate that our SEEM can significantly enhance the visual quality of the results compared with baseline methods. For example, our SEEM can improve the sharpness of the window grille in the bottom-left
+
+Can SAM Boost Video Super-Resolution?
+
+May, 2023, Technical Report
+
+Table 3: The quantitative comparison on Vimeo90K [61] testing dataset for 4× VSR. The results are evaluated on RGB channels.
+
+Method
+EDVR [57] EDVR + Ours BasicVSR [5] BasicVSR + Ours
+
+Fast PSNR ↑ SSIM ↑
+
+38.7020 38.7200
++0.0180 38.2954 38.4074
++0.1120
+
+0.95437 0.95442
++0.00005 0.95152 0.95222
++0.00070
+
+Medium PSNR ↑ SSIM ↑
+
+35.9896 36.0384
++0.0488 35.5435 35.6619
++0.1185
+
+0.94125 0.94165
++0.00040 0.93681 0.93777
++0.00096
+
+Slow PSNR ↑ SSIM ↑
+
+32.9052 32.9447
++0.0395 32.5003 32.6234
++0.1231
+
+0.91235 0.91282
++0.00047 0.90629 0.90775
++0.00146
+
+Average PSNR ↑ SSIM ↑
+
+35.7912 35.8333
++0.0421 35.3601 35.4786
++0.1184
+
+0.93739 0.93775
++0.00036 0.93287 0.93390
++0.00102
+
+Input
+
+EDVR
+
+Input
+
+EDVR
+
+Input
+
+EDVR
+
+00005_0006
+
+Ground-truth EDVR+Ours
+
+00082_0473
+
+Ground-truth EDVR+Ours
+
+00094_0206
+
+Ground-truth EDVR+Ours
+
+Input
+
+EDVR
+
+Input
+
+EDVR
+
+Input
+
+EDVR
+
+00037_0399
+
+Ground-truth EDVR+Ours
+
+00088_0565
+
+Ground-truth EDVR+Ours
+
+00054_0532
+
+Ground-truth EDVR+Ours
+
+Figure 5: The qualitative comparison of EDVR with and without our SEEM on Vimeo90K dataset. We show six examples for comparing the differences. The masks are extracted from the segment anything model. We enlarge the small patches in the images for better observation. Zoom in for more details.
+
+Table 4: The quantitative comparison on Vid4 testing dataset [3] for 4× VSR. The results are evaluated on Y-channel.
+
+Method
+DRVSR [54] FRVSR [49] MMCNN [59] MTUDM [63] DUF [33] TDAN [55]
+EDVR [57]
+EDVR + Ours
+BasicVSR [5]
+BasicVSR + Ours
+
+Calendar PSNR ↑ SSIM ↑
+
+22.8800 23.4600 23.6300 23.7600 23.8500 23.5600
+
+0.75860 0.78540 0.79690 0.80260 0.80520 0.78960
+
+24.0483 24.0544
++0.0061 23.8681 23.9438
++0.0757
+
+0.81475 0.81555
++0.00080 0.80940 0.81162
++0.0022
+
+City PSNR ↑ SSIM ↑
+
+27.0600 27.7000 27.4700 27.6700 27.9700 27.5300
+
+0.76980 0.80990 0.80830 0.81450 0.82530 0.80280
+
+27.9973 28.0030
++0.0057 27.6571 27.6904
++0.0332
+
+0.81219 0.81261
++0.00042 0.80501 0.80633
++0.0013
+
+Foliage PSNR ↑ SSIM ↑
+
+25.5800 25.9600 26.0100 26.0800 26.2200 26.0000
+
+0.73070 0.75600 0.75320 0.75870 0.76460 0.74910
+
+26.3358 26.3398
++0.0040 26.4727 26.5838
++0.1110
+
+0.76352 0.76396
++0.00044 0.77104 0.77531
++0.0043
+
+Walk PSNR ↑ SSIM ↑
+
+29.1100 29.6900 29.9400 30.1600 30.4700 29.9900
+
+0.88760 0.89900 0.90300 0.90690 0.91180 0.90320
+
+31.0227 31.0458
++0.0231 30.9555 31.0863
++0.1308
+
+0.91516 0.91554
++0.00038 0.91476 0.91659
++0.0018
+
+Average PSNR ↑ SSIM ↑
+
+25.5200 26.6900 26.2800 26.5700 27.3400 26.8600
+
+0.76000 0.82200 0.78440 0.79890 0.83270 0.81400
+
+27.3510 27.3608
++0.0098 27.2383 27.3260
++0.0877
+
+0.82640 0.82692
++0.00052 0.82505 0.82746
++0.0024
+
+image, as well as the texture of the plaid pattern on the skirt in the bottom-right image.
+Taking the inspiration of efficient tuning on pre-trained largescale foundation models, we investigate the ability of our SEEM in a similar way. That is, with the parameters of a pre-trained VSR model being frozen, we train our SEEM only for performance
+
+improvement. The experimental results are shown in Table 2. We found that this efficient tuning can boost both PSNR and SSIM even though fewer parameters are updated. This offers a practical alternative that can overcome the constraints of limited storage capacity.
+
+May, 2023, Technical Report
+
+Zhihe Lu*1, Zeyu Xiao*1,2, Jiawang Bai*1,3, Zhiwei Xiong2, and Xinchao Wang1
+
+4.4.2 Results on Vimeo-90K [61]. We also conduct the evaluation on Vimeo-90K dataset [61], which is shown in Table 3. Again, we found that our SEEM can always improve the baseline methods, often by large margins. Concretely, the performance gains from adding our SEEM on EDVR and BasicVSR are 0.0421 dB / 0.00036 (PSNR / SSIM) and 0.1184 dB / 0.00102 (PSNR / SSIM). Moreover, we have observed that our SEEM demonstrates superiority on the most challenging slow-motion videos though facing a slight performance drop on fast-motion videos.
+4.4.3 Results on Vid4 [40]. To further verify the generalization capabilities of the proposed method, we train the model using the Vimeo-90K dataset [61] and evaluate its performance on the Vid4 dataset [40], as shown in Table 4. We found that all baseline methods benefit from adding our SEEM, which indicates that incorporation with semantic information not only improves the performance of a VSR method within a domain (see REDS results in Table 1) but also advances the generalization ability of the applied method across domains. Apart from the quantitative results, we also show some visual examples in Figure 4 (top row). We found that in the foliage image of the Vid4 dataset (up-right image), BasicVSR yields obvious artifacts while with our SEEM the artifacts disappear.
+4.5 Further Analysis
+The Effect of Using SEEM. As our method is fine-tuned on a pretrained VSR method, we additionally compare the performance of directly fine-tuning the method to fine-tuning with both the method and our SEEM incorporated in Table 5. We found that direct finetuning EDVR or BasicVSR does not benefit anymore while adding our SEEM for fine-tuning brings significant improvements, e.g., 0.0148 dB / 0.00084 (PSNR / SSIM) for EDVR and 0.1038 dB / 0.00601 (PSNR / SSIM) for BasicVSR. The full results regarding various scenes on Vid4 are provided in the supplementary material.
+
+Table 5: The comparison of fine-tuning baseline methods with and without our SEEM on Vid4 dataset for 4× VSR. The results are evaluated on Y-channel.
+
+Method
+EDVR [57] EDVR + Ours BasicVSR [5] BasicVSR + Ours
+
+Vid4 Average PSNR ↑ SSIM ↑
+
+27.3460 27.3608
++0.0148 27.2222 27.3260
++0.1038
+
+0.82608 0.82692
++0.00084 0.82145 0.82746
++0.00601
+
+Applying SEEM to Different Branches. As mentioned in the Method section, the proposed SEEM is inserted into BasicVSR at two branches. Here, we perform an ablation study to analyze the impact of integrating SEEM at different branches, as shown in Table 6. We observed that adding SEEM to either branch can lead to improvements, while adding it to both branches achieves the best performance. We further provide the full results in the supplementary material.
+Failure Cases. We further present failure cases to investigate the limitations of our proposed method. In Figure 6, we found that our
+
+Table 6: The ablation study of adding SEEM to different branches on BasicVSR [5] with 4× upsampling. The results are evaluated on Y-channel.
+
+Method BasicVSR [5]
+
+Forward ✓ ✓
+
+Backward
+✓ ✓
+
+Vid4 Average PSNR ↑ SSIM ↑
+
+27.2383 27.2560 27.2546
+27.3260
+
+0.82505 0.82360 0.82272
+0.82746
+
+Input
+
+BasicVSR
+
+Vid4: City
+
+Ground-truth
+
+BasicVSR+Ours
+
+Figure 6: The failure case with our SEEM being applied on BasicVSR under city scene on Vid4. Zoom in for better observation.
+
+SEEM tends to introduce unseen artifacts to the generated highresolution frame, despite the overall quality of the images being visually appealing to humans.
+5 LIMITATIONS
+Due to the increasing popularity of large-scale foundation models, it has been a trend to leverage their abilities to advance downstream tasks. We explore the knowledge of segment anything model (SAM) to improve the quality of video super-resolution (VSR) by proposing a simple plug-in module – SEEM. While we utilize the masks generated from SAM in our approach, it is worth noting that this is just one possible approach and there may be other ways to achieve similar results. For example, one can explore the prior knowledge embedded within the model, e.g., feature-level information. In addition, our approach is broader than improving VSR. We will investigate its ability on other computer vision tasks as future work.
+6 CONCLUSION
+In this paper, we found the limitations of existing video superresolution (VSR) methods, i.e., (i) the lack of leveraging valuable semantic information to enhance the quality of VSR; (ii) the used prior knowledge is imprecise when facing image degradation. To that end, we have explored a more robust and semantic-aware prior, which is obtained from a powerful large-scale foundation model – segment anything model (SAM). To utilize the SAM-based prior, we have proposed a simple yet effective module – SAMguided refinement module (SEEM), enabling better alignment and fusion by using semantic information. Specifically, our SEEM is
+
+Can SAM Boost Video Super-Resolution?
+designed as a plug-in that can be seamlessly integrated into existing
+VSR methods for improved performance. The capability of SEEM
+stems from the attention-based combination of extracted features
+and SAM-based representation. We verify its generalization and
+scalability by applying it to two representative VSR methods: EDVR
+and BasicVSR, on three widely-used datasets (Vimeo-90K, REDS
+and Vid4), leading to consistent performance gains. Furthermore,
+we found that SEEM can be used in a parameter-efficient tuning
+manner for a performance boost. This provides greater flexibility
+for adjusting the trade-off between performance and the number
+of training parameters.
+REFERENCES
+[1] ShahRukh Athar, Evgeny Burnaev, and Victor Lempitsky. 2018. Latent convolutional models. arXiv preprint arXiv:1806.06284 (2018).
+[2] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. 2020. Language models are few-shot learners. Advances in Neural Information Processing Systems 33 (2020), 1877–1901.
+[3] Jose Caballero, Christian Ledig, Andrew Aitken, Alejandro Acosta, Johannes Totz, Zehan Wang, and Wenzhe Shi. 2017. Real-time video super-resolution with spatio-temporal networks and motion compensation. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 4778–4787.
+[4] Jiezhang Cao, Yawei Li, Kai Zhang, and Luc Van Gool. 2021. Video SuperResolution Transformer. arXiv preprint arXiv:2106.06847 (2021).
+[5] Kelvin CK Chan, Xintao Wang, Ke Yu, Chao Dong, and Chen Change Loy. 2021. Basicvsr: The search for essential components in video super-resolution and beyond. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 4947–4956.
+[6] Kelvin CK Chan, Shangchen Zhou, Xiangyu Xu, and Chen Change Loy. 2022. BasicVSR++: Improving video super-resolution with enhanced propagation and alignment. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 5972–5981.
+[7] Yunjin Chen and Thomas Pock. 2016. Trainable nonlinear reaction diffusion: A flexible framework for fast and effective image restoration. IEEE Transactions on Pattern Analysis and Machine Intelligence 39, 6 (2016), 1256–1272.
+[8] Kostadin Dabov, Alessandro Foi, Vladimir Katkovnik, and Karen Egiazarian. 2007. Image denoising by sparse 3-D transform-domain collaborative filtering. IEEE Transactions on Image Processing 16, 8 (2007), 2080–2095.
+[9] Michel Deudon, Alfredo Kalaitzis, Israel Goytom, Md Rifat Arefin, Zhichao Lin, Kris Sankaran, Vincent Michalski, Samira E Kahou, Julien Cornebise, and Yoshua Bengio. 2020. Highres-net: Recursive fusion for multi-frame super-resolution of satellite imagery. arXiv preprint arXiv:2002.06460 (2020).
+[10] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. Bert: Pre-training of deep bidirectional transformers for language understanding. In NAACL-HLT.
+[11] David L Donoho. 1995. De-noising by soft-thresholding. IEEE Transactions on Information Theory 41, 3 (1995), 613–627.
+[12] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. 2020. An image is worth 16x16 words: Transformers for image recognition at scale. arXiv preprint arXiv:2010.11929 (2020).
+[13] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. 2020. An image is worth 16x16 words: Transformers for image recognition at scale. arXiv preprint arXiv:2010.11929 (2020).
+[14] Mehran Ebrahimi and Edward R Vrscay. 2007. Solving the Inverse Problem of Image Zooming Using" Self-Examples".. In International Conference on Image Analysis and Recognition, Vol. 4633. 117–130.
+[15] Rob Fergus, Barun Singh, Aaron Hertzmann, Sam T Roweis, and William T Freeman. 2006. Removing camera shake from a single photograph. In ACM Siggraph. 787–794.
+[16] Gilad Freedman and Raanan Fattal. 2011. Image and video upscaling from local self-examples. ACM Transactions on Graphics (TOG) 30, 2 (2011), 1–11.
+[17] Jianlong Fu, Heliang Zheng, and Tao Mei. 2017. Look closer to see better: Recurrent attention convolutional neural network for fine-grained image recognition. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 4438–4446.
+[18] Dario Fuoli, Shuhang Gu, and Radu Timofte. 2019. Efficient video super-resolution through recurrent latent space propagation. In International Conference on Computer Vision Workshop. IEEE, 3476–3485.
+[19] Peng Gao, Shijie Geng, Renrui Zhang, Teli Ma, Rongyao Fang, Yongfeng Zhang, Hongsheng Li, and Yu Qiao. 2021. Clip-adapter: Better vision-language models with feature adapters. arXiv preprint arXiv:2110.04544 (2021).
+
+May, 2023, Technical Report
+[20] Daniel Glasner, Shai Bagon, and Michal Irani. 2009. Super-resolution from a single image. In International Conference on Computer Vision. IEEE, 349–356.
+[21] Tomio Goto, Takafumi Fukuoka, Fumiya Nagashima, Satoshi Hirano, and Masaru Sakurai. 2014. Super-resolution System for 4K-HDTV. In International Conference on Pattern Recognition. IEEE, 4453–4458.
+[22] Muhammad Haris, Gregory Shakhnarovich, and Norimichi Ukita. 2019. Recurrent back-projection network for video super-resolution. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 3897–3906.
+[23] Kaiming He, Jian Sun, and Xiaoou Tang. 2010. Single image haze removal using dark channel prior. IEEE Transactions on Pattern Analysis and Machine Intelligence 33, 12 (2010), 2341–2353.
+[24] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep residual learning for image recognition. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 770–778.
+[25] Jia-Bin Huang, Abhishek Singh, and Narendra Ahuja. 2015. Single image superresolution from transformed self-exemplars. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 5197–5206.
+[26] Yan Huang, Wei Wang, and Liang Wang. 2015. Bidirectional recurrent convolutional networks for multi-frame super-resolution. Advances in Neural Information Processing Systems 28 (2015).
+[27] Yan Huang, Wei Wang, and Liang Wang. 2017. Video super-resolution via bidirectional recurrent convolutional networks. IEEE Transactions on Pattern Analysis and Machine Intelligence 40, 4 (2017), 1015–1028.
+[28] Tak-Wai Hui, Xiaoou Tang, and Chen Change Loy. 2018. Liteflownet: A lightweight convolutional neural network for optical flow estimation. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 8981–8989.
+[29] Tak-Wai Hui, Xiaoou Tang, and Chen Change Loy. 2020. A lightweight optical flow CNN—Revisiting data fidelity and regularization. IEEE Transactions on Pattern Analysis and Machine Intelligence 43, 8 (2020), 2555–2569.
+[30] Takashi Isobe, Xu Jia, Shuhang Gu, Songjiang Li, Shengjin Wang, and Qi Tian. 2020. Video super-resolution with recurrent structure-detail network. In European Conference on Computer Vision. Springer, 645–660.
+[31] Menglin Jia, Luming Tang, Bor-Chun Chen, Claire Cardie, Serge Belongie, Bharath Hariharan, and Ser-Nam Lim. 2022. Visual prompt tuning. In European Conference on Computer Vision. Springer, 709–727.
+[32] Zhengbao Jiang, Frank F Xu, Jun Araki, and Graham Neubig. 2020. How can we know what language models know? Transactions of the Association for Computational Linguistics 8 (2020), 423–438.
+[33] Younghyun Jo, Seoung Wug Oh, Jaeyeon Kang, and Seon Joo Kim. 2018. Deep video super-resolution network using dynamic upsampling filters without explicit motion compensation. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 3224–3232.
+[34] Mandar Joshi, Danqi Chen, Yinhan Liu, Daniel S Weld, Luke Zettlemoyer, and Omer Levy. 2020. Spanbert: Improving pre-training by representing and predicting spans. Transactions of the Association for Computational Linguistics 8 (2020), 64–77.
+[35] Soo Ye Kim, Jeongyeon Lim, Taeyoung Na, and Munchurl Kim. 2018. 3DSRnet: Video super-resolution using 3d convolutional neural networks. arXiv preprint arXiv:1812.09079 (2018).
+[36] Tae Hyun Kim, Mehdi SM Sajjadi, Michael Hirsch, and Bernhard Scholkopf. 2018. Spatio-temporal transformer network for video restoration. In European Conference on Computer Vision. 106–122.
+[37] Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alexander C Berg, Wan-Yen Lo, et al. 2023. Segment anything. arXiv preprint arXiv:2304.02643 (2023).
+[38] Dilip Krishnan, Terence Tay, and Rob Fergus. 2011. Blind deconvolution using a normalized sparsity measure. In IEEE/CVF Conference on Computer Vision and Pattern Recognition 2011. IEEE, 233–240.
+[39] Wenbo Li, Xin Tao, Taian Guo, Lu Qi, Jiangbo Lu, and Jiaya Jia. 2020. MuCAN: Multi-correspondence aggregation network for video super-resolution. In European Conference on Computer Vision. Springer, 335–351.
+[40] Ce Liu and Deqing Sun. 2013. On Bayesian adaptive video super resolution. IEEE Transactions on Pattern Analysis and Machine Intelligence 36, 2 (2013), 346–360.
+[41] Yimin Luo, Liguo Zhou, Shu Wang, and Zhongyuan Wang. 2017. Video satellite imagery super resolution via convolutional neural networks. IEEE Geoscience and Remote Sensing Letters 14, 12 (2017), 2398–2402.
+[42] Yiqun Mei, Yuchen Fan, Yuqian Zhou, Lichao Huang, Thomas S Huang, and Honghui Shi. 2020. Image super-resolution with cross-scale non-local attention and exhaustive self-exemplars mining. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 5690–5699.
+[43] Seungjun Nah, Sungyong Baik, Seokil Hong, Gyeongsik Moon, Sanghyun Son, Radu Timofte, and Kyoung Mu Lee. 2019. NTIRE 2019 challenge on video deblurring and super-resolution: Dataset and study. In IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshop.
+[44] Jinshan Pan, Deqing Sun, Hanspeter Pfister, and Ming-Hsuan Yang. 2016. Blind image deblurring using dark channel prior. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 1628–1636.
+
+May, 2023, Technical Report
+[45] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. 2021. Learning transferable visual models from natural language supervision. In International Conference on Machine Learning. PMLR, 8748–8763.
+[46] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever, et al. 2019. Language models are unsupervised multitask learners. OpenAI blog 1, 8 (2019), 9.
+[47] Anurag Ranjan and Michael J Black. 2017. Optical flow estimation using a spatial pyramid network. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 4161–4170.
+[48] Leonid I Rudin, Stanley Osher, and Emad Fatemi. 1992. Nonlinear total variation based noise removal algorithms. Physica D: nonlinear phenomena 60, 1-4 (1992), 259–268.
+[49] Mehdi SM Sajjadi, Raviteja Vemulapalli, and Matthew Brown. 2018. Framerecurrent video super-resolution. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 6626–6634.
+[50] Tamar Rott Shaham, Tali Dekel, and Tomer Michaeli. 2019. Singan: Learning a generative model from a single natural image. In Proceedings of the IEEE/CVF International Conference on Computer Vision. 4570–4580.
+[51] Qi Shan, Jiaya Jia, and Aseem Agarwala. 2008. High-quality motion deblurring from a single image. ACM Transactions on Graphics (TOG) 27, 3 (2008), 1–10.
+[52] Abhishek Singh and Narendra Ahuja. 2015. Super-resolution using sub-band selfsimilarity. In Asian Conference on Computer Vision, Singapore. Springer, 552–568.
+[53] Deqing Sun, Xiaodong Yang, Ming-Yu Liu, and Jan Kautz. 2018. Pwc-net: Cnns for optical flow using pyramid, warping, and cost volume. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 8934–8943.
+[54] Xin Tao, Hongyun Gao, Renjie Liao, Jue Wang, and Jiaya Jia. 2017. Detailrevealing deep video super-resolution. In International Conference on Computer Vision. 4472–4480.
+[55] Yapeng Tian, Yulun Zhang, Yun Fu, and Chenliang Xu. 2020. Tdan: Temporallydeformable alignment network for video super-resolution. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 3360–3369.
+[56] Dmitry Ulyanov, Andrea Vedaldi, and Victor Lempitsky. 2018. Deep image prior. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 9446–9454.
+[57] Xintao Wang, Kelvin CK Chan, Ke Yu, Chao Dong, and Chen Change Loy. 2019. EDVR: Video restoration with enhanced deformable convolutional networks. In IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshop.
+[58] Zhou Wang, Alan C Bovik, Hamid R Sheikh, and Eero P Simoncelli. 2004. Image quality assessment: from error visibility to structural similarity. IEEE Transactions on Image Processing 13, 4 (2004), 600–612.
+[59] Zhongyuan Wang, Peng Yi, Kui Jiang, Junjun Jiang, Zhen Han, Tao Lu, and Jiayi Ma. 2018. Multi-memory convolutional neural network for video superresolution. IEEE Transactions on Image Processing 28, 5 (2018), 2530–2544.
+[60] Li Xu, Shicheng Zheng, and Jiaya Jia. 2013. Unnatural l0 sparse representation for natural image deblurring. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 1107–1114.
+[61] Tianfan Xue, Baian Chen, Jiajun Wu, Donglai Wei, and William T Freeman. 2019. Video enhancement with task-oriented flow. International Journal of Computer Vision 127 (2019), 1106–1125.
+[62] Peng Yi, Zhongyuan Wang, Kui Jiang, Junjun Jiang, Tao Lu, Xin Tian, and Jiayi Ma. 2021. Omniscient video super-resolution. In International Conference on Computer Vision. 4429–4438.
+[63] Peng Yi, Zhongyuan Wang, Kui Jiang, Zhenfeng Shao, and Jiayi Ma. 2019. Multitemporal ultra dense memory network for video super-resolution. IEEE Transactions on Circuits and Systems for Video Technology 30, 8 (2019), 2503–2516.
+[64] Tao Yu, Zhihe Lu, Xin Jin, Zhibo Chen, and Xinchao Wang. 2023. Task Residual for Tuning Vision-Language Models. In IEEE/CVF Conference on Computer Vision and Pattern Recognition.
+[65] Yanhong Zeng, Huan Yang, Hongyang Chao, Jianbo Wang, and Jianlong Fu. 2021. Improving visual quality of image synthesis by a token-based generator with transformers. Advances in Neural Information Processing Systems 34 (2021), 21125–21137.
+[66] Liangpei Zhang, Hongyan Zhang, Huanfeng Shen, and Pingxiang Li. 2010. A super-resolution reconstruction algorithm for surveillance images. Signal Processing 90, 3 (2010), 848–859.
+[67] Renrui Zhang, Wei Zhang, Rongyao Fang, Peng Gao, Kunchang Li, Jifeng Dai, Yu Qiao, and Hongsheng Li. 2022. Tip-adapter: Training-free adaption of clip for few-shot classification. In European Conference on Computer Vision. Springer, 493–510.
+[68] Yulun Zhang, Kunpeng Li, Kai Li, Lichen Wang, Bineng Zhong, and Yun Fu. 2018. Image super-resolution using very deep residual channel attention networks. In European Conference on Computer Vision. 286–301.
+[69] Heliang Zheng, Jianlong Fu, Tao Mei, and Jiebo Luo. 2017. Learning multiattention convolutional neural network for fine-grained image recognition. In International Conference on Computer Vision. 5209–5217.
+[70] Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. 2022. Conditional prompt learning for vision-language models. In IEEE/CVF Conference on Computer Vision and Pattern Recognition. 16816–16825.
+
+Zhihe Lu*1, Zeyu Xiao*1,2, Jiawang Bai*1,3, Zhiwei Xiong2, and Xinchao Wang1
+[71] Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. 2022. Learning to prompt for vision-language models. International Journal of Computer Vision 130, 9 (2022), 2337–2348.
+

@@ -1,0 +1,81 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2304.05977
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 12 Apr 2023 ( v1 ), last revised 6 Jun 2023 (this version, v3)]
+Title: ImageReward: Learning and Evaluating Human Preferences for Text-to-Image Generation
+Authors: Jiazheng Xu , Xiao Liu , Yuchen Wu , Yuxuan Tong , Qinkai Li , Ming Ding , Jie Tang , Yuxiao Dong
+Download a PDF of the paper titled ImageReward: Learning and Evaluating Human Preferences for Text-to-Image Generation, by Jiazheng Xu and 7 other authors
+Download PDF
+
+    Abstract: We present a comprehensive solution to learn and improve text-to-image models from human preference feedback. To begin with, we build ImageReward -- the first general-purpose text-to-image human preference reward model -- to effectively encode human preferences. Its training is based on our systematic annotation pipeline including rating and ranking, which collects 137k expert comparisons to date. In human evaluation, ImageReward outperforms existing scoring models and metrics, making it a promising automatic metric for evaluating text-to-image synthesis. On top of it, we propose Reward Feedback Learning (ReFL), a direct tuning algorithm to optimize diffusion models against a scorer. Both automatic and human evaluation support ReFL's advantages over compared methods. All code and datasets are provided at \url{ this https URL }. 
+
+Comments: 	32 pages
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV) ; Machine Learning (cs.LG)
+Cite as: 	arXiv:2304.05977 [cs.CV]
+  	(or arXiv:2304.05977v3 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2304.05977
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Xiao Liu [ view email ]
+[v1] Wed, 12 Apr 2023 16:58:13 UTC (17,159 KB)
+[v2] Thu, 13 Apr 2023 00:28:03 UTC (17,159 KB)
+[v3] Tue, 6 Jun 2023 19:13:51 UTC (18,538 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled ImageReward: Learning and Evaluating Human Preferences for Text-to-Image Generation, by Jiazheng Xu and 7 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2304
+Change to browse by:
+cs
+cs.LG
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

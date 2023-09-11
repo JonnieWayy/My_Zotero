@@ -1,0 +1,85 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > physics > arXiv:2002.00469
+
+Help | Advanced Search
+Search
+Physics > Atmospheric and Oceanic Physics
+(physics)
+[Submitted on 2 Feb 2020 ( v1 ), last revised 11 Jun 2020 (this version, v3)]
+Title: WeatherBench: A benchmark dataset for data-driven weather forecasting
+Authors: Stephan Rasp , Peter D. Dueben , Sebastian Scher , Jonathan A. Weyn , Soukayna Mouatadid , Nils Thuerey
+Download a PDF of the paper titled WeatherBench: A benchmark dataset for data-driven weather forecasting, by Stephan Rasp and 5 other authors
+Download PDF
+
+    Abstract: Data-driven approaches, most prominently deep learning, have become powerful tools for prediction in many domains. A natural question to ask is whether data-driven methods could also be used to predict global weather patterns days in advance. First studies show promise but the lack of a common dataset and evaluation metrics make inter-comparison between studies difficult. Here we present a benchmark dataset for data-driven medium-range weather forecasting, a topic of high scientific interest for atmospheric and computer scientists alike. We provide data derived from the ERA5 archive that has been processed to facilitate the use in machine learning models. We propose simple and clear evaluation metrics which will enable a direct comparison between different methods. Further, we provide baseline scores from simple linear regression techniques, deep learning models, as well as purely physical forecasting models. The dataset is publicly available at this https URL and the companion code is reproducible with tutorials for getting started. We hope that this dataset will accelerate research in data-driven weather forecasting. 
+
+Comments: 	Github repository: this https URL Data download: this https URL
+Subjects: 	Atmospheric and Oceanic Physics (physics.ao-ph) ; Machine Learning (stat.ML)
+Cite as: 	arXiv:2002.00469 [physics.ao-ph]
+  	(or arXiv:2002.00469v3 [physics.ao-ph] for this version)
+  	https://doi.org/10.48550/arXiv.2002.00469
+Focus to learn more
+arXiv-issued DOI via DataCite
+Related DOI : 	https://doi.org/10.1029/2020MS002203
+Focus to learn more
+DOI(s) linking to related resources
+Submission history
+From: Stephan Rasp [ view email ]
+[v1] Sun, 2 Feb 2020 19:20:46 UTC (5,314 KB)
+[v2] Wed, 12 Feb 2020 13:45:27 UTC (5,315 KB)
+[v3] Thu, 11 Jun 2020 19:13:22 UTC (5,408 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled WeatherBench: A benchmark dataset for data-driven weather forecasting, by Stephan Rasp and 5 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+physics.ao-ph
+< prev   |   next >
+new | recent | 2002
+Change to browse by:
+physics
+stat
+stat.ML
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

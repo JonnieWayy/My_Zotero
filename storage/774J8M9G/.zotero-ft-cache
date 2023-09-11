@@ -1,0 +1,79 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2305.06355
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 10 May 2023]
+Title: VideoChat: Chat-Centric Video Understanding
+Authors: KunChang Li , Yinan He , Yi Wang , Yizhuo Li , Wenhai Wang , Ping Luo , Yali Wang , Limin Wang , Yu Qiao
+Download a PDF of the paper titled VideoChat: Chat-Centric Video Understanding, by KunChang Li and 8 other authors
+Download PDF
+
+    Abstract: In this study, we initiate an exploration into video understanding by introducing VideoChat, an end-to-end chat-centric video understanding system. It integrates video foundation models and large language models via a learnable neural interface, excelling in spatiotemporal reasoning, event localization, and causal relationship inference. To instructively tune this system, we propose a video-centric instruction dataset, composed of thousands of videos matched with detailed descriptions and conversations. This dataset emphasizes spatiotemporal reasoning and causal relationships, providing a valuable asset for training chat-centric video understanding systems. Preliminary qualitative experiments reveal our system's potential across a broad spectrum of video applications and set the standard for future research. Access our code and data at this https URL 
+
+Comments: 	Technical report
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV) ; Computation and Language (cs.CL)
+Cite as: 	arXiv:2305.06355 [cs.CV]
+  	(or arXiv:2305.06355v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2305.06355
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Yi Wang [ view email ]
+[v1] Wed, 10 May 2023 17:59:04 UTC (2,907 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled VideoChat: Chat-Centric Video Understanding, by KunChang Li and 8 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2305
+Change to browse by:
+cs
+cs.CL
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

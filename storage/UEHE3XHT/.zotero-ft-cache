@@ -1,0 +1,78 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2308.16635
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 31 Aug 2023]
+Title: MFR-Net: Multi-faceted Responsive Listening Head Generation via Denoising Diffusion Model
+Authors: Jin Liu , Xi Wang , Xiaomeng Fu , Yesheng Chai , Cai Yu , Jiao Dai , Jizhong Han
+Download a PDF of the paper titled MFR-Net: Multi-faceted Responsive Listening Head Generation via Denoising Diffusion Model, by Jin Liu and 6 other authors
+Download PDF
+
+    Abstract: Face-to-face communication is a common scenario including roles of speakers and listeners. Most existing research methods focus on producing speaker videos, while the generation of listener heads remains largely overlooked. Responsive listening head generation is an important task that aims to model face-to-face communication scenarios by generating a listener head video given a speaker video and a listener head image. An ideal generated responsive listening video should respond to the speaker with attitude or viewpoint expressing while maintaining diversity in interaction patterns and accuracy in listener identity information. To achieve this goal, we propose the \textbf{M}ulti-\textbf{F}aceted \textbf{R}esponsive Listening Head Generation Network (MFR-Net). Specifically, MFR-Net employs the probabilistic denoising diffusion model to predict diverse head pose and expression features. In order to perform multi-faceted response to the speaker video, while maintaining accurate listener identity preservation, we design the Feature Aggregation Module to boost listener identity features and fuse them with other speaker-related features. Finally, a renderer finetuned with identity consistency loss produces the final listening head videos. Our extensive experiments demonstrate that MFR-Net not only achieves multi-faceted responses in diversity and speaker identity information but also in attitude and viewpoint expression. 
+
+Comments: 	Accepted by ACM MM 2023
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2308.16635 [cs.CV]
+  	(or arXiv:2308.16635v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2308.16635
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Jin Liu [ view email ]
+[v1] Thu, 31 Aug 2023 11:10:28 UTC (2,957 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled MFR-Net: Multi-faceted Responsive Listening Head Generation via Denoising Diffusion Model, by Jin Liu and 6 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2308
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

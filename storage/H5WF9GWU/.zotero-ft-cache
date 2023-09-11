@@ -1,0 +1,80 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2305.15062
+
+Help | Advanced Search
+Search
+Computer Science > Computation and Language
+(cs)
+[Submitted on 24 May 2023]
+Title: Lawyer LLaMA Technical Report
+Authors: Quzhe Huang , Mingxu Tao , Zhenwei An , Chen Zhang , Cong Jiang , Zhibin Chen , Zirui Wu , Yansong Feng
+Download a PDF of the paper titled Lawyer LLaMA Technical Report, by Quzhe Huang and 7 other authors
+Download PDF
+
+    Abstract: Large Language Models (LLMs), like LLaMA, have exhibited remarkable performances across various tasks. Nevertheless, when deployed to specific domains such as law or medicine, the models still confront the challenge of a deficiency in domain-specific knowledge and an inadequate capability to leverage that knowledge to resolve domain-related problems. In this paper, we focus on the legal domain and explore how to inject domain knowledge during the continual training stage and how to design proper supervised finetune tasks to help the model tackle practical issues. Moreover, to alleviate the hallucination problem during model's generation, we add a retrieval module and extract relevant articles before the model answers any queries. Augmenting with the extracted evidence, our model could generate more reliable responses. We release our data and model at this https URL . 
+
+Comments: 	Work in progress
+Subjects: 	Computation and Language (cs.CL) ; Artificial Intelligence (cs.AI)
+Cite as: 	arXiv:2305.15062 [cs.CL]
+  	(or arXiv:2305.15062v1 [cs.CL] for this version)
+  	https://doi.org/10.48550/arXiv.2305.15062
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Quzhe Huang [ view email ]
+[v1] Wed, 24 May 2023 11:52:07 UTC (7,455 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Lawyer LLaMA Technical Report, by Quzhe Huang and 7 other authors
+    PDF
+    Other formats 
+
+( license )
+Current browse context:
+cs.CL
+< prev   |   next >
+new | recent | 2305
+Change to browse by:
+cs
+cs.AI
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

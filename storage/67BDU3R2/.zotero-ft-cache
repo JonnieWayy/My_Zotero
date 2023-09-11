@@ -1,0 +1,624 @@
+Enhancing CLIP with GPT-4: Harnessing Visual Descriptions as Prompts
+Mayug Maniparambil, Chris Vorster, Derek Molloy, Noel Murphy, Kevin McGuinness, Noel E. O’Connor ML Labs, Dublin City University, Dublin, Ireland
+
+arXiv:2307.11661v2 [cs.CV] 8 Aug 2023
+
+Abstract
+Contrastive pretrained large Vision-Language Models (VLMs) like CLIP have revolutionized visual representation learning by providing good performance on downstream datasets. VLMs are 0-shot adapted to a downstream dataset by designing prompts that are relevant to the dataset. Such prompt engineering makes use of domain expertise and a validation dataset. Meanwhile, recent developments in generative pretrained models like GPT-4 mean they can be used as advanced internet search tools. They can also be manipulated to provide visual information in any structure. In this work, we show that GPT-4 can be used to generate text that is visually descriptive and how this can be used to adapt CLIP to downstream tasks. We show considerable improvements in 0-shot transfer accuracy on specialized fine-grained datasets like EuroSAT (∼ 7%), DTD (∼ 7%), SUN397 (∼ 4.6%), and CUB (∼ 3.3%) when compared to CLIP’s default prompt. We also design a simple few-shot adapter that learns to choose the best possible sentences to construct generalizable classifiers that outperform the recently proposed CoCoOP by ∼ 2% on average and by over 4% on 4 specialized fine-grained datasets. The code, prompts, and auxiliary text dataset is available at github.com/mayug/VDT-Adapter.
+1. Introduction
+Contrastive pre-training of large-scale VLMs has demonstrated remarkable image classification performance on open-set classes. Models like CLIP [25] and ALIGN [13] are pretrained on web-scale datasets consisting of image-text pairs (over 400 million and 1.8 billion respectively), resulting in a highly generalizable model with competent 0-shot domain adaptation capabilities. While vanilla supervised training is performed on a closed set of concepts or classes, CLIP pretraining uses natural language. This results in a joint text-vision embedding space that is not
+1Corresponding author: mayugmaniparambil@gmail.com
+
+constrained to a fixed set of classes. In CLIP, the classifier is constructed by plugging the class name into a predetermined prompt template like ‘a photo of {class name}’. A straightforward way to adapt CLIP to different domains is by prompt engineering, which usually involves modifying the prompt template to include semantic information about the target task. For example, to classify bird images, one could construct a prompt ‘a photo of {classname}, a type of bird’. This prompt engineering process, however, is not optimal because it: 1.) requires domain expertise in the target domain; 2.) has high variance – small changes to the prompt result in large variation in performance; 3.) has a fixed prompt template for all the classes, therefore only the class name in the prompt provides the classification anchor, which might not contain enough information to distinguish different classes. For example, in Fig 1 we see an image of a Green Heron, which from the name would suggest that it is predominantly a green-colored bird and we would assume that it is similar to Green Woodpecker if we have never seen either bird. However, we can see that it is in fact a blackish-brown bird with a chestnut-colored neck and visually more similar to a bird like the Black Bittern. For 0-shot transfer to fine-grained datasets like this to work well, CLIP has to either have seen and associated images of a Green Heron to the text ‘Green Heron’ from its large pretraining dataset or additional information in the form of visually descriptive textual (VDT) information is required. Here we define VDT as a set of sentences that describe the visual features of the class under consideration including shape, size, color, environment, patterns, composition, etc. While most humans can identify many different common bird species just from their names, they would need access to an ornithology taxonomy of bird descriptions to identify more rare bird species. Similarly, we argue that CLIP’s 0shot accuracy can be improved by incorporating VDT information into the prompts. As shown, in Fig 1, including VDT information like black crown and black rump moves the classification prototype of Green Heron away from the classification prototype of Green Woodpecker and towards that of Black Bittern in the text-encoder’s embedding space.
+
+Figure 1: An example showing three birds, Green Heron, Green Woodpecker, and Black Bittern. Green Heron and Green Woodpecker have close-by classification prototypes by virtue of not having enough details in the prompt template. Only the text-encoder’s embedding space is visualized. Here we see that adding visual descriptions to the prompt resolves this issue and moves the classification prototypes in the word-encoder’s space such that classification prototypes for visually similar birds (Green Woodpecker and Black Bittern) lie together.
+
+In this work, we first show that we can use VDT information for each class in the target domain to construct class conditional prompts that achieve performance improvements over CLIP’s default prompt. We show this on the CUB dataset [1] by constructing sentences from domain experts about the bird species in Section 3.2.1 as they are readily available as part of the dataset.
+However, we acknowledge that domain expert annotations are costly and time-consuming to obtain, hampering the scalability of our method to other datasets. To address this, we focus on the recent advances in generative pretrained Large Language Models (LLMs) like GPT-4 to construct these class conditional prompts in a manner easily scalable to other datasets. These models are a good fit for the task of constructing sophisticated prompts, because: 1) they are a condensed form of human knowledge (trained on web-scale text data) [32]; 2) they can be manipulated to produce information in any form or structure which makes compatibility with CLIP’s prompt style relatively simple. Therefore we use GPT-4 to construct visually descriptive textual information about the classes with special emphasis in the GPT-4 prompts about visual cues like shape, color, structure, and compositionality. We use the generated VDT information to construct prompt ensembles that are passed through CLIP’s text encoder and aggregated to generate classifiers that are then used for 0-shot classification. Using GPT-4 circumvents the need for domain knowledge and conveniently provides class conditional prompts. Prompt ensembling the VDT sentences reduce CLIP’s performance sensitivity to small changes in the prompt. We show per-
+
+formance improvements over vanilla CLIP with the default prompt on 12 datasets with an average improvement of 2% and even better improvements in fine-grained datasets like EuroSAT (∼ 7%), DTD (∼ 7%), SUN397 (∼ 4.6%), and CUB (∼ 3.3%). The prompts and all the auxiliary class information will be made publicly available to promote research in prompt ensembling and multi-modal adapter design.
+Finally, we design a simple adapter that learns to adaptively select and aggregate the best sentences for any given dataset and show that making use of this additional VDT information improves the few-shot domain transfer performance of CLIP as well. We demonstrate the few-shot adaptation performance for the recently proposed Base-to-New setting on a benchmark of 12 datasets and outperform recent methods like CoOp [35] and CoCoOp [34] despite having fewer model parameters, shorter training time, and a simpler model architecture.
+In short, our contributions are as follows:
+1. We show that including visually descriptive textual (VDT) information in prompts results in better 0-shot domain transfer performance of CLIP.
+2. We use GPT-4 to generate VDT sentences in a scalable manner and show consistent performance improvements over CLIP in 0-shot domain transfer.
+3. We design a simple adapter network to make use of this extra information for few-shot transfer and show performance improvements over methods like CLIP-
+
+Adapter and CoCoOp [34] for few-shot domain transfer in the Base-to-New setting.
+4. We release all the VDT information for all 12 datasets to promote further research in multi-modal prompt and adapter design for low-shot domain transfer of large VLMs.
+2. Related Works
+2.1. Vision Language Models
+Recent VLMs [13, 25, 9] jointly learn the vision and language encoders from scratch and have demonstrated impressive 0-shot domain transfer performance. As mentioned in [35], this can be attributed to transformer networks [28], contrastive losses [4, 11], and web-scale training datasets [25, 14].
+While our GPT-generated prompt ensembles are similar to CLIP’s prompt ensembles, CLIP’s prompt ensembles were constructed and tuned manually, and are class agnostic, while ours were generated by GPT models that were prompted to provide VDT information for each class.
+2.2. Prompt Learning
+CoOp [35] successfully used prompt learning in VLMs but had generalizability limitations due to overfitting on the few-shot dataset [34]. In response, CoCoOp was proposed, enhancing performance with image-conditioned prompt learning using a meta-network, albeit at a higher resource cost. We address generalizability differently by using class conditional VDT information. Our simpler and more efficient model, CLIP-A-self, outperforms CoCoOp in the Base-to-New few-shot setting.
+2.3. Few-shot adapters for Vision Language models
+CLIP-Adapter [10] (CLIP-A) offers a simpler few-shot transfer method for VLMs, utilizing an MLP trained on fixed image/text encoders. Our CLIP-A-self is different from CLIP-A in that we apply a self-attention mechanism on the set of all sentences for any class, learning to select and aggregate the best subset of VDT information for the dataset from the few-shot training set. Although Tipadapter [33] showed superior performance on base classes with a cache model, it’s inapplicable in the Base-to-New setting due to its reliance on few-shot test class examples, making it irrelevant for our comparison.
+2.4. Semantic information from Large Language Models
+Recent advancements in transformer-based language models, particularly the GPT family [3, 22], have demonstrated exceptional abilities in semantic extraction from intricate texts. Their application to vision tasks has emerged
+
+as an active area of research. [20] employs Palm540B LLM [5] to generate semantic data for unsupervised class embedding vectors in 0-shot classification, but only tests on three legacy datasets. Our research presents results on a modern benchmark of 12 datasets. Recently, [24, 19] leverage GPT-3 for class conditional prompts to enhance CLIP’s 0shot domain transfer on 6 datasets. While [19] focuses on using GPT-3 to construct visual descriptors that aid in the interpretability of CLIP’s predictions during 0-shot domain transfer, we argue that 0-shot domain transfer performance improves with the inclusion of high-quality VDT information. Hence, we make use of GPT-4 for richer, more diverse, and more accurate VDT information.
+While [19] utilize GPT-3, probability space ensemble, and highlight VDT’s role in 0-shot transfer, our method differs. We use GPT-4 for auxiliary data collection, perform ensemble in word-encoder space, and introduce a few-shot adapter for optimal VDT selection in few-shot transfer. [27] uses GPT-3 for prompt construction in diffusion models to generate images for support sets while our work only uses GPT4 to acquire auxiliary text data. To our knowledge, we are the first to prompt GPT-4 for visually descriptive sentences to improve CLIP’s 0-shot and few-shot domain transfer.
+3. Methodology
+3.1. Review of CLIP and CLIP-Adapter
+Through contrastive pretraining on large image-text datasets, CLIP performs image classification on various concepts, aligning related images and texts in a shared embedding space, while separating dissimilar ones. After pretraining, CLIP directly performs image classification on the target dataset without any finetuning. First, we review how the CLIP model performs 0-shot classification on an open set.
+The CLIP model, comprising a vision and language model, encodes an image and its corresponding caption into visual and textual embeddings, respectively. During inference, these embeddings are compared using cosine similarity. Given an image I ∈ RH×W ×C , where H, W , C denotes the height, width, and number of channels of the image, the vision encoder transforms the image into the joint embedding space to get the image features f ∈ RD where D represents the dimension of the features.
+During inference, a prompt template such as ‘A photo of {classname}’ is used to generate sentences for K different classes and passed through the text-encoder to yield classifier weight matrix W ∈ RD×K . Prediction probabilities are then calculated by multiplying image feature f with W and applying a softmax function:
+
+f = Backbone(I), pi =
+
+exp(WiT f )/τ
+
+K j=1
+
+exp(WjT
+
+f
+
+)/τ
+
+,
+
+(1)
+
+In CLIP [25], 0-shot domain transfer utilizes domainspecific information in the prompt template, such as ‘A photo of a {class-name}, a type of bird’ for bird images. [25] reports that careful prompt design and prompt ensembling are important to improve 0-shot classification accuracy. Prompt ensembling is achieved by constructing several prompts for each class and then averaging the classification vectors. In our work, we show that prompt ensembles of VDT information improve CLIP’s 0-shot domain transfer.
+CLIP-A [10] is a learnable MLP adapter applied to image and/or word encoder features for few-shot transfer to target datasets. During few-shot transfer, given N images per class with labels, denoted as (xi,k, yi,k)ii==N1,k,j==1K , K classifier weights are constructed using the prompt template H and text encoder g as W = g(H(classname({yi,k}))). The image features f and text features W pass through the learnable adapters Av, At to get adapted features as follows.
+
+f ⋆ = αAv(f )T + (1 − α)f,
+
+(2)
+
+W⋆ = βAt(W)T + (1 − β)W.
+
+(3)
+
+The hyperparameters α and β blend CLIP’s knowledge
+with fine-tuned knowledge to avoid CLIP-Adapter overfit-
+ting. Logits are calculated as per Eqn 1, and cross entropy loss over the entire training set (xi,k, yi,k)ii==N1,k,j==1K is used to optimize Av, At.
+In the All setting, few-shot transfer is tested on a hold-out dataset with images from the K classes used in training. In
+the Base-to-New setting, proposed by [34], the evaluation occurs on U non-overlapping classes. Our model is evalu-
+ated in the more practical Base-to-New setting.
+
+3.2. Language Model Prompt Design
+
+In this section, we show that using VDT information in the prompt template improves CLIP’s 0-shot transfer capabilities and describe our approach to generate class-specific prompts using an LLM.
+
+3.2.1 Visual Descriptive Sentences
+[25] demonstrates that careful prompt design and prompt ensembling improve the 0-shot classification performance of CLIP. Here we ask the question: What type of information can be appended to the prompt template to improve the 0-shot domain transfer performance? We show that appending visually descriptive information to the prompt template and ensembling improves the 0-shot performance over the
+
+Table 1: Comparing visual and non-visual prompt ensembles for 0-shot domain transfer to the CUB dataset.
+
+Prompting Accuracy
+
+Default 54.7
+
+Non-VisualGT
+53.0
+
+VisualGT
+57.7
+
+VisualGPT
+57.4
+
+Table 2: Results of including LLM generated VDT on 6 datasets for comparison with other works. We see that higher quality VDT from GPT-4 outperforms GPT-3 generated VDT on specialized datasets like DTD OxfordPets and EuroSAT.
+
+Methods
+
+EuroSAT
+
+Food101
+
+DTD
+
+Oxford Pets
+
+CUB
+
+ImageNet
+
+Average
+
+CLIP 47.69 DCLIP[19] 48.82 CLIP-GPT 54.86
+
+85.97 43.09 89.07 54.70 64.51 88.50 45.59 86.92 57.75 68.03 86.43 50.15 91.54 57.43 68.92
+
+64.17 65.93 68.21
+
+default prompt and prompts containing non-visual information.
+Using the CUB dataset with expert annotations, we contrast the 0-shot performance of visual and non-visual prompt ensembles. For the visual prompts, we take class attribute vectors detailing attributes like color, pattern, shape, etc. for 28 bird body parts, leading to 312 scores per bird. We use the most pronounced attribute-value pairs to form 28 visual prompts (denoted Visual-GT) such as ‘A photo of Green Heron. Green Heron has a greenish-black head cap.’ Conversely, for non-visual prompts (denoted NonVisual-GT), we collect information on bird calls, migration, behavior, and habitat, yielding 12 different prompts like ‘A photo of Green Heron. The green heron’s bird call is a loud, harsh ‘skeow” per class.
+We derive classification vectors for Visual-GT and NonVisual-GT by averaging class-level sentence embeddings within CLIP’s joint embedding space, considering its 77token limit. Table 1 shows no improvement using NonVisual-GT prompts over the default, yet a 4% improvement with Visual-GT.
+
+3.2.2 Prompting LLMs for visually descriptive information
+In the prior section, we highlighted the use of expert VDT information in creating class-specific prompts to enhance CLIP’s 0-shot performance. However, acquiring expert annotations is both expensive and time-consuming. To overcome this, we utilize GPT language models, known for their large-scale knowledge and flexibility [32]. Our approach involves using GPT-4 to generate visual descriptions for any given dataset thereby aiding in the construction of prompt ensembles for CLIP in a scalable manner.
+Our prompting strategy takes inspiration from chain-of-
+
+Figure 2: CLIP-A-self, our simple self-attention based adapter learns to select and aggregate the most relevant subset of Visually Descriptive Text (VDT) to generate more generalizable classifiers. First, we prompt GPT-4 to generate VDT, N sentences for K classes that are then passed through the text encoder to get embeddings for each of the N*K sentences. Self-attention is applied over the N sentences of each class and averaged to get K adapted classifier embeddings.
+
+Table 3: Results of 12 datasets with ViT-B/16.
+
+Methods
+
+EuroSAT
+
+Caltech101
+
+Oxford Flowers
+
+Food101
+
+FGVC Aircraft
+
+DTD
+
+Oxford Pets
+
+Stanford Cars
+
+Sun397
+
+UCF101
+
+CUB
+
+ImageNet
+
+Average
+
+CLIP 47.69 CLIP-GPT 54.86
+
+93.75 94.51
+
+70.69 85.97 24.81 43.09 89.07 65.55 62.61 67.54 54.70 64.51 73.40 86.43 23.42 50.15 91.54 65.01 67.24 65.51 57.43 68.9
+
+64.16 66.53
+
+thought prompting [29] and is as follows: First, we ask GPT-4 to list all the attributes that may be necessary to discriminate between images of the K classes under consideration. Second, we ask GPT-4 to provide the values for all these attributes for all the K classes as sentences. An example for the CUB dataset is shown in the left side of Fig 1.
+The last row in Table 1 shows that the GPT-4 generated visual sentences’ performance is similar to that of sentences generated from the class attribute vectors annotated by domain experts. We follow the same simple strategy for all the datasets in the benchmark suite to generate visually descriptive sentences in a scalable and flexible manner and use them to construct prompt ensembles.
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+68.45 82.39 79.35 78.90 82.12
+
+New
+73.89 62.39 71.89 72.14 74.20
+
+H
+71.05 70.99 75.37 75.07 77.78
+
+Table 4: Comparing our CLIP-A-self against other methods on average accuracy over 12 datasets.
+
+3.3. Simple few-shot adapters for visual sentences
+We design a simple adapter that can use VDT information to improve the few-shot transfer of CLIP to the target datasets. Similar to the CLIP-A text, we append a small set
+
+of learnable parameters to the output of the word encoder tings, extending our suite to 12. These include generic ob-
+
+and train the adapter using cross-entropy loss. Our CLIP- ject datasets ImageNet [7] and Caltech101 [8]; fine-grained
+
+A-self uses a self-attention layer that applies attention over classification datasets OxfordPets [23], StanfordCars [16],
+
+the embeddings of the different sentences for each class and Flowers102 [21], Food101 [2] and FGVCAircraft [17];
+
+averages the output to get the final classification vector.
+
+SUN397 [31] for scene recognition; UCF101 [26] for ac-
+
+Given we have M GPT generated sentences for tion recognition; DTD [6] for texture classification; Eu-
+
+each of the K classes tm,k, we construct M prompts roSAT [12] for satellite imagery; and CUB for bird iden-
+
+by appending each sentence to the prompt template tification.
+
+like H(classname(yi,k), {tm,k}) and pass them through CLIP’s word encoder to get W sent ∈ RD×M×K .
+
+For 0-shot transfer with visual sentences, we test on All classes across these datasets while for the Base-to-New set-
+
+For the self-attention adapter, we apply vanilla self- ting, following [34], we equally sample classes for base and
+
+attention [28] over all the visual descriptive sentences such new sets without overlap. We use the 150-base and 50-
+
+that during training it learns to select and aggregate the most new class split from ZSL and few-shot literature [30, 18]
+
+relevant visual sentences for identifying each class. Just like for CUB. Like [34], our CLIP-A-self is evaluated on the
+
+before, we first obtain the classification vector for all sentences W s ∈ RK×M×D and pass them as the key, query,
+and value to the self-attention module Bself and average out the output tokens to get the final classification vector W ⋆.
+Here the attention is applied over the M different visually
+
+16-shot setting for easier comparison with other methods.
+4.2. Baselines We compare the performance of visual sentences ensem-
+ble on 0-shot transfer against the CLIP model [25] whose
+
+descriptive sentences.
+
+default prompts for each dataset have been extensively fine-
+
+M
+
+tuned using a test set. We also compare against DCLIP [19]
+
+Wavg = 1/M
+
+Wms ,k
+
+m=1
+
+(4) a recent work that uses GPT-3 to generate VDT information for 0-shot transfer. We compare our CLIP-A-self against
+
+Wma ,k
+
+M 1
+
+= Bself (
+
+Wms ,k
+
+M,
+1
+
+Wms ,k
+
+M,
+1
+
+Wms ,k
+
+M)
+1
+
+two prompt learning methods CoOp [35] which learns static prompts and CoCoOp [34] which learns a dynamic prompt
+
+(5) that is specifically designed to improve Base-to-New trans-
+
+M
+
+Wa−mean = 1/M
+
+Wma ,k
+
+m=1
+
+fer. We also compare our CLIP-A-self against CLIP-A [10] (6) due to the similarity in architecture and to show that the per-
+formance improvements are from making use of the visual
+
+W ⋆ = βWa−meanT + (1 − β)Wavg
+
+(7) sentences and not from the just adapting the text features.
+
+We finally obtain the new adapter classifier weights W ⋆ ∈ RD×K that have been adapted to focus on the most visually discriminative information among the M visually descriptive sentences for any given dataset. We make use of 1 to calculate the probabilities and predict the image category by selecting the class with the highest probability.
+During the few-shot training only the weights of the adapter network Bself are trained using cross-entropy loss.
+4. Experiments
+We assess the significance of visual sentence ensembles in two scenarios: (i) we gauge visual sentence quality by comparing an ensemble of these prompts with CLIP’s default prompts across 12 benchmark datasets; (ii) we contrast the performance of adapters using these visual prompts against other few-shot transfer techniques in Base-to-New class generalization within a dataset. Prior to discussing the results, we detail the datasets and experimental setup.
+4.1. Datasets
+
+4.3. Training settings
+Our implementation is based on CoOp’s and CLIP-A’s code. 1 We make all our comparisons on VIT CLIP backbone i.e., VIT-B/16. We take the results for CoOp and CoCoOp for all datasets (except CUB) from their respective papers, while we make use of practices from the respective papers like context length set to 4 and context initialization to “a photo of” to ensure the best results on the CUB dataset. For CLIP-A, we re-run all experiments on VITB/16 backbone as they were not reported in the paper. For all adapter models including ours, we only tune the residual ratio β hyper-parameter. For CLIP-A, we use the version where the MLP is applied on top of the visual encoder as it performed the best [10]. We make use of May version of GPT-4 for obtaining the auxiliary dataset.
+4.4. GPT generated visual sentences improve 0-shot transfer.
+We compare the performance of CLIP-GPT prompt ensemble with the default prompts of CLIP in Table 3. GPT-
+
+We use 11 diverse image recognition datasets from [35] and the bird species CUB dataset [1] for both study set-
+
+1https://github.com/KaiyangZhou/CoOp, //github.com/gaopengcuhk/CLIP-Adapter
+
+https:
+
+Table 5: Comparison of GPT-Adapters with CLIP, CoOp and CoCoOp in the Base-to-New generalization setting. For prompt learning-based methods (CoOp and CoCoOp), their prompts are learned from the base classes (16 shots). The results strongly justify the importance of including extra visual information. H denotes Harmonic mean (to highlight the generalization trade-off [30]).
+
+(a) CUB.
+
+(b) Caltech101.
+
+(c) OxfordPets.
+
+Base New
+
+CLIP
+
+58.7 70.3
+
+CoOp
+
+79.2 53.3
+
+CoCoOp
+
+67.1 74.1
+
+CLIP-A
+
+68.3 70.8
+
+CLIP-A-self 78.6 71.3
+
+(d) StanfordCars.
+
+H
+63.90 63.71 70.40 69.53 74.77
+
+Base New
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+96.84 98.00 97.96 97.7 98.3
+
+94.00 89.81 93.81 93.6 95.9
+
+(e) Flowers102.
+
+H
+95.40 93.73 95.84 95.61 97.09
+
+Base New
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+91.17 93.67 95.20 94.8 94.4
+
+97.26 95.29 97.69 97.0 97.0
+
+(f) Food101.
+
+H
+94.12 94.47 96.43 95.89 95.68
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+63.37 78.12 70.49 70.5 76.8
+
+New
+74.89 60.40 73.59 73.3 72.9
+
+H
+68.65 68.13 72.01 71.87 74.80
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+72.08 97.60 94.87 94.6 97.4
+
+New
+77.80 59.67 71.75 71.5 75.3
+
+H
+74.83 74.06 81.71 81.44 84.94
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+90.10 88.33 90.70 90.3 90.4
+
+New
+91.22 82.26 91.29 91.2 91.2
+
+H
+90.66 85.19 90.99 90.75 90.80
+
+(g) FGVCAircraft.
+
+(h) SUN397.
+
+(i) DTD.
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+27.19 40.44 33.41 34.9 37.8
+
+New
+36.29 22.30 23.71 33.5 33.0
+
+H
+31.09 28.75 27.74 34.19 35.24
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+69.36 80.60 79.74 80.1 81.4
+
+New
+75.35 65.89 76.86 75.9 76.8
+
+H
+72.23 72.51 78.27 77.94 79.03
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+53.24 79.44 77.01 74.9 81.8
+
+New
+59.90 41.18 56.00 53.0 62.3
+
+H
+56.37 54.24 64.85 62.08 70.73
+
+(j) EuroSAT.
+
+(k) UCF101.
+
+(l) ImageNet.
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+56.48 92.19 87.49 82.5 88.5
+
+New
+64.05 54.74 60.04 62.4 70.5
+
+H
+60.03 68.69 71.21 71.06 78.48
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+70.53 84.69 82.33 82.9 84.1
+
+New
+77.50 56.05 73.45 74.9 76.4
+
+H
+73.85 67.46 77.64 78.70 80.07
+
+CLIP CoOp CoCoOp CLIP-A CLIP-A-self
+
+Base
+72.43 76.47 75.98 75.4 76.4
+
+New
+68.14 67.88 70.43 68.6 68.3
+
+H
+70.22 71.92 73.10 71.84 72.12
+
+generated prompt ensemble improves upon the performance of CLIP 0-shot by 2% on average over 12 datasets. The improvement over CLIP-ZS is significant; over 5% for specialized fine-grained datasets like CUB, SUN397, EuroSAT, and DTD and over 2% for oxford-flowers and oxford-pets. This shows that CLIP does not recognize several of the classnames in these datasets and describing the class in the form of visually descriptive sentences results in better classifiers from the text-encoder and better classification accuracy. It is also worth noting that only including the visually descriptive sentences in the prompts can help improve the performance of general datasets like Imagenet (over 4%) and Caltech-101 (over 1%) too. For all other datasets, the
+
+transfer performance matches that of CLIP, with the exception being the action recognition dataset UCF-101. We inspected the sentences generated for UCF-101 and notice that several of the sentences generated by GPT involves temporal information instead of visual descriptions and we believe this could be the reason for the drop in accuracy. However, we notice in Section 4.5.1 that the self-attention module of the few-shot adapter learns to emphasize the visual sentences out of the generated sentences which might explain the improvement in the performance of few-shot adapters in the new setting in Section 4.5. We also compare against recent work [19] on their subset of 6 datasets for VIT-B/16 encoder in 2. We see that using the larger
+
+Prompting
+
+ZS Base New H
+
+Default
+
+54.7 NA NA NA
+
+OpenAssistant 56.0 78.3 69.8 73.80
+
+GPT-3.5
+
+55.7 78.1 70.6 74.16
+
+GPT-4
+
+57.4 78.6 71.3 74.77
+
+Table 6: Comparing different GPT models for obtaining the VDT information. We see that the larger models provide higher quality VDT information but CLIP-A-self is capable of producing generalizable classifiers even with smaller models like OpenAssistant.
+
+GPT-4 model over the GPT-3 model results in much higher improvements for specialized datasets like DTD (∼ 5%) and EuroSAT (∼ 6%). We compare the text used by [19] against our GPT4-generated VDT in the supplementary.
+4.5. GPT-Adapters improve few-shot transfer performance.
+We compare the performance of our CLIP-A-self against CLIP, CoOp, and CoCoOp on the benchmark suite of 12 datasets in the Base-to-New setting in Table 5. Here we see that GPT-Adapters that make use of the VDT information outperform CoCoOp by 3% in the new setting while maintaining similar performance to that of CoOp in the base setting on the average accuracy over 12 datasets. This is impressive considering that CoCoOp makes use of a metanetwork and forward pass through the text encoder making it computationally intensive to train. CoCoOp takes up to 5 hours to train on 16-shot ImageNet for VIT-B/16 encoder, in comparison, our CLIP-A-self takes only 10 mins (on an RTX 3090 GPU). The Base-to-New generalization ability of our adapters is even more impressive for fine-grained, specialized datasets as evidenced by the gains over CoCoOp in Harmonic mean of base and new accuracy. For example, CLIP-A-self demonstrates gains in datasets like FGVCAircraft ( 7.5%), EuroSat ( 7.4%), DTD ( 5.8%), CUB ( 4.3%), Flowers102 ( 4%), Stanford Cars ( 2.4%) and UCF101 ( 2.4% ). This demonstrates that our adapters make use of semantic information in the form of visually descriptive sentences and fuse this with CLIP’s 0-shot knowledge to build more generalizable classifiers that transfer well to unseen classes within the same dataset. It is also worth noting that even though the same set of VDT did not provide any improvements in 0-shot domain transfer for datasets like FGVC-Aircraft, Stanford-Cars, and UCF-101, our selfattention adapter was able to choose the most informative subset of VDT and produce few-shot classifiers that provide substantial few-shot transfer performance gains in comparison to CoCoOp. We show in Section 4.5.1 the sentences picked by the attention mechanism for these datasets to qualitatively verify this.
+
+4.5.1 Attention weights Analysis
+We note that even though CLIP-gpt ensembles were outperformed by CLIP default prompt on FGVC Aircraft, UCF101, and Stanford Cars dataset, we see that CLIP-A-self outperforms CLIP-A and CoCoOp [34] on these datasets in the few-shot transfer setting. We believe that this is because, during few-shot training, the self-attention mechanism learns to select the most relevant visual sentences out of the set of visually descriptive text and helps produce generalizable classifiers. In Table 1 in supplementary, we show the top 3 and bottom 3 attributes picked by attention scores for each of these datasets and show that the sentences with the highest attention scores correspond to visually descriptive attributes in the set and vice versa for the lowest scored attributes. For example, for both Stanford Cars and FGVC it is interesting to see that the color scheme is one of the least used attributes as it’s difficult to identify a car or a plane from its color or livery. For UCF-101, information like the force involved or temporal information like speed and range of motion of the action is unlikely to be encoded in the image and hence is not selected by the attention mechanism. Information regarding the subject and the object of the action, like the posture of the person, description of the object, and interaction between objects are visible in the images and hence weighted highly by the attention mechanism.
+4.6. Ablation over different GPT models
+In this section, we see if other GPT models like GPT-3.5 and open-source model, OpenAssistant [15], are as capable as GPT-4 in generating visually descriptive information. We explore this on the CUB dataset as it is fine-grained and specialized. The results are presented in Table 6. We find that the performance improves with larger models which are more capable of memorizing accurate class information with less hallucination [32]. Even though we obtain decent performance with the open-source model OpenAssistant, the outputs were always inconsistent and noisy, resulting in a lot of clean-up effort in comparison to GPT-3.5 and GPT-4 where the outputs were in the form of concise sentences following a dictionary format. It is worth noting that our few-shot adapter is capable of picking out the the best VDT information even from a noisy set, pushing the Baseto-New generalization performance of OpenAssistant, and GPT-3.5 close to that of GPT-4.
+5. Conclusion
+In this work, we show that using visually descriptive textual (VDT) information can improve the 0-shot domain transfer performance of CLIP over non-visual information and the default prompts. We demonstrate GPT-4 to be an accurate and flexible source of VDT information by improving the 0-shot domain transfer performances on a suite of
+
+12 benchmark datasets. Our few-shot adapter CLIP-A-self learns to pick the best VDT information from the GPT generated set and improve the few-shot domain transfer in the Base-to-New setting even when the quality of the generated text deteriorates. We release all prompts and VDT information for all 12 datasets to promote further research in the fertile research direction of using LLMs for learning multimodal adapters for foundation models.
+References
+[1] Caltech-UCSD Birds 200. 2, 6 [2] Lukas Bossard, Matthieu Guillaumin, and Luc Van Gool.
+Food-101–mining discriminative components with random forests. In ECCV, 2014. 6 [3] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel Ziegler, Jeffrey Wu, Clemens Winter, Chris Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. Language models are few-shot learners. In H. Larochelle, M. Ranzato, R. Hadsell, M.F. Balcan, and H. Lin, editors, Advances in Neural Information Processing Systems, volume 33, pages 1877–1901. Curran Associates, Inc., 2020. 3 [4] Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. A simple framework for contrastive learning of visual representations. In ICML, 2020. 3 [5] Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung Won Chung, Charles Sutton, Sebastian Gehrmann, Parker Schuh, Kensen Shi, Sasha Tsvyashchenko, Joshua Maynez, Abhishek Rao, Parker Barnes, Yi Tay, Noam Shazeer, Vinodkumar Prabhakaran, Emily Reif, Nan Du, Ben Hutchinson, Reiner Pope, James Bradbury, Jacob Austin, Michael Isard, Guy Gur-Ari, Pengcheng Yin, Toju Duke, Anselm Levskaya, Sanjay Ghemawat, Sunipa Dev, Henryk Michalewski, Xavier Garcia, Vedant Misra, Kevin Robinson, Liam Fedus, Denny Zhou, Daphne Ippolito, David Luan, Hyeontaek Lim, Barret Zoph, Alexander Spiridonov, Ryan Sepassi, David Dohan, Shivani Agrawal, Mark Omernick, Andrew M. Dai, Thanumalayan Sankaranarayana Pillai, Marie Pellat, Aitor Lewkowycz, Erica Moreira, Rewon Child, Oleksandr Polozov, Katherine Lee, Zongwei Zhou, Xuezhi Wang, Brennan Saeta, Mark Diaz, Orhan Firat, Michele Catasta, Jason Wei, Kathy Meier-Hellstern, Douglas Eck, Jeff Dean, Slav Petrov, and Noah Fiedel. Palm: Scaling language modeling with pathways, 2022. 3 [6] Mircea Cimpoi, Subhransu Maji, Iasonas Kokkinos, Sammy Mohamed, and Andrea Vedaldi. Describing textures in the wild. In CVPR, 2014. 6 [7] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. Imagenet: A large-scale hierarchical image database. In CVPR, 2009. 6
+
+[8] Li Fei-Fei, Rob Fergus, and Pietro Perona. Learning generative visual models from few training examples: An incremental bayesian approach tested on 101 object categories. In CVPR-W, 2004. 6
+[9] Andreas Fu¨rst, Elisabeth Rumetshofer, Johannes Lehner, Viet T Tran, Fei Tang, Hubert Ramsauer, David Kreil, Michael Kopp, Gu¨nter Klambauer, Angela Bitto, et al. Cloob: Modern hopfield networks with infoloob outperform clip. Advances in neural information processing systems, 35:20450–20468, 2022. 3
+[10] Peng Gao, Shijie Geng, Renrui Zhang, Teli Ma, Rongyao Fang, Yongfeng Zhang, Hongsheng Li, and Yu Qiao. Clip-adapter: Better vision-language models with feature adapters. arXiv preprint arXiv:2110.04544, 2021. 3, 4, 6
+[11] Kaiming He, Haoqi Fan, Yuxin Wu, Saining Xie, and Ross Girshick. Momentum contrast for unsupervised visual representation learning. In CVPR, 2020. 3
+[12] Patrick Helber, Benjamin Bischke, Andreas Dengel, and Damian Borth. Eurosat: A novel dataset and deep learning benchmark for land use and land cover classification. IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing, 2019. 6
+[13] Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu Pham, Quoc V Le, Yunhsuan Sung, Zhen Li, and Tom Duerig. Scaling Up Visual and Vision-Language Representation Learning With Noisy Text Supervision. page 139, 2021. 1, 3
+[14] Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu Pham, Quoc V Le, Yunhsuan Sung, Zhen Li, and Tom Duerig. Scaling up visual and vision-language representation learning with noisy text supervision. In ICML, 2021. 3
+[15] Andreas Ko¨pf, Yannic Kilcher, Dimitri von Ru¨tte, Sotiris Anagnostidis, Zhi-Rui Tam, Keith Stevens, Abdullah Barhoum, Nguyen Minh Duc, Oliver Stanley, Richa´rd Nagyfi, et al. Openassistant conversations– democratizing large language model alignment. arXiv preprint arXiv:2304.07327, 2023. 8, 3
+[16] Jonathan Krause, Michael Stark, Jia Deng, and Li Fei-Fei. 3d object representations for fine-grained categorization. In ICCV-W, 2013. 6
+[17] Subhransu Maji, Esa Rahtu, Juho Kannala, Matthew Blaschko, and Andrea Vedaldi. Fine-grained visual classification of aircraft. arXiv preprint arXiv:1306.5151, 2013. 6
+[18] Mayug Maniparambil, Kevin Mcguinness, and Noel O’connor. BaseTransformers: Attention over base datapoints for One Shot Learning. In British Machine Vision Conference 2022, BMVC 2022, 2022. 6
+[19] Sachit Menon and Carl Vondrick. Visual classification via description from large language models. ICLR, 2023. 3, 4, 6, 7, 8
+[20] Muhammad Ferjad Naeem, Muhammad Gul Zain Ali Khan, Yongqin Xian, Muhammad Zeshan Afzal, Didier Stricker, Luc Van Gool, and Federico Tombari. I2mvformer: Large language model generated multi-view document supervision for zero-shot image classification. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 15169–15179, 2023. 3
+
+[21] Maria-Elena Nilsback and Andrew Zisserman. Automated flower classification over a large number of classes. In ICVGIP, 2008. 6
+[22] OpenAI. Gpt-4 technical report, 2023. 3
+[23] Omkar M Parkhi, Andrea Vedaldi, Andrew Zisserman, and CV Jawahar. Cats and dogs. In CVPR, 2012. 6
+[24] Sarah Pratt, Rosanne Liu, and Ali Farhadi. What does a platypus look like? Generating customized prompts for zeroshot image classification. 2023. 3
+[25] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In International conference on machine learning, pages 8748–8763. PMLR, 2021. 1, 3, 4, 6
+[26] Khurram Soomro, Amir Roshan Zamir, and Mubarak Shah. Ucf101: A dataset of 101 human actions classes from videos in the wild. arXiv preprint arXiv:1212.0402, 2012. 6
+[27] Vishaal Udandarao, Ankush Gupta DeepMind, and Samuel Albanie. SuS-X: Training-Free Name-Only Transfer of Vision-Language Models. 3
+[28] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. Attention is all you need. Advances in neural information processing systems, 30, 2017. 3, 6
+[29] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. Advances in Neural Information Processing Systems, 35:24824–24837, 2022. 5
+[30] Yongqin Xian, Christoph H Lampert, Bernt Schiele, and Zeynep Akata. Zero-shot learning—a comprehensive evaluation of the good, the bad and the ugly. IEEE transactions on pattern analysis and machine intelligence, 41(9):2251– 2265, 2018. 6, 7
+[31] Jianxiong Xiao, James Hays, Krista A Ehinger, Aude Oliva, and Antonio Torralba. Sun database: Large-scale scene recognition from abbey to zoo. In CVPR, 2010. 6
+[32] Jifan Yu, Xiaozhi Wang, Shangqing Tu, Shulin Cao, Daniel Zhang-Li, Xin Lv, Hao Peng, Zijun Yao, Xiaohan Zhang, Hanming Li, Chunyang Li, Zheyuan Zhang, Yushi Bai, Yantao Liu, Amy Xin, Nianyi Lin, Kaifeng Yun, Linlu Gong, Jianhui Chen, Zhili Wu, Yunjia Qi, Weikai Li, Yong Guan, Kaisheng Zeng, Ji Qi, Hailong Jin, Jinxin Liu, Yu Gu, Yuan Yao, Ning Ding, Lei Hou, Zhiyuan Liu, Bin Xu, Jie Tang, and Juanzi Li. KoLA: Carefully Benchmarking World Knowledge of Large Language Models. 2, 4, 8
+[33] Renrui Zhang, Wei Zhang, Rongyao Fang, Peng Gao, Kunchang Li, Jifeng Dai, Yu Qiao, and Hongsheng Li. Tipadapter: Training-free adaption of clip for few-shot classification. In European Conference on Computer Vision, pages 493–510. Springer, 2022. 3
+[34] Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. Conditional prompt learning for vision-language models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 16816–16825, 2022. 2, 3, 4, 6, 8
+
+[35] Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. Learning to prompt for vision-language models. International Journal of Computer Vision, 130(9):2337–2348, 2022. 2, 3, 6
+
+Supplementary Materials: Enhancing CLIP with GPT-4: Harnessing Visual Descriptions
+as Prompts
+1. Attention weights visualized
+We visualize the attention weights learned by the CLIPA-self for datasets Stanford Cars, UCF101, FGVC Aircraft, Oxford Flowers and CUB in Table 1. We notice that the self-attention mechanism in CLIP-A-self assigns more weight to visually descriptive sentences that are most relevant for discriminating between the classes of the dataset under consideration. For instance, we see that for discriminating images of birds species (CUB dataset) and flower species (Oxford Flowers) sentences describing the color of the head and wings of birds and petals of the flowers are important but for identifying different car or aircraft models sentences describing the color or livery is one of the least important. We also see that if the information being described by the VDT sentence is not clearly visible in the image, the attention weight assigned to it by CLIP-A-self is low. For instance, in CUB dataset, the the undersides of birds or the sepals in Oxford Flowers dataset are often not visible in the images, hence the VDT sentence correponding to this is is in the bottom 3 attributes picked by the learnt attention weights. It’s also worth noting that, some of the VDT sentences do not have much variation between different classes and hence are not useful in dsicrimination between the classes of the dataset. For instance, in Oxfordflowers, the color of the leaves, the color of the stem are often green for most flowers in the dataset, which maybe why low attention score was learnt for this attribute.
+2. Prompts for GPT-4
+Throughout our experiments, we use a two-step prompting strategy in which we first ask the LLM to generate a list of attributes which will aid in visually distinguishing between the different classes in a particular dataset. The second prompt asks the LLM to create a description using the attributes provided by the first prompt and specifies the expected output format. We request a python dictionary as output with a list of sentences, each corresponding to one attribute. The output structure is simple to use (downstream), preserves attribute-level detail and encourages attribute richness.
+Example of first prompt for the FGVC Aircraft dataset:
+I am creating class attributes for a zero-shot image recognition algorithm to classify different images of a diverse set of aircrafts. The attributes are part of side information about the classes. List 20 attributes that can form part of a description of the class that will aid in distinguishing between the following list of classes visually: [list of
+
+classes in dataset e.g. ’Boeing 707-320’, ’Boeing 727-200’,..., ’Yakovlev Yak-42’]
+GPT-4 response:
+Manufacturer: The company that produces the aircraft (e.g., Boeing, Airbus). Model Number: Differentiates different aircraft within the same manufacturer. Aircraft Function: The primary role or use of the aircraft, such as commercial (passenger), cargo (freight transport), or military (fighter, bomber, etc). Engine Count: The number of engines on the aircraft. Engine Position: The location of the engines, either under the wings or at the rear of the fuselage. Wing Position: The position of the wings: high-wing, mid-wing, or low-wing design. Tail Type: The shape and type of the tail, such as traditional, T-tail, V-tail, etc. Body Length: The length of the aircraft’s fuselage. Body Shape: The overall shape of the fuselage, like narrow, wide, double-decker, etc. Wing Shape: The shape of the wings, either swept or straight. Nose Shape: The shape of the nose or front of the aircraft. Landing Gear Type: The type of landing gear, like tricycle or taildragger. Cockpit Window Shape: The shape and number of cockpit windows. Color Scheme: Typical color schemes or liveries associated with the aircraft type. Number of Decks: Either single-deck or double-deck (like the Airbus A380). Existence of Winglets: Whether or not the aircraft has winglets at the end of the wings. Existence of Canards: Whether or not the aircraft has canards, small wing-like surfaces located at the front. Propeller or Jet: Indicates if the aircraft is propeller-driven or jet-powered. Number of Seats: An estimate of the seating capacity of the aircraft. Range: The maximum distance the aircraft can travel without refueling. Unique Visual Identifier: Specific structures or features that are unique to a model or series of aircraft. Aircraft Type: Differentiates between commercial, cargo, or military aircraft.
+Example of the second prompt for the FGVC Aircraft dataset which uses GPT-4’s response for the first prompt as part of the prompt:
+Describe the following aircraft by adding one sentence about each attribute for the following aircraft: Airbus A340-200. Return the answer as a python dictionary with the aircraft variant as the key (i.e. remove the manufacturer) and
+
+Dataset
+
+Top 3 attributes selected
+
+Bottom 3 attributes selected
+
+FGVC Cars UCF-101 Oxford-Flowers CUB
+
+Unique visual identifier, presence of canards, tail type.
+Body shape, fender description, spoiler description,
+Equipment used, Posture of person, Interaction info.
+Shape of the flower, Color, shape and number of petals, Texture and description of veins in leaves
+Wings color and shape, Head color and shape, Beak color and shape
+
+Color scheme, model number, commercial or cargo.
+Interior description, brand logo description, color scheme
+Body muscles used, force involved, speed of motion
+Stem color, Color of leaves, Description of sepals
+Color and description of legs, Underparts color, Tail shape and color
+
+Table 1: The top 3 and bottom 3 attributes selected by the attention mechanism in GPT-A-self for 3 different datasets. For UCF101, We see that attention learns to pick visually descriptive sentences like posture and description of objects over temporal information like speed of motion and force applied.
+
+the value is a list of sentences. Rewrite the attribute as a full sentence. Do not include the attributes as keys. Attributes: Manufacturer: The company that produces the aircraft (e.g., Boeing, Airbus). Model Number: Differentiates different aircraft within the same manufacturer. Aircraft Function: The primary role or use of the aircraft, such as commercial (passenger), cargo (freight transport), or military (fighter, bomber, etc). Engine Count: The number of engines on the aircraft. Engine Position: The location of the engines, either under the wings or at the rear of the fuselage. Wing Position: The position of the wings: high-wing, mid-wing, or low-wing design. Tail Type: The shape and type of the tail, such as traditional, T-tail, V-tail, etc. Body Length: The length of the aircraft’s fuselage. Body Shape: The overall shape of the fuselage, like narrow, wide, double-decker, etc. Wing Shape: The shape of the wings, either swept or straight. Nose Shape: The shape of the nose or front of the aircraft. Landing Gear Type: The type of landing gear, like tricycle or taildragger. Cockpit Window Shape: The shape and number of cockpit windows. Color
+
+Scheme: Typical color schemes or liveries associated with the aircraft type. Number of Decks: Either single-deck or double-deck (like the Airbus A380). Existence of Winglets: Whether or not the aircraft has winglets at the end of the wings. Existence of Canards: Whether or not the aircraft has canards, small wing-like surfaces located at the front. Propeller or Jet: Indicates if the aircraft is propeller-driven or jet-powered. Number of Seats: An estimate of the seating capacity of the aircraft. Range: The maximum distance the aircraft can travel without refueling. Unique Visual Identifier: Specific structures or features that are unique to a model or series of aircraft. Aircraft Type: Differentiates between commercial, cargo, or military aircraft.
+The response of the second prompt constitutes the VDT information we utilise as side-information for Airbus A340200 as an example:
+”A340-200”: [ ”The Airbus A340-200 is produced by Airbus, a renowned aircraft manufacturer.”, ”It differentiates itself from other aircraft within the Airbus family through its unique
+
+model number: A340-200.”, ”This aircraft primarily serves a commercial role, typically used for passenger transport.”, ”The Airbus A340-200 is equipped with four engines.”, ”These engines are situated under the aircraft’s wings.”, ”The aircraft features a low-wing design, with wings positioned at the bottom of the fuselage.”, ”It has a traditional tail configuration, common to many large commercial aircraft.”, ”The A340200 has a lengthy fuselage, extending to about 59.4 meters.”, ”The body of the Airbus A340200 is wide-bodied, facilitating a larger passenger capacity.”, ”Its wings are swept back, a design aspect that improves fuel efficiency and performance at high speeds.”, ”The aircraft features a rounded nose shape, contributing to its aerodynamic design.”, ”The Airbus A340-200 uses a tricycle type landing gear, supporting stability during takeoffs and landings.”, ”Its cockpit windows are angular and include six panels, giving pilots a comprehensive view of their surroundings.”, ”Color schemes vary by airline, but the Airbus corporate livery features a predominantly white body with blue and teal accents.”, ”This model is a single-deck aircraft, focusing on width rather than height for passenger capacity.”, ”The A340-200 does not have winglets, differing from some newer Airbus models.”, ”There are no canards present on the Airbus A340-200, instead, it employs a more traditional aircraft design.”, ”As a jet-powered aircraft, the A340-200 uses highspeed jet engines for propulsion.”, ”The A340200 typically accommodates around 260 passengers, though the exact number can vary with the configuration.”, ”With a range of approximately 7,800 nautical miles, the Airbus A340-200 can cover considerable distances without refueling.”, ”The aircraft’s four-engine configuration and lengthy, wide-bodied design are unique visual identifiers of the A340-200 model.”, ”Classified as a commercial aircraft, the Airbus A340200 is primarily used for passenger transportation.” ]
+GPT-4 generally adheres to the python dictionary output requirement in the User prompt, but tends to return additional explanations, motivations or clarifications. To encourage the LLM to only return a Python dictionary as requested, we add the following System prompt:
+You are ChatGPT, a large language model trained by OpenAI. Return only the python dictionary, with no explanation.
+Conversely, OpenAssistant’s [15] output requires man-
+
+ual cleaning and reformatting to get into Python dictionary format. GPT-3.5 performed slightly worse than GPT-4 in terms of adherence to the prompt, as it did not consistently return only a dictionary. In such cases, we simply called the API again. After repeated incorrect format responses, we manually cleaned those cases.
+We primarily utilized GPT-4 via the ChatGPT Plus subscription plan at a cost of $20 since the GPT-4 API was not generally available during most of our experimentation phase. The GPT-4 API cost to create the VDT information for the SUN397 dataset was $14.90, as opposed to $1.94 using the GPT-3.5 API.
+3. Comparing our VDT with GPT3
+In Table 2, we compare the VDT generated by GPT-4 using our prompting technique with that of [19] who used GPT-3 to obtain visual descriptors for different classes of the dataset. Here we notice that, including a prompt step asking the GPT-4 for visual attributes necessary for classifying between images of the classes result in a fixed number of sentences per class, a fixed order guaranteeing that every class is accompanied by as much visual information as possible. By using GPT-4 we also get much richer and more accurate visual descriptions. For example, for the class industrial, our descriptions provide inforrmation about density of buildings, shadow in the image, road accessibility and layout while the description used by [19] is only ‘evidence of human activity’. A similar phenomenon can be observed for DTD dataset. This explains the jump in performance for specialized datasets like DTD and Eurosat over DCLIP.
+4. Generalizability at lower shots
+In Figure 1, we compare the harmonic mean of Base and New accuracies of CLIP-A-self with that of CLIP-A over number of shots = 1, 5, 10, 16. Our CLIP-A-self demonstrates performance improvements at lower shots, outperforming CLIP-A on average by over 1.5%/ for the 1-shot case and over 2.5%/ for the 5-shot case. Our adapter shows higher improvements over CLIP-A in the higher shot scenario because of the number of parameters and the inherent difficulty in identifying the VDT sentences that are discriminative for the current classes in the low shot scenario. For instance, identifying the class from a single image is often difficult because of co-occuring objects, environment, background etc which can be resolved if we have more exmaple images from the same class. The largest improvements are for specialized and fine-grained datasets like StanfordCars, EuroSat Oxford Flowers, DTD and CUB. Oxford-pets and Food-101 results do not improve much because these datasets are relatively easy and already show good performance with default CLIP.
+
+Table 2: Comparing our VDT with that of descriptors from [19] for 2 random classes of datasets DTD and Eurosat
+
+Stratified (DTD) Lined (DTD) Industrial (Eurosat) Forest (Eurosat)
+
+Ours ’The surface feels moderately smooth, with slight roughness due to the layered structure.’
+’There is no distinct pattern, but the layers create a natural, linear visual effect.’ ’The structure is characterized by multiple layers stacked upon each other.’
+’The texture has a two-dimensional feel, with the layers adding a sense of depth.’ ’The density varies, with some layers appearing closely packed while others are more sparse.’
+’The regularity of the texture is defined by the consistent layering.’ ’The texture is opaque, with no transparency between the layers.’ ’There are no significant surface defects, but minor irregularities may occur between layers.’ ’The texture feels moderately smooth to the touch, not too rough nor too sleek.’ ’It exhibits a lined pattern, reminiscent of ruled notebook paper.’ ’The structure of the texture is stratified, with lines arranged one after the other.’ ’The texture has a two-dimensional quality, with no noticeable depth or relief.’ ’The lines are densely packed, leaving little space between them.’ ’The texture displays a high degree of regularity, with the lines evenly spaced and parallel.’
+’The texture is opaque, with no transparency or translucency.’ ’There are no noticeable surface defects, the lines are clean and uninterrupted.’
+’Industrial buildings have texture that is smooth, regular.’ ’Industrial buildings have shape that is rectangular, irregular.’
+’Industrial buildings have size (relative) that is large.’ ’Industrial buildings have pattern that is regular, dense.’ ’Industrial buildings have spectral reflectance that is high in visible spectrum.’ ’Industrial buildings have a shadow that is present (due to high-rise buildings).’ ’Industrial buildings have adjacent land features that is commercial, residential, roads.’ ’Industrial buildings have change over time that is stable.’
+’Industrial buildings have density that is high.’ ’Industrial buildings have proximity to water bodies that is variable.’
+’Industrial buildings have road accessibility that is high.’ ’Forest has texture that is rough.’ ’Forest has shape that is irregular.’
+’Forest has size (relative) that is large.’ ’Forest has pattern that is no pattern.’ ’Forest has spectral reflectance that is high in near-infrared.’ ’Forest has shadow that is present (due to trees).’ ’Forest has adjacent land features that is land, mountains, rivers.’ ’Forest has change over time that is mostly stable.’
+’Forest has density that is high.’ ’Forest has proximity to water bodies that is variable.’
+’Forest has road accessibility that is low.’
+
+DCLIP[19] ’a series of layers’ ’each layer is of a different material’ ’the layers are parallel to each other’ ’the layers may be of different thicknesses’ ’the layers may be of different colors’ ’the layers may have different textures’
+’a series of parallel lines’ ’can be straight or curved’ ’may be of different colors’ ’may be of different widths’ ’may be of different thicknesses’
+’evidence of human activity’
+’a large area of trees’ ’green leaves’
+
+Figure 1: Main results of Base-to-New few shot learning on 12 datasets. CLIP-A-self consistently shows better performance over CLIP-A over different training shots, demonstrating the importance of Visually descriptive text in improving the generalizability of few-shot classifiers for CLIP.
+

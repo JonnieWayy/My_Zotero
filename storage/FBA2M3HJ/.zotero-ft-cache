@@ -1,0 +1,362 @@
+sustainability
+
+Article
+The Skills of Medium-Range Precipitation Forecasts in the Senegal River Basin
+Mekonnen Gebremichael 1,*, Haowen Yue 1 , Vahid Nourani 2,3 and Richard Damoah 4
+
+1 Department of Civil and Environmental Engineering, University of California, Los Angeles, CA 90095, USA; yuehaowen@g.ucla.edu
+2 Center of Excellence in Hydroinformatics and Faculty of Civil Engineering, University of Tabriz, 29 Bahman Ave., Tabriz 5166616471, Iran; vnourani@yahoo.com
+3 Faculty of Civil and Environmental Engineering, Near East University, Near East Boulevard, Via Mersin 10, Nicosia 99138, Turkey
+4 National Aeronautics and Space Administration/Goddard Space Flight Center (NASA/GSFC), Morgan State University, Mail Code: 618, Greenbelt, MD 20771, USA; richard.damoah@nasa.gov
+* Correspondence: mekonnen@seas.ucla.edu
+
+Citation: Gebremichael, M.; Yue, H.; Nourani, V.; Damoah, R. The Skills of Medium-Range Precipitation Forecasts in the Senegal River Basin. Sustainability 2022, 14, 3349. https://doi.org/10.3390/ su14063349
+Academic Editor: Tommaso Caloiero
+Received: 13 February 2022 Accepted: 2 March 2022 Published: 12 March 2022
+Publisher’s Note: MDPI stays neutral with regard to jurisdictional claims in published maps and institutional afﬁliations.
+Copyright: © 2022 by the authors. Licensee MDPI, Basel, Switzerland. This article is an open access article distributed under the terms and conditions of the Creative Commons Attribution (CC BY) license (https:// creativecommons.org/licenses/by/ 4.0/).
+
+Abstract: Reliable information on medium-range (1–15 day) precipitation forecasts is useful in reservoir operation, among many other applications. Such forecasts are increasingly becoming available from global models. The skills of medium-range precipitation forecasts derived from Global Forecast System (GFS) are assessed in the Senegal River Basin, focusing on the watershed its major hydropower dams: Manantali (located in relatively wet, Southern Sudan climate and mountainous region), Foum Gleita (relatively dry, Sahel climate and low-elevation), and Diama (a large watershed covering almost the entire basin, dominated by Sahel climate). IMERG Final, a satellite product involving rain gauge data for bias correction, is used as reference. GFS has the ability capture the overall spatial and monthly pattern of rainfall in the region. However, GFS tends to overestimate rainfall in the wet parts of the region, and slightly underestimate in the dry part. The skill of daily GFS forecast is low over Manantali (Kling-Gupta Efﬁciency, KGE of 0.29), but slightly higher over Foum Gleita (KGE of 0.53) and Diama (KGE of 0.59). For 15-day accumulation, GFS forecast shows higher skill over Manantali (KGE of 0.60) and Diama (KGE of 0.79) but does not change much over Foul Gleita (KGE of 0.51) compared to daily rainfall forecasts. IMERG Early, a satellite-only product available at near-real time, has better performance than GFS. This study suggests the need for further improving the accuracy of GFS forecasts, and identiﬁes IMERG Early as a potential source of data that can help in this effort.
+Keywords: medium-range precipitation forecasts; Senegal; global forecasting system
+1. Introduction Precipitation forecasts are crucial in a number of applications [1–3]. Such forecasts
+are available at global or regional scales [4–7]. Depending on the length of lead time, the forecasts can be grouped into short-range, medium-range, and seasonal. While seasonal forecasting is useful for planning purposes, medium-range and short-range are useful for operational decisions. As water managers consider the use of precipitation forecasts, there is a need for more detailed information on the accuracy of these forecasts. Such information is also important to provide guidance for improvements in the forecasting process. However, validation studies of such forecasts, particularly for short- and medium-range forecasts, are rare in Africa. Yue et al. [8] evaluated the accuracy of Global Forecast System (GFS) medium-range precipitation forecasts in the Niger River Basin, focusing on the watersheds of eight major dams. They used IMERG Final (satellite-gauge merged product) as reference for evaluation. They found that at the daily timescale, the GFS forecasts have good skills over large watersheds (Kainji dam with a watershed area of 1,464,092 km2 and Markala
+
+Sustainability 2022, 14, 3349. https://doi.org/10.3390/su14063349
+
+https://www.mdpi.com/journal/sustainability
+
+Sustainability 2022, 14, 3349
+
+2 of 14
+
+dam with a watershed area of 102,882 km2), but poor skills over smaller watersheds (area under 50,000 km2; Slingue, Goronyo, Bakolori, Jebba, Dadin Kowa, and Lagdo dams). They also reported that aggregating the forecasts from daily to multi-day periods leads to improvements in forecast accuracy, and results in good skills for all watersheds at the 15-day accumulation timescales.
+A number of studies have evaluated the performance of IMERG Final in West Africa. Dezfuli et al. [9,10] reported that IMERG Final is capable of capturing the diurnal cycle of rainfall as well as the propagation of large Mesoscale Convective Systems. Gossett et al. [11] showed that among satellite-only (i.e., no rain gauges) products, IMERG Early has better performance. Satgé et al. [12] reported that CHIRPS and TMPA (the predecessor to IMERG) provided reliable estimates at both daily and monthly timescales, while other satellite products considered (CMORPH, PERSIANN, GSMaP, ARC, and TAMSAT) and all atmospheric reanalysis products considered (MERRA and JRA) were deemed unreliable. Maranan et al. [13] showed that IMERG Final products are able to capture monthly rainfall with a correlation coefﬁcient close to unity.
+In this study, we aim to understand the accuracy of GFS forecasts in the Senegal River Basin using IMERG Final as reference. The Senegal River basin (Figure 1), located in West Africa with a drainage area of 340,000 km2, is shared by four countries: Guinea (accounting for 7% of the basin’s area), Mali (35%), Mauritania (50%), and Senegal (8%) [14]. Most of the basin has a sub-Saharan desert climate [15]. The basin has three distinct topgraphic zones: the mountainous, the valley, and the delta. We speciﬁcally focus on the watersheds of three major dams in the basin (Table 1): the Manantali Dam in Mali (reservoir capacity at 11,270 million m3; drainage area at 29,000 km2), the Foum Gleita Dam in Mauritania (500 million m3; 9500 km2), and the Diama Dam in Senegal (250 million m3; 431,000 km2). Manantali, located in the mountainous and southern part of the watershed, is a multiusage dam with a storage capacity of 11 billion m3 of water, an energy production of 800 GWh/year and an irrigation capacity of 255,000 ha. The Foum Gleita Dam, located further north with relatively low elevation, at a drainage area of about 9500 km2, is primarily irrigation dam. The main functions of the Diama dam, located at the outlet of the Senegal river basin, are to improve irrigation in the valley and delta and to facilitate water supply.
+
+Dams
+Manantali Foum Gleita
+Diama
+
+Country
+Mali Mauritania
+Senegal
+
+Table 1. Major reservoir dams in the Senegal river basin.
+
+Operational Since
+1988 1988 1986
+
+Capacity (Million m3)
+11,270 500 250
+
+Power (MW)
+104
+
+Purpose
+
+Irrigation Hydroelectricity
+
+x
+
+x
+
+x
+
+x
+
+Area of Drainage Basin (km2)
+29,340 9513 43,1603
+
+Elevation of Drainage Basin (m)
+560 128 199
+
+In the following sections, we aim to address the following questions surrounding the accuracy of GFS over the watersheds of three major dams located in the Senegal River Basin?
+(1) What is the skill of the 1-day lead, daily, GFS forecasts? (2) How does the skill vary with lead time and temporal aggregation scale? (3) How does the performance of a near-real time satellite-only product, IMERG Early,
+compare with the performance of GFS?
+
+Sustainability 2022, 14, 3349
+Sustainability 2022, 14, x FOR PEER REVIEW
+
+3 of 14
+3 of 16
+
+Figure 1. Map of SeFingeugrea1l. RMiavpeorf BSeanseigna,l Rwiviethr Btahsien,lwocitahttihoenloocaftisoenleocf tseeldectdedamdasm/sr/reesseerrvvooirisr: s(1:)(M1)anManatanlia, ntali, (2) Foum Gleita, an(d2) (F3o)umDiGalmeitaa,,aanndd(3)thDeiamdar,aainndatghee dbraaisniangse dbaesﬁinns eddefibneydtbhyethdeadmamllooccaattioionsn. s.
+
+2. Data and Meth2.oDdaotaloangdyMethodology
+
+2.1. Data
+
+2.1. Data
+
+The GFS is a global numerical weather prediction system run by the U.S. National
+The GFS is aWgealtohberaSlenrvuicme (eNrWicSa),l awndeiatsthfoerercpasrtepdroidcuticotsnhasvyesateremsolruutionnbofy0.t2h5e° bUy .0S.2.5N°. Wateional
+
+Weather Service (uNseWtheSv)e,rasinond-1i5tsGFfoS rfoerceacassttspwrhoidchuacretsavhaailvabeleasirnecesoJulnuet1io2,n20o09f,0fo.l2lo5w◦inbgya0m.2aj5o◦r . We
+
+use the version-1uF5ipnGgarlFa(dSveeforosfirtohenecaG06sFBtSs)mwsaotdheelillci.thAe-sgaaarureegfeaervmeaneicrlegatebodleepvarsoliudnauctceettshJe[u1Gn6,Fe1S71]f.o2rI,Mec2aE0sR0tsG9, w,FfeionualslleoitswheaivInMagilEaaRblGme ajor upgrade of the GFevSermy 3o0d-melin. Aatsa aspraetifaelrreesnocluetitoon eovf 0a.l1u0°a,tweitthhaedGatFaSlafteonrceycoafsatbso, uwt 3e.5umseontthhes. IWMe ERG
+
+Final (version 06aBck)nsowatleedllgieteth-gataIuMgEeRGmFeinraglehdas pitrsoodwun clitmsit[a1ti6o,n1,7a]n.d IthMerEefRorGe wFeincoanlduisct aavddaii-lable
+
+every 30-min at atiosnpaal taisaselsrsemseonltuevtiaolunatoinfg0th.1e0p◦e,rfwormitahncae dofaGtaFSlautsienngcaynoothfear bsaoteulltit3e-.g5aumgeopnrtohds- . We acknowledge that0u.cI0tM5k°,nEwoRwitGhn aaFsdinCataHalIlRhaPtaeSnscaiystsorefofaewbreonnuctlei3.mCwHieteaIRktsPioS[1ni8s,].aaFvniandilaaltblhyle,ewrdeeafilaoylrsaoetawassseepscastoihanolwdreusthoceltupatiedorndfooirtf-ional
+
+assessment evaluamtainncge othf GeFpSecrofmopramreasnwciethothfeGpFerSfourmsianngceaonf oa tshateelrlistea-toenlllyit(ie.e-.g, naourgaeinpgraougdeu) pctrokdn- own
+
+as CHIRPS as refuecrte, knncoew.nCaHs IMIREPRSG Eisaralyv,awihlaicbhlies advaaiillayblae tatanseapra-rteiaal ltirmees.oTlhuetmioontivoatfio0n.0fo5r◦c,own- ith a
+
+data latency of atsbiimdoeeurliytnga3vIawMilaEebReiGlkitsyE.a[1rl8y]i.s Fitsinpaotlelnyt,iawl uesealfosropaossts-eprsoscehssoinwg othf GeFpSeforfreocramstsagnivceen oitfs GFS compares with the performance of a satellite-only (i.e., no rain gauge) product, known as
+
+IMERG Early, wh2i.c2.hMiesthaovdoaloiglayble at near-real time. The motivation for considering IMERG
+
+Early is its potential IuMsEeRfGorFipnaolssta-tpelrliotecreasinsifanllgporofdGucFtsSafreoruesecdasatssregfeirveennceittosetviamluealteytahevpaeirlafobr-ility.
+mance of GFS precipitation forecasts. The comparison period is 15 June 2019 to 15 June
+
+2.2.
+
+Methodology
+
+2020 to match the period for which the version-15 of GFS model forecasts are available. The spatial resolutions of the forecast and satellite products are different. Our comparison
+
+IMERG Final satellite rainfall products are used as reference to evaluate the perfor-
+
+mance of GFS precipitation forecasts. The comparison period is 15 June 2019 to 15 June
+
+2020 to match the period for which the version-15 of GFS model forecasts are available. The
+
+spatial resolutions of the forecast and satellite products are different. Our comparison is
+
+mostly based on sub-basin (i.e., watershed for each dam) average values, in which case,
+
+we average all the datasets to the sub-basin spatial scale. In cases, where we compare the spatial patterns of rainfall, we resample both IMERG products and CHIRPS to 0.25◦ using
+
+the bilinear interpolation technique to match the spatial resolution of GFS.
+
+Our evaluation includes comparison of spatio-temporal maps and the modiﬁed Kling-
+
+Gupta Efﬁciency KGE [19,20] as evaluation metric:
+
+KGE = 1 − (R − 1)2 + (BR − 1)2 + (γ − 1)2,
+
+Sustainability 2022, 14, 3349
+
+4 of 14
+
+where R is the linear correlation coefﬁcient between the forecast and reference precipitation, BR is the bias ratio between the forecast and observation, and γ is the ration of coefﬁcient of variations between the forecast and reference. The range of KGE is from −∞ to 1. Towner et al. [21] suggested the following classiﬁcations: “Good” (KGE ≥ 0.75), “Intermediate” (0.75 ≥ KGE ≥ 0.5), “Poor” (0.5 ≥ KGE > 0), and “Very poor” (KGE ≤ 0). Similar performance statistics have been used in evaluating rainfall products [22].
+3. Results and Discussion 3.1. Annual Spatial Variability of Rainfall
+Figure 2 presents the spatial map of annual (15 June 2019 to 15 June 2020) rainfall derived from the 1-day lead GFS forecast and satellite products. According to the reference IMERG Final, the annual rainfall shows a distinct south-north gradient, varying from more than 1500 mm in the southern part (Savannah climate, and mountainous) to under 250 mm in the northern part (Sahel climate, and low-elevation). Validated against IMERG Final, the 1-day lead GFS captures well the spatial pattern of rainfall. The correlation between Sustainabitlihtye202s2p, 14a, txiFaOlR PdEiEsRtRrEiVbIEuWtion of annual rainfall derived from the 1-day lead G5FoSf 1a6nd IMERG Final is 0.94.
+
+Figure 2. Spatial mFigaupre o2.fSapantinalumaalproafiannnfaualll r(aiinnfamll (min )m, mfo),rfotrhtheeppeerrioidod15 1Ju5neJu20n19eto21051J9unteo201250, Jaucrnoses 2020, across the Senegal RiverathBnedaS(sedin)neCg.Ha(lIbRRiP)vSeG.r BFaSsin(1, d-edriavyedlferoamd(ati)mIMeE)R.G Final, (b) GFS (1-day lead time), (c) IMERG Early,
+
+3.2. Monthly Cyc3l.2e. MofonRthaliynCfyacllle of Rainfall
+
+Figure 3 parnedsesFanitgetulslrietet3hpprereecstipeinimttasteitohnestepimrroiedeussecrtoise,sfaotmfemacoohnnotthfhltyhleyradinarmfaailwlndafetaerirlvslehddedferso.rmAivctcehoedrd1-ifndrgaoytomleIaMdtEGhRFeGS 1-day lead
+
+GFS and satelliFteinapl,rreaicnifaplliitnatthieornegiponrohdasuoncetsra,inaytseeaasconhwoitfh tahpeeakdianmAugwusat tinearlslhtheredesw.atAer-ccording to
+
+IMERG Final, rasihnedfaclalseisn. Tthheemraeingmioecnhahnaissmofonrethrisapinreycipsiteaatisoon nis twheinthortahwpaerdakmiignratAioun gofuthset in all three
+Inter Tropical Convergence Zone (ITCZ) during summer. The rainy season in the Foum
+watershed casesG.leTitahweamterashiend m(dreycShahaenl icslimmatfeo) ris tohf isshoprtrpeecriiopdit(JautlyiothnroiusgthhOectnoboerr)t,hwwithaarnd migration
+
+of the Inter TropamicpaliltuCdeoonf v10e0rmgmenmcoentZh−o1,nwehe(rIeTasCthZe )radinuy rsienasgonsouvmer tmheeMr.anTahntealirwaainteryshseedason in the Foum Gleita wa(atwreoerutsnShdave4a0dn0n(madhmrcylmimoSanattehh)−1ei.slTohcfellio1mn-dgaearyteplee)ardiiosdGoF(MfS scaayhptothurrroteuspgwheerOlilcotthodebes(erJ)auswoliynthaltahcnyrcaolmeupogflitrhuaidOnefacolfltober), with an amplitude ofin1a0l0l thmreme wamteorsnhetdhc−as1e,swbuht teenredsatso tohveerersatiimnayte stheeamsoonntholyvraeirnftahlleovMer Mananaanntaalli,i watershed
+
+(wet Savannah sclligimhtlyatuen)deirsesotifmlaotenogveerrFpouemriGoldeit(aM, anadyistahlmroosut gunhbiOasecdtoobveerrt)hewlairtgher aDniamaamplitude of
+
+around
+
+400
+
+mmwmateorsnhtehd,−w1h.icThhineteg1r-adteas yboltheathde
+
+wet and dry parts of the watershed.
+GFS captures well the seasonal
+
+cycle
+
+of
+
+rainfall
+
+in all three watershed cases but tends to overestimate the monthly rainfall over Manantali,
+
+slightly underestimate over Foum Gleita, and is almost unbiased over the larger Diama
+
+watershed, which integrates both the wet and dry parts of the watershed.
+
+Sustainability 2022, 14, 3349
+Sustainability 2022, 14, x FOR PEER REVIEW
+
+6 of 16
+
+5 of 14
+
+FFigiugrue r3e. M3o.nMthloyntitmhelysertiiems oef ssuebr-ibeasinoafvseurabg-ebdapsriencipaivtaetiroang(medm)p, froercthipe ipteartioiodn15(Jmunme 2)0,1f9or the period 15 June 2019 twotao1t5e1rJs5uhneJedus2n0oe2f0t2,hd0ree2er0idv,aeddmefsrrionimvtheIeMdSEefRnreGogmFalinRIaiMlv,eGErFBRSaGs(1in-d:F(ai1yn) Mlaelaa,dnGatinmFtaSel)i,,(I(1M2-)dEFRoauGymEleaGralleydi,taat,niamdnCdeH()3,I)RIDMPiSa,EmfoRar.G Early, and CHIRPS, for watersheds of three dams in the Senegal River Basin: (1) Manantali, (2) Foum Gleita, and (3) Diama.
+
+3.3. Annual Rainfall
+3.3.HAerne,nwueaalgRgraeignaftaeltlhe 1-day lead GFS forecasts to annual time scale and compare
+
+the ure
+
+r4e)s.uHAltcsecaorgerda,iiwnnsgtetcoaorgIrMegsErpReogGnadFtiinengatlah,ntenhue1a-aldnpnarueyacillpewiataadttieorGnshFeesSdti-mafovaertreeascgfaersortmasinItMfoalElaRonGvneFruitnahalel t(diFmaimg-e
+
+scale
+
+and
+
+compare
+
+the
+
+wraetseurslhtesdas gisa: i3n00stmcmor(FreousmpoGnleditian),g60a0nmnmua(lDpiarmeac)i,panitdat1i4o00nmemsti(mMaantaenstaflri)o. mTheIMERG Final (Figure 4).
+
+dAaiclycoGrFdSignivgetsoanInMuaElRraGinfFalilnvaall,utehs eofa2n15numaml w(FoautmersGhleeitda)-,a5v3e8rmamge(Draiaimnfaa),lalnodver the dam watersheds
+
+1i,7s9:83m0m0 (mMmana(nFtaoliu). mTheGrelfoeriet,aG),FS60ov0ermestmima(tDesiraaminfaa)ll, bayn2d8%1o4v0e0r tmhemMa(nMantaanliantali). The daily GFS
+watershed (wet climate) but underestimates it in the Foum Gleita watershed by 30% (dry
+cglimivaetes), awnhnileuaatlthrae ilnarfgaelwl vataerlsuheeds (oDfia2m1a5) tmhamt en(cFomoupamsseGs bloetihtac)li,m5a3te8s tmhemGF(SDiama), and 1,798 mm
+
+s(liMghatlny aunndtearleis)t.imTahteerraeinfofarlleb,yG1F1%S. overestimates rainfall by 28% over the Manantali watershed
+
+(wet climate) but underestimates it in the Foum Gleita watershed by 30% (dry climate),
+
+Sustainability 202w2, h14i,lxeFOaRt PtEhEeR RlaEVrgIEeWwatershed (Diama) that encompasses both climates the GFS s7liogf h16tly underestimate rainfall by 11%.
+
+Figure 4. WateF2rs0ig2hu0e,rdefo-4ra.veWaecarhtaeogrfsehtdhedea-SanevnneeurgaagalledRpiravenecnriupBaailtsaipntr’iesocminpait(jaomtriomdna)m(mfso,mrd)etfrhoiveretpdheefrrpoiomerdiot,hd1e, 511-5JduJauynneleea22d0011G99FtSotof1o51re5JcuaJnsuetne 2020, for each oafnthdediSffeenreengtaslatRelilviteerpBreacsipinit’astimonapjorordduactms. s, derived from the 1-day lead GFS forecast and different satellite precipitation products.
+3.4. Daily Time Series
+Figure 5 presents the daily time series of watershed-averaged rainfall, derived from 1-day lead GFS and satellite products. According to IMERG Final, the time series of daily rainfall at the Manantali watershed is different from the Foum Gleita and Diama watersheds. The Manantali watershed experiences frequent heavy rains during the rainy season with a coefficient of variation (CV) of 1.18, while both the Foum Gleita and Diama water-
+
+Sustainability 2022, 14, 3349
+
+6 of 14
+
+3.4. Daily Time Series
+Figure 5 presents the daily time series of watershed-averaged rainfall, derived from 1-day lead GFS and satellite products. According to IMERG Final, the time series of daily rainfall at the Manantali watershed is different from the Foum Gleita and Diama watersheds. The Manantali watershed experiences frequent heavy rains during the rainy season with a coefﬁcient of variation (CV) of 1.18, while both the Foum Gleita and Diama watersheds experience less-frequent and moderate rains with a CV of 2.41 and 1.39, respectively. The Sustainability 2022, 14, x FOR PEER REGVFIESWcaptures well the time series with comparable CV, however, it shows some mism8atocfh1e6s in the peak rain rates.
+
+Figure 5. Daily time series of watershed-averaged precipitation total (mm) for the wet period, derived Ffirgoumreva5r.iDouasilyprteicmipeitsaetriioens porfowdautcetrss, hfoerdf-oauverrdaagmedwparteecrisphietadtsioinn tthoetaSle(nmemga)l fRoirvtehreBwaseint .pTehrieodFi,gduer-e rFaiivlgseuodrsefhraoolwmsosvstahhroeiwocuossetfhpﬁerceicceoinpetfiftoaifctiiveoannrtipaortfioovdnaur(ciCatstVi,o)fnoars(CfaoVum)readasasaumrmeweoaaftsetuerrmsehpoeodfrstaeilmnvptahoreiraaStlieovnnae.rgiaaltiRoniv.er Basin. The
+3.5. KGE Statistics 3.5. KFGiEguSrteat6isptircessents the performance statistics of various precipitation products (with respecFt itgouIMreE6RpGreFsinenalt)s, tinheteprmersfoorfmKalinncge-GstuaptitsatiEcsfﬁocfievnacryio(KusGpEr),eBciipasitRataitoino (pBrRo)d, ucoctrsre(lwatiitohn r(eRs)p,evcatrtioabIMilitEyRrGatFioin(γal)),,ainndterromost mofeKanlinsgq-uGaurepetarrEofrfnicoiermncayli(zKeGd Eb)y, BreiafesrRenactieop(rBeRci)p, citoartrioe-n lmatieoann((RN),RvMarSiEab).ilTithyerKatGioE(oγf),thaned1-rdoaoyt mleaedan, dsaqiulya,rGe FerSroforrneocarmstaisliz0e.2d9b(yMraenfearnetnaclie),p0r.e5-3 c(iFpoituamtioGnlmeiteaa)n, a(nNdR0M.6S5E()D. Tiahme aK).GTEhoefGthFeS1s-kdiallyisletahde,redfaoirley,“GpoFoSrf”oroevcearsthise 0m.2o9u(nMtaainaonu-s tanlid), w0.e5t3w(FaoteurmsheGdle(Mitaa)n, aanntdali0).,6w5 h(Dileiaimt ias)“. iTntheermGeFdSiastkei”lloivsetrhtehreefdorrye w“patoeorrs”heodve(Frotuhme mGoleuintat)aiannoduos vaenrdthweeltawrgaetewrsahterdsh(Medan(Daniatmalia)),.wThieleloitwisK“GinEtefromr ethdeiaMtea”noavnetraltihwe adtreyrswhaedtcearsnhbeed a(FttoruibmutGedleittoa)loawndpoevrefor rtmhealnacregse iwnaatlelrcshoemdp(oDnieanmtsa)o. fTKheGlEow: hKigGhEbfioarst(hBeRM=an1.a3n7-), tali watershed can be attributed to low performances in all components of KGE: high bias
+(BR = 1.37), low correlation (R = 0.50), and low variability ratio (γ = 0.68), indicating that
+the GFS over the wet and mountainous part of the watershed is characterized by large
+systematic and random error. For the Foum Gleita watershed, the KGE value (0.53) is
+mainly affected by both bias (BR = 0.75) and low correlation (R = 0.62). For the Diama
+
+Sustainability 2022, 14, 3349
+
+7 of 14
+
+low correlation (R = 0.50), and low variability ratio (γ = 0.68), indicating that the GFS over the wet and mountainous part of the watershed is characterized by large systematic and random error. For the Foum Gleita watershed, the KGE value (0.53) is mainly affected by both bias (BR = 0.75) and low correlation (R = 0.62). For the Diama watershed, the KGE Sustainability 2022, 14, x FOR PEER REVvIEaWlue (0.65) is mainly affected by the low correlation (R = 0.66). The root-mean-square-error9 of 16 of the GFS is high at 196% of the mean rainfall at the Foum Gleita watershed, whereas it is relatively low at 120% and 108% at the Manantali and Diama watersheds, respectively.
+
+FigFuirgeur6e. 6S.uSmummmarayryooff ppeerrffoorrmmaanncecestsattaisttiisctsic(Ks l(iKngli-nGgu-pGtauEpftﬁaciEefnfciyciKenGcEy, BKiGasER,aBtiioasBRR,actoiroreBlaRti,ocnorrelationR,Rv,arviaabriialibtyilriatytioraγt,iaonγd,roaontdmreoaontsmqueaarne esrqrouranroeremrarolizrendobrymraefleizreendcebpyrerceifpeirteantiocen mpreeacnipNiRtaMtiSoEn) mean NRoMf 1S-Ed)aoyfle1a-ddaGyFlSeafodreGcFasStsfoarnedcadsitfsfearenndt dsaiftefellrietentprsoadteulclittse, fporroddiuffcetrse,nftodradmiffweraetenrtshdeadms iwnattheersheds in tSheeneSgeanleRgiavlerRBivaesirnB. asin.
+3.6. Dependence of Forecast Performance on Precipitation Rate 3.6. DepFeingduernec7e pofreFsoernetcsastht ePesrcfaotrtmerapnlocte oofn1P-dreacyiplietaadtioGnFRSaftoerecasts against daily IMERG
+FinFailgruarien r7atperse. sAetnatlsl sthites,scthaettGerFpSlotetnodfs 1to-doavyerleesatidmGatFeSligfhotrercaainsstsanadgauinndset rdesatiilmyaItMe ERG Finhaelarvayinrarinaste. s. At all sites, the GFS tends to overestimate light rains and underestimate heavy rains.
+3.7. Effect of Lead Time on Forecast Performance
+Figure 8 presents the KGE and its components for 5-day total rainfall forecast of GFS for three different lengths of lead time: 1–5 day, 6–10 day, and 10–15 day. The effect of lead time on forecast skill is mixed. At the wet and mountainous watershed of Manantali, the forecast skill decreases with increasing lead time. Whereas, at the dry watershed of Foum Gleita, the forecast skill increases slightly with increasing lead time. At the large Diama watershed, the forecast skill remains the same across all lead times. We note (see Section 3.4) that daily rainfall has larger fluctuation at Foum Gleita watershed (CV of 2.66) than at Manantali watershed (CV of 1.18), suggesting that the effect of lead time on forecast skill may depend on the temporal variability of rainfall.
+
+SSuussttaaiinnaabbiillity 2022, 1144,, x33F4O9R PEER REVIEW
+
+10 of 16 8 of 14
+
+Figure 7. Scatterplot of watershed-averaged daily precipitation forecast obtained from 1-day lead FGigFuSrefo7r. eSccaastttesrapgloatinosftwcaotrerresshpeodn-advienrgagveadludeasilfyropmrecIiMpiEtaRtiGonFfionraelc,aostveorbteaaincheddfarmomw1a-dtearyshleeaddin the GSeSFneSnegefoagrlaeRlciRavsietvsreBaragBsaaiinns.isnt.corresponding values from IMERG Final, over each dam watershed in the
+3.7. Effect of Lead Time on Forecast Performance
+Figure 8 presents the KGE and its components for 5-day total rainfall forecast of GFS for three different lengths of lead time: 1–5 day, 6–10 day, and 10–15 day. The effect of lead time on forecast skill is mixed. At the wet and mountainous watershed of Manantali, the forecast skill decreases with increasing lead time. Whereas, at the dry watershed of Foum Gleita, the forecast skill increases slightly with increasing lead time. At the large Diama watershed, the forecast skill remains the same across all lead times. We note (see
+
+Sustainability 2022, 14, 3349
+
+9 of 14
+
+Sustainability 2022, 14, x FOR PEER RSEeVcItEiWon 3.4) that daily rainfall has larger ﬂuctuation at Foum Gleita watershed (CV o11f 2o.f6166) than at Manantali watershed (CV of 1.18), suggesting that the effect of lead time on forecast skill may depend on the temporal variability of rainfall.
+
+FFiigguurree 88.. KKlliinngg--GGuuppttaa EEffﬁficciieennccyy ((KKGGEE)) aanndd iittss ccoommppoonneennttss ffoorr 55--ddaayy ttoottaall rraaiinnffaallll ffoorreeccaasstt ooff GGFFSS ffoorr tthhrreeee ddiiffffeerreenntt lleeaadd ttiimmee ppeerriiooddss,, 11––55 ddaayy,, 55––1100 ddaayy,, aanndd 1100––1155 ddaayy,,aanndd oovveerr tthhee sseelleecctteedd ddaamm wwaatteerrsshheeddss ooff tthhee SSeenneeggaall RRiivveerr BBaassiinn..
+3.8. Effect of Temporal Aggregation Scale on Forecast Performance 3.8. Effect of Temporal Aggregation Scale on Forecast Performance
+Figure 9 presents the performance of 15-day accumulated GFS forecasts. We obtained the 15F-idguayrea9ccpurmesuenlattsetdhefopreercfaosrtmbyanscuemomf 1i5n-gdauypatchceudmauillyatfeodreGcaFsStsfoartevcaarsitos.uWs leeaodbttaimineeds, sthtaert1i5n-gdafryoamcc1u-mdauylaleteaddfaolrletchaestwbayystuom1m5-dinagyulepatdh.eAdgagilryegfoarteincagstthseatfovraerciaosutss lferaodmtidmaielsy, fsotarertciansgtsfrtoom151--ddaayyalcecaudmalulltahteedwfaoyretcoa1st5s-dhaays liemapdr.oAvgegdrethgeatpinegrfothremfaonrececaosftsGfFroSmfodratihlye wfoertecMasatnsatnot1a5li-dwaaytearcschuemdualnatdedthfeorlaecrgasetrsDhiaasmima pwraotveerdshtehde, pwehrfeorremasanthceeroefisGnFSotfomrutchhe iwmeptrMovaenmanentatlfiowr athteerdshryedwaantedrsthheedl,aFroguermDGialemitaa.wOavteerrsMheadn,awnthaelirewaastethrsehreedi,stnhoet1m5-duachy improvement for the dry watershed, Foum Gleita. Over Manantali watershed, the 15-day accumulated forecast has shown increases in KGE (0.60 compared to 0.29 at daily timescale) and correlation (0.90 compared to 0.50 at daily), but no change in bias ratio (BR = 1.38). Over the Diama watershed, the 15-day accumulated rainfall has similarly shown
+
+Sustainability 2022, 14, 3349
+
+10 of 14
+
+accumulated forecast has shown increases in KGE (0.60 compared to 0.29 at daily timescale) and correlation (0.90 compared to 0.50 at daily), but no change in bias ratio (BR = 1.38). Over the Diama watershed, the 15-day accumulated rainfall has similarly shown increases in KGE (0.79 compared to 0.65 at daily) and correlation (0.87 compared to 0.66 at daily). Sustainability 2022, 14, x FOR PEER RETVhIEeWrefore, increasing the temporal aggregation has mixed effect on the skill of the forecast:13 of 16 it increases the skills over some watersheds but does not changes the skills over some other watersheds.
+
+FFigiguurree99.. SSaammee aassffoorrFFigiguurere7 b7ubtufot rfo1r5-1d5a-ydaacycuamccuulmatiuolna.tion.
+3.10. Performance of GFS If the Reference Product Is Changed from IMERG Final to CHIRPS We acknowledge that the reference dataset used in our evaluation (i.e., IMERG Final)
+has its own estimation errors. We conducted additional assessment to evaluate the per-
+
+Sustainability 2022, 14, 3349
+
+11 of 14
+
+We point out that the effect of temporal aggregation scale on forecast skill depends on the relative magnitude of two error sources with different error characteristics. Increasing temporal aggregation scale involves including forecasts with longer lead times. Forecasts at longer lead times may have larger errors (e.g., Manantali) or smaller errors (e.g., Foum Gleita) compared to those short-lead times (see Section 3.7). On the other hand, averaging the forecasts at larger temporal scales results in averaging out some of the random errors. Our results indicate that at the wet Manantali watershed, the effect of averaging outweighs the effect of lead time, as the 15-day accumulated GFS has much better skill (KGE of 0.60) compared to that the daily forecast (KGE of 0.29). However, at the Foum Gleita watershed, the effect of averaging balances out the effect of lead time, resulting in a similar KGE at both timescales. At the large Diama watershed (which covers diverse climate), the KGE shows modest increase in KGE at larger temporal aggregation timescale.
+3.9. Comparison of the Performances of IMERG Early and GFS
+As discussed in the preceding sections, the skills of 1-day lead, daily, GFS forecasts are poor for Manantali but medium for Foum Gleita and Diama Dams, indicating the need for further improving the accuracy of GFS forecasts. One method to improve GFS forecast skill is through post-processing of GFS using rainfall estimates that have relatively better accuracy and are available in near-real time. Satellite-only products, such as IMERG Early, are viable options as they are available in near-real time. We assessed how the performance of IMERG Early compare to the performance of GFS. In terms of capturing the spatial and monthly variability of rainfall, IMERG Early has comparable performance with GFS (see Figures 2 and 3). However, there are differences between the two in terms of performance statistics. As shown in Figure 4, IMERG Early underestimates rainfall by 11% over the wet and mountainous Manantali watershed (where GFS overestimates by 37%), estimates rainfall with almost no bias over Foum Gleita (where GFS underestimates by 30%), and overestimates rainfall by 10% over the larger Diama watershed (where GFS underestimates by 11%). The KGE of IMERG Early is above 0.75 (i.e., “good skill”) and is higher than that of GFS at all three watersheds (Figure 6). IMERG Early outperforms GFS in all components of KGE, that is, bias, correlation, and variability ratio. Therefore, our analysis indicates that IMERG Early has better capabilities than GFS, and is therefore worthy of consideration as input into post-processing techniques aimed at improving the accuracy of GFS forecasts.
+3.10. Performance of GFS If the Reference Product Is Changed from IMERG Final to CHIRPS
+We acknowledge that the reference dataset used in our evaluation (i.e., IMERG Final) has its own estimation errors. We conducted additional assessment to evaluate the performance of GFS using CHIRPS rainfall products as reference. Table 2 shows the performance statistics of GFS for different lead times, using IMERG FINAL and CHIRPS, separately, as reference. The overall magnitude of GFS performance (as well as the variability of the performance across watersheds) is similar when either rainfall product is used as a reference. Therefore, our results show that the overall performance of GFS remains the same if the reference product were to be changed from IMERG Final to CHIRPS, indicating the robustness of IMERG Final as reference product.
+
+Sustainability 2022, 14, 3349
+
+12 of 14
+
+Table 2. Performance statistics of daily GFS forecast for various lead times (1-day, 5-day, 10-day, and 15-day) using IMERG Final (CHIRPS) rainfall products as reference, in terms of correlation, bias ratio, and NRMSE.
+
+Lead Time of GFS Forecast
+1-day 5-day 10-day 15-day
+1-day 5-day 10-day 15-day
+1-day 5-day 10-day 15-day
+
+Correlation
+0.50 (0.56) 0.43 (0.44) 0.23 (0.41) 0.09 (0.20)
+0.62 (0.58) 0.34 (0.44) 0.22 (0.29) 0.42 (0.30)
+0.66 (0.68) 0.60 (0.67) 0.36 (0.44) 0.31 (0.30)
+
+Bias Ratio
+Manantali 1.37 (1.22) 1.22 (1.09) 1.39 (1.24) 1.61 (1.44) Foum Gleita 0.75 (1.05) 0.67 (0.93) 0.78 (1.08) 0.70 (0.97)
+Diama 0.94 (1.12) 0.81 (0.96) 0.94 (1.12) 0.93 (1.10)
+
+KGE
+0.29 (0.46) 0.31 (0.39) 0.07 (0.31) -0.13 (0.07)
+0.53 (0.55) 0.06 (0.12) 0.19 (0.28) 0.33 (0.27)
+0.65 (0.66) 0.55 (0.65) 0.34 (0.42) 0.30 (0.29)
+
+NRMSE (%)
+120 (96) 119 (102) 145 (111) 184 (150)
+197 (234) 287 (327) 273 (295) 238 (293)
+108 (109) 116 (105) 144 (137) 148 (153)
+
+4. Conclusions
+In this study, we assessed the accuracy of medium-range (1-day to 15-day lead time) forecasts available from the Global Forecast System (GFS) over the watersheds of three dams (Manantali, Foum Gleita, and Diama) in the Senegal River Basin. The watershed of Manantali dam is mountainous and located in a wet climate, with annual rainfall of 1400 mm during the study period. Foum Gleita, on the other hand is located in the dry Sahel, with annual rainfall of 300 mm during the study period, and has a low-elevation terrain. Diama is a very large watershed that covers almost the entire basin, with annual rainfall of 600 mm during the study period. We used IMERG Final, a satellite-gauge merged product, as reference for evaluation.
+The skill of the 1-day lead, daily, GFS forecast is low in the Manantali (Kling-Gupta Efﬁciency KGE of 0.29) and relatively high in the Foum Gleita and Diama (KGE of 0.53) and Diama watersheds (KGE of 0.59). The lower KGE over Manantali is due to the high overestimation bias (overestimation by 37%) in the GFS forecasts and low correlation coefﬁcient (R = 0.50) between the daily time series of 1-day lead GFS forecast and IMERG Final.
+Increasing the lead time has mixed effect on the daily GFS forecast skill, depending on watershed. With increasing lead time, the forecast skill decreases (Manantali), or slightly increases (Foum Gleita), or remains unaffected (Diama). Aggregating the forecasts from daily to 15-day accumulation also has similar mixed effect: it increases the performance of the GFS forecasts at the Manantali (KGE of 0.60) and Diama (KGE of 0.79) watersheds, but does not change it at the Foum Gleita (KGE of 0.51).
+We conclude that there is a need for improving the accuracy of GFS forecasts, especially at short temporal scales (such as daily) and particularly over the mountainous and wet parts of the river basin. One possible method worthy of investigation is the use of post-processing techniques based on IMERG Early, as this study has shown that IMERG Early has better performance compared to GFS in terms of a suite of different performance metrics.
+
+Sustainability 2022, 14, 3349
+
+13 of 14
+
+Author Contributions: Manuscript writing and conceptual design, M.G.; data processing and analysis, H.Y.; methodology, V.N.; contribution to manuscript text, R.D. All authors have read and agreed to the published version of the manuscript.
+Funding: This research was funded by from NASA Precipitation Measurement Mission, grant number 80NSSC19K0688.
+Data Availability Statement: We acknowledge the National Center for Atmospheric Research (NCAR) for providing public access to the GFS rainfall forecast data products (https://rda.ucar.edu/ datasets/ds084.1/ (accessed on 11 March 2022)), NASA for providing public access to IMERG Final and IMERG Early rainfall data products (https://disc.gsfc.nasa.gov (accessed on 11 March 2022)), and the University of California Santa Barbara’s (UCSB) Climate Hazard’s group for providing public access to CHIRPS rainfall data (https://www.chc.ucsb.edu/data (accessed on 11 March 2022).
+Conﬂicts of Interest: The authors declare that they have no conﬂict of interest.
+References
+1. Pandya, R.; Hodgson, A.; Hayden, M.H.; Akweongo, P.; Hopson, T.; Forgor, A.A.; Yoksas, T.; Dalaba, M.A.; Dukic, V.; Mera, R.; et al. Using weather forecasts to help manage meningitis in the West African Sahel. Bull. Am. Meteorol. Soc. 2015, 96, 103–115. [CrossRef]
+2. Koppa, A.; Gebremichael, M.; Zambon, R.C.; Yeh, W.W.G.; Hopson, T.M. Seasonal Hydropower Planning for Data-Scarce Regions Using Multimodel Ensemble Forecasts, Remote Sensing Data, and Stochastic Programming. Water Resour. Res. 2019, 55, 8583–8607. [CrossRef]
+3. Alexander, S.; Yang, G.; Addisu, G.; Block, P. Forecast-informed reservoir operations to guide hydropower and agriculture allocations in the Blue Nile basin, Ethiopia. Int. J. Water Resour. Dev. 2021, 37, 208–233. [CrossRef]
+4. National Centers for Environmental Prediction/National Weather Service/NOAA/U.S. Department of Commerce. NCEP GFS 0.25 Degree Global Forecast Grids Historical Archive. Research Data Archive at the National Center for Atmospheric Research, Computational and Information Systems Laboratory. 2015. Available online: https://rda.ucar.edu/datasets/ds084.1/ (accessed on 11 March 2022).
+5. Saha, S.; Moorthi, S.; Wu, X.; Wang, J.; Nadiga, S.; Tripp, P.; Behringer, D.; Hou, Y.-T.; Chuang, H.-Y.; Iredell, M.; et al. The NCEP climate forecast system version 2. J. Clim. 2014, 27, 2185–2208. [CrossRef]
+6. Dutra, E.; Diamantakis, M.; Tsonevsky, I.; Zsoter, E.; Wetterhall, F.; Stockdale, T.; Richardson, D.; Pappenberger, F. The extreme forecast index at the seasonal scale. Atmosph. Sci. Lett. 2013, 14, 256–262. [CrossRef]
+7. JMA. Outline of the Operational Numerical Weather Prediction at the Japan Meteorological Agency (Appendix to WMO Numerical Weather Prediction Progress Report). Japan Meteorological Agency, 47p. 2019. Available online: https://www.jma.go. jp/jma/jma-eng/jma-center/nwp/outline2019-nwp/index.htm (accessed on 11 March 2022).
+8. Yue, H.; Gebremichael, M.; Nourani, V. Performance of the global forecast system’s medium-range precipitation forecasts in the Niger River Basin. Hydrol. Earth Syst. Sci. 2021, 2021, 1–31. [CrossRef]
+9. Dezfuli, A.K.; Ichoku, C.M.; Huffman, G.J.; Mohr, K.I.; Selker, J.S.; Van De Giesen, N.; Hochreutener, R.; Annor, F.O. Validation of IMERG precipitation in Africa. J. Hydrometeorol. 2017, 18, 2817–2825. [CrossRef] [PubMed]
+10. Dezfuli, A.K.; Ichoku, C.M.; Mohr, K.I.; Huffman, G.J. Precipitation characteristics in West and East Africa from satellite and in situ observations. J. Hydrometeorol. 2017, 18, 1799–1805. [CrossRef]
+11. Gossett, M.; Alcoba, M.; Roca, R.; Cloche, S.; Urbani, G. Evaluation of TAPEER daily estimates and other GPM-era products against dense gauge networks in West Africa, analysing ground reference uncertainty. Q. J. R. Meteorol. Soc. 2018, 144, 255–269. [CrossRef]
+12. Satgé, F.; Defrance, D.; Sultan, B.; Bonnet, M.P.; Seyler, F.; Rouché, N.; Paturel, J.E. Evaluation of 23 gridded precipitation datasets across West Africa. J. Hydrol. 2020, 581, 124412. [CrossRef]
+13. Maranan, M.; Fink, A.H.; Knippertz, P.; Amekudzi, L.K.; Atiah, W.A.; Stengel, M. A process-based validation of GPM IMERG and its sources using a mesoscale rain gauge network in the West African forest zone. J. Hydrometeorol. 2020, 21, 729–749. [CrossRef]
+14. Gaye, C.B.; Diaw, M.; Malou, R. Assessing the impacts of climate change on water resources of a West African trans-boundary river basin and its environmental consequences (Senegal River Basin). Sci. Cold Arid. Reg. 2013, 5, 0140–0156. [CrossRef]
+15. Djaman, K.; Balde, A.B.; Rudnick, D.R.; Ndiaye, O.; Irmak, S. Long-term trend analysis in climate variables and agricultural adaptation strategies to climate change in the Senegal River Basin. Int. J. Clim. 2017, 37, 2873–2888. [CrossRef]
+16. Huffman, G.J.; Stocker, E.F.; Bolvin, D.T.; Nelkin, E.J.; Jackson, J. GPM IMERG Final Precipitation L3 1 Day 0.1 Degree x 0.1 Degree V06; Savtchenko, A., Ed.; Goddard Earth Sciences Data and Information Services Center (GES DISC): Greenbelt, MD, USA, 2019. [CrossRef]
+17. Huffman, G.J.; Stocker, E.F.; Bolvin, D.T.; Nelkin, E.J.; Jackson, J. GPM IMERG Early Precipitation L3 1 Day 0.1 Degree x 0.1 Degree V06; Savtchenko, A., Ed.; Goddard Earth Sciences Data and Information Services Center (GES DISC): Greenbelt, MD, USA, 2019. [CrossRef]
+
+Sustainability 2022, 14, 3349
+
+14 of 14
+
+18. Funk, C.; Peterson, P.; Landsfeld, M.; Pedreros, D.; Verdin, J.; Shukla, S.; Husak, G.; Rowland, J.; Harrison, L.; Hoell, A.; et al. The climate hazards infrared precipitation with stations—A new environmental record for monitoring extremes. Sci. Data 2015, 2, 150066. [CrossRef] [PubMed]
+19. Gupta, H.V.; Kling, H.; Yilmaz, K.K.; Martinez, G.F. Decomposition of the mean squared error and NSE performance criteria: Implications for improving hydrological modelling. J. Hydrol. 2009, 377, 80–91. [CrossRef]
+20. Kling, H.; Fuchs, M.; Paulin, M. Runoff conditions in the upper Danube basin under an ensemble of climate change scenarios. J. Hydrol. 2012, 424, 264–277. [CrossRef]
+21. Towner, J.; Cloke, H.I.; Zsoter, E.; Flamig, Z.; Hoch, J.M.; Bazo, J.; de Perez, E.C.; Stephens, E.M. Assessing the performance of global hydrological models for capturing peak river ﬂows in the Amazon basin. Hydrol. Earth Syst. Sci. 2019, 23, 3057–3080. [CrossRef]
+22. Shahid, M.; Rahman, K.U.; Haider, S.; Gabriel, H.F.; Khan, A.K.; Pham, Q.B.; Mohammadi, B.; Linh, N.T.T.; Anh, D.T. Assessing the potential and hydrological usefulness of the CHIRPS precipitation dataset over a complex topography in Pakistan. Hydrol. Sci. J. 2021, 66, 1664–1684. [CrossRef]
+

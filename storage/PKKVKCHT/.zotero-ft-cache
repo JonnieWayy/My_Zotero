@@ -1,0 +1,79 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2307.10159
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 19 Jul 2023]
+Title: FABRIC: Personalizing Diffusion Models with Iterative Feedback
+Authors: Dimitri von Rütte , Elisabetta Fedele , Jonathan Thomm , Lukas Wolf
+Download a PDF of the paper titled FABRIC: Personalizing Diffusion Models with Iterative Feedback, by Dimitri von R\"utte and 3 other authors
+Download PDF
+
+    Abstract: In an era where visual content generation is increasingly driven by machine learning, the integration of human feedback into generative models presents significant opportunities for enhancing user experience and output quality. This study explores strategies for incorporating iterative human feedback into the generative process of diffusion-based text-to-image models. We propose FABRIC, a training-free approach applicable to a wide range of popular diffusion models, which exploits the self-attention layer present in the most widely used architectures to condition the diffusion process on a set of feedback images. To ensure a rigorous assessment of our approach, we introduce a comprehensive evaluation methodology, offering a robust mechanism to quantify the performance of generative visual models that integrate human feedback. We show that generation results improve over multiple rounds of iterative feedback through exhaustive analysis, implicitly optimizing arbitrary user preferences. The potential applications of these findings extend to fields such as personalized content creation and customization. 
+
+Comments: 	14 pages, 7 figures
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV)
+MSC classes: 	I.2.10
+Cite as: 	arXiv:2307.10159 [cs.CV]
+  	(or arXiv:2307.10159v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2307.10159
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Dimitri von Rütte [ view email ]
+[v1] Wed, 19 Jul 2023 17:39:39 UTC (9,620 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled FABRIC: Personalizing Diffusion Models with Iterative Feedback, by Dimitri von R\"utte and 3 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2307
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

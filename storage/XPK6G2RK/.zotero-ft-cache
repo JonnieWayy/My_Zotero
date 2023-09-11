@@ -1,0 +1,430 @@
+ChatHome: Development and Evaluation of a Domain-Specific Language Model for Home Renovation
+Cheng Wen, Xianghui Sun, Shuaijiang Zhao, Xiaoquan Fang, Liangyu Chen, Wei Zou Beike Inc., Beijing, China
+{wencheng008,sunxianghui002,zhaoshuaijiang001, fangxiaoquan001,chenliangyu003,zouwei026}@ke.com
+
+arXiv:2307.15290v1 [cs.CL] 28 Jul 2023
+
+Abstract
+This paper presents the development and evaluation of ChatHome, a domainspecific language model (DSLM) designed for the intricate field of home renovation. Considering the proven competencies of large language models (LLMs) like GPT-4 and the escalating fascination with home renovation, this study endeavors to reconcile these aspects by generating a dedicated model that can yield high-fidelity, precise outputs relevant to the home renovation arena. ChatHome’s novelty rests on its methodology, fusing domain-adaptive pretraining and instruction-tuning over an extensive dataset. This dataset includes professional articles, standard documents, and web content pertinent to home renovation. This dual-pronged strategy is designed to ensure that our model can assimilate comprehensive domain knowledge and effectively address user inquiries. Via thorough experimentation on diverse datasets, both universal and domain-specific, including the freshly introduced "EvalHome" domain dataset, we substantiate that ChatHome not only amplifies domain-specific functionalities but also preserves its versatility.
+1 Introduction
+In the vibrant arena of artificial intelligence, the development of large-scale language models such as GPT4(OpenAI, 2023b) and ChatGPT(OpenAI, 2023a) has triggered profound shifts in natural language processing tasks, exhibiting an impressive degree of competence in myriad tasks. Chinese open-source large language models also grow rapidly, such as ChatGLM(Zeng et al., 2022),
+
+Baichuan(Technology, 2023), BELLE(Ji et al., 2023) . While some works have made notable strides in several domains, including healthcare(Wang et al., 2023b), finance(Wu et al., 2023), and law(Huang et al., 2023a)(Cui et al., 2023), the specific domain of home renovation remains relatively unexplored.
+Home renovation is a multifaceted field that demands a comprehensive grasp of both aesthetics and functionality. It extends beyond mere selection of furniture or color palette identification. Rather, it necessitates a profound understanding of architectural nuances, spatial design principles, human-centric design considerations, and prevailing trends, among other elements.
+However, mainstream models like ChatGPT, despite their general capabilities in various tasks, often fail to generate domain-specific content with high fidelity and accuracy, as observed in the previous examples of legal(Huang et al., 2023a; Cui et al., 2023) and medical (Wang et al., 2023a; Wang et al., 2023b)domains. Therefore, to overcome these shortcomings and to cater to the unique demands of the home renovation sector, there is an urgent need for a specialized language model tailored to this domain.
+This study proposes ChatHome, a language model specifically designed for home renovation. Our approach involves two steps: first, postpretraining a generic model using a wide-ranging home renovation dataset, encompassing professional articles, standard documents, and web content. Second, implementing an instruction-tuning strategy with a dataset of question-answer pairs, generated using home renovation-based prompts.
+This research aims to show that post-pretraining and fine-tuning large language models improves their performance in specific domains. While enhancing the capabilities of specific domains, we also pay attention to the changes in the general capabilities of the model and conduct detailed evalu-
+
+ations, which will be described in detail in subsequent sections.
+In summary, there are two main contributions of this paper:
+• We established ChatHome, a fine-tuned LLM focused on the home renovation domain.
+• We introduced a domain dataset and conducted comprehensive experiments on both universal and domain datasets to verify the effectiveness of our model.
+2 Related work
+The training of a LLM usually includes two stages: pre-training and instruction fine-tuning. Through pre-training on a large-scale corpus, the LLM can obtain basic language understanding and generation capabilities. The instruction fine-tuning stage is to enable the model to have the ability to understand human instructions, and can also improve the generalization ability of the model on unseen tasks(Ouyang et al., 2022)(Zhao et al., 2023). However, domain-specific tasks often involve complex concepts, technical terminology, and complex relationships between entities(Ling et al., 2023). Without targeted guidance, large language models can severely hallucinate. This occurs because LLMs aim to predict the most likely sequence of words given an input, rather than provide a definitive answer based on structured knowledge.
+Recently, a lot of work related to large language adaptation has emerged in the fields of medical(Wang et al., 2023b), financial(Wu et al., 2023)(Yang et al., 2023) and legal field(Cui et al., 2023)(Huang et al., 2023a). Using the retrievalbased plug-in knowledge base, LLM can be used in professional fields without updating parameters(Ram et al., 2023), or you can choose to inject domain knowledge into the model by updating parameters. This report mainly focuses on the latter.
+LLM field specialized training methods can be roughly divided into the following categories according to different training stages: one method is to pre-train from scratch directly based on domain data, such as (Wu et al., 2023), which usually relies on a large amount of domain data, and the training cost is high; one is to perform finetuning directly based on domain instruction data, such as (Cui et al., 2023)(Wang et al., 2023b); and the other is to perform domain pre-training on
+
+the foundation LLM based on domain data, and then perform instruction fine-tuning(Huang et al., 2023a).
+3 Data Collection
+3.1 Pre-training Corpus
+Prior research(Lee et al., 2020) has shown that language models can benefit from the knowledge acquired through domain-specific corpora. We gather a domain-specific corpus to enhance the models with knowledge about home decoration. Additionally, we compile a general corpus to provide the models with a balance of general knowledge.
+National Standards. We collect several National Standards for decoration and construction, of which worth mentioned are Code for design of residential buildings(GB 50096-2011), Code for construction of decoration of housings(GB 503272001).
+Domain Books. We collect books in the field of real estate, home renovation, decoration and construction, which published in the past decade.
+Domain Websites. We crawl domain websites, about 30,000 articles on the category of home renovation advice, home devices purchasing skills and so on.
+General Corpus. To construct the general corpus, we sample articles from WuDaoCorpora(Yuan et al., 2021), the Simplified Chinese edition of Wikipedia.
+Data Preprocessing. The above data is processed through a unified pipeline, consisting of text extraction, quality filtering, and data deduplication. During text extraction, we discard irrelevant information like pictures, tables, and URLs, only storing the relevant text. During quality filtering, we ensure that each data is usable through methods like sensitive word filtering, language filtering, and effective text length filtering. Furthermore, we minimize the influence of duplicate data on model training by deduplicating at both the article and sentence levels. Ultimately, we acquire approximately 26.6M tokens from the domain corpus and 276.6M tokens from the general corpus. The workflow of data preprocessing is shown in Figure1.
+3.2 SFT Corpus
+In order to alleviate the problem of domain bias and improve the performance of the model in spe-
+
+2
+
+Raw Corpus
+
+Text Extraction • Pictures deletion • Tables deletion • URLs deletion
+她整理了这次装修 decoration所花费的 各项开支(见表1)。 她整理了这次装修所 花费的各项开支。
+
+Quality Filtering • Sensitive word
+filtering • Language filtering • Text length filtering
+她整理了这次装修 decoration所花费的 各项开支。她整理了 这次装修所花费的各 项开支。
+
+Data Deduplication • Article level • Sentence level
+她整理了这次装修所 花费的各项开支。她 整理了这次装修所花 费的各项开支。
+
+Figure 1: Workflow of data preprocessing.
+
+Clean Data
+
+Figure 2: Word cloud of instruction data
+
+cific fields, we construct approximately 25k instruction data from high-quality home decoration books and home decoration website articles to assist the model adapting to specific domain knowledge. The details about these prompts are introduced in Table5 of Appendix.
+One-turn Dialogues. To acquire more home decor-related questions, initially, we employ GPT4 to emulate the dual roles of an interior designer and a client, generating several question-answer pairs grounded on the given knowledge. Subsequently, for obtaining more detailed responses, we directly present the aforementioned questions to GPT-4. This two-step approach allows us to gain more comprehensive and precise data.
+Multi-turn Dialogues. Analogous to one-turn dialogues, GPT-4 emulates the roles of an interior designer and client, facilitating the generation of multi-turn dialogues in the realm of home decoration. Furthermore, to mitigate hallucinations, we equip GPT-4 with a pertinent article, thereby orienting its dialogue content around this provided knowledge. Moreover, we instruct GPT-4 to maintain focus and handle the dialogue organically.
+Based on the instruction data of one-turn and multi-trun dialogues, we generate a word cloud shown in Figure 2.
+
+4 Experiments
+4.1 Baseline Models
+The baseline model chosen for our study is Baichuan-13B(Technology, 2023), which was developed and released by Baichuan Intelligent Technology. There are a total of two models in this baseline.
+Baichuan-13B-Base Baichuan-13B-Base is a pre-trained model, boasting a parameter size of 13 billion and a training corpus comprising 1.4 trillion tokens.
+Baichuan-13B-Chat Baichuan-13B-Chat, built on the foundational architecture of Baichuan13B-Base, has been fine-tuned using specialized instructions. Consequently, it demonstrates improved dialogue generation and instruction comprehension capabilities.
+4.2 Experiments Setups
+We apply the aforementioned two baseline models for fine-tuning our home decoration domain dataset. To explore the advantages of domainadaptive pretraining(DAPT) (Gururangan et al., 2020) in domain adaptation, we will conduct identical instruction tuning experiments on models refined using DAPT.
+
+3
+
+Table 1: Hyper-parameter settings
+
+Table 2: The statistics of EvalHome
+
+Hyper parameter Precision Epochs Batch size Learning rate Warmup ratio LR scheduler type
+
+Value fp16
+4 64 1e-4 0.1 cosine
+
+Category Domain fundamentals Domain expertise Innovative design
+TOTAL
+
+#Subclass #Questions
+
+6
+
+22
+
+17
+
+87
+
+2
+
+4
+
+25
+
+113
+
+Domain adaptation inevitably confronts the issue of catastrophic forgetting, characterized by the loss of previously acquired knowledge during adaptation to new domains. One straightforward approach to mitigate this issue is the rehearsalbased strategy, which involves revisiting and relearning previously acquired knowledge. Considering that large language models are pre-trained on extensive general-purpose data, achieving a balance between general and domain-specific data during domain adaptation is imperative. For each experiment, we executed five sets of data ratio tests to determine the most effective data ratio scheme1 .
+The parameter configuration of the DAPT and SFT stages is shown in Table1, the sole distinction in training hyperparameters between DADT and SFT stages lies in the maximum length, with DAPT set to 1024 and SFT to 1536.
+4.3 Metrics
+Evaluation is of paramount prominence to the success of LLMs. For ChatHome, we not only hope to inject domain-related knowledge into the model, but also pay attention to the general capabilities of the model after domainization, so our evaluation includes two parts: general capability evaluation and domain capability evaluation.
+General Evaluation. To evaluate the models on general ability, we adopt C-Eval(Huang et al., 2023b) and CMMLU(Li et al., 2023), which both are benchmarks evaluating the advanced knowledge and abilities of foundation models in a Chinese context2.
+1The ratio between domain-specific data and general data is 1:0, 1:1, 1:2, 1:5, and 1:10, respectively. The ratio of 1:0 indicates that we exclusively utilized domain-specific data without incorporating any general data 2 We assessed the models in both zero- and few-shot settings, reporting the setup yielding the highest overall average accuracy. Note that, the results for C-Eval we present is evaluated on development set.
+
+Domain Evaluation. To our knowledge, there is not any authoritative examinations on the domain of home renovation. We construct a domain evaluation called EvalHome which covers three difficulty levels: domain fundamentals, domain expertise, and innovative design, from low to high difficulty, respectively. Since multi-choice questions are a simple but good proxy to evaluate the potential of advanced abilities of our domain models, we construct all questions in a multi-choice format, resulting in 113 in total. Table 2 show the statistics of EvalHome.
+4.4 Results and Analysis
+Data ratio result analysis The experimental results for the DAPT model on the general evaluation set are displayed in Table 3. We present the average scores on CEval and CMMLU, and the scores of each category-specific are shown in Table 6.
+Despite the addition of more general data at a 1:10 ratio, the DAPT model demonstrates the least general capability loss under a 1:5 data ratio scheme, and the average scores compared to the base model on the CEval and CMMLU evaluation sets decrease by 2.57 and 3.08 points respectively. This model is hereby denoted as Baichuan-13BBase-DAPT (1:5).
+Table 4 presents the experimental results of the domain-adapted model on the EvalHome and general evaluation sets. Four experiment groups were conducted, where Baichuan-13BBase-DAPT (1:0) signifies a DAPT stage data ratio of 1:0. We can see that except for the Baihuan13B-Base experiment, the other three experiments, Baihuan-13B-Base-DAPT (1:0), Baihuan13B-Base-DAPT (1:5), and Baihuan-13B-Chat, all produced the best results on EvalHome under a 1:5 data ratio scheme.
+
+4
+
+Table 3: Evaluation results on C-Eval and CMMLU after DAPT, and Pretrain Data-ratio represents the proportion of domain pre-training data and pre-training data. A ratio of ’-’ means that the model parameters are not updated. General pre-training data is randomly sampled from the general corpus we built 3.1.
+
+Base Model Baichuan-13B-Base
+Baichuan-13B-Base
+
+PreTrain Data-ratio – 1:0 1:1 1:2 1:5
+1:10
+
+C-Eval 56.99 48.17 51.26 46.12 54.42 49.26
+
+CMMLU 55.83 48.57 51.69 47.75 52.75 48.59
+
+Table 4: SFT Data Ratio represents the proportion of domain instruction data and general instruction data. A ratio of ’-’ means that the model parameters are not updated. General instruction data is randomly drawn from Alpaca_gpt4_data_zh(Peng et al., 2023) and Belle(Ji et al., 2023).
+
+Base Model for SFT Baichuan-13B-Chat Baichuan-13B-Base
+Baichuan-13B-Base-DAPT(1:0)
+Baichuan-13B-Base-DAPT(1:5)
+Baichuan-13B-Chat Base Model for MIP Baichuan-13B-Base
+
+SFT Data Ratio – 1:0 1:1 1:2 1:5
+1:10 1:0 1:1 1:2 1:5 1:10 1:0 1:1 1:2 1:5 1:10 1:0 1:1 1:2 1:5 1:10 MIP Data Ratio 1:0
+
+EvalHome 30.97 47.79 50.44 44.24 36.28 53.98 47.79 46.01 47.79 59.29 50.44 46.01 47.79 48.67 55.75 48.67 37.16 51.21 44.24 60.17 45.13
+EvalHome 69.03
+
+C-Eval 47.37 46.02 38.88 36.84 34.43 38.52 43.37 41.14 40.81 39.90 35.01 44.15 42.07 42.08 38.08 37.79 37.13 42.01 41.12 38.88 35.56 C-Eval 49.07
+
+CMMLU 50.68 43.88 40.18 39.89 36.84 37.15 43.84 39.03 39.92 35.00 35.83 44.44 41.33 39.60 35.46 37.49 34.62 37.87 39.72 37.26 36.99
+CMMLU 49.12
+
+Combining the experimental results of these two tables, we can draw a preliminary conclusion that a data ratio of 1:5 yields the best performance on our current base model and home renovation domain data.
+During the instruction tuning phase, we observed a notable phenomenon: the model’s scores on general capability evaluation sets decrease as more general instruction data is added. This could be attributed to the focus of the evaluation benchmarks, C-Eval and CMMLU, which primarily measure the model’s specific knowledge that our general instruction data may not cover.
+Domain adaptation result analysis It is observed that instruction tuning using the models after DAPT achieves optimal results of 59.29
+
+and 55.75 on EvalHome respectively from Table 4. There is a slight improvement compared to the Baichuan-13B-Base model without undergoing DAPT, which the highest score is 53.98. However, when instruction tuning is performed using the model Baichuan-13B-Chat that has been trained on instruction data, a higher score of 60.17 is obtained on EvalHome. And the model with different data ratios has achieved significant improvement compared to Baichuan-13B-Chat without updated parameters. This indicates that in our current domain scenario, post-DAPT instruction tuning doesn’t significantly surpass direct domain adaptation in an instruction-aligned model. We speculate that this phenomenon may be due to the base model already encompassing a substan-
+
+5
+
+tial volume of decoration-related data during pretraining.
+Further, inspired by some research works (Aribandi V, 2021; Zeng et al., 2022; Taylor et al., 2022) showcasing the advantages of integrating downstream supervised datasets during pretraining, we attempted to incorporate downstream instruction data during the DAPT phase. This strategy is called MIP (Multi-Task Instruction Pre Training) in (Zeng et al., 2022), and we also follow this naming in this article. Owing to the constraints in training resources and time, we refrained from performing a detailed analysis of data ratios. Consequently, in the MIP stage, our training data consisted of domain pre-training data and domain instruction data exclusively, with no addition of a general corpus. Nonetheless, an unexpected score of 69.03 was achieved on EvalHome, as presented in the last row of Table 4). Even more surprising is that this model outperforms all other models by not only achieving the highest score on EvalHome but also scoring higher on the two general capability evaluation benchmarks.
+The finding indicates that incorporating downstream instruction data during the DAPT phase is beneficial, given the conditions of the current domain dataset and base models. Our future plans involve conducting more in-depth experiments with data ratios in the MIP stage.
+
+[Cui et al.2023] Jiaxi Cui, Zongjian Li, Yang Yan, Bohua Chen, and Li Yuan. 2023. Chatlaw: Open-source legal large language model with integrated external knowledge bases. arXiv preprint arXiv:2306.16092.
+[Gururangan et al.2020] Suchin Gururangan, Ana Marasovic´, Swabha Swayamdipta, Kyle Lo, Iz Beltagy, Doug Downey, and Noah A Smith. 2020. Don’t stop pretraining: Adapt language models to domains and tasks. arXiv preprint arXiv:2004.10964.
+[Huang et al.2023a] Quzhe Huang, Mingxu Tao, Zhenwei An, Chen Zhang, Cong Jiang, Zhibin Chen, Zirui Wu, and Yansong Feng. 2023a. Lawyer llama technical report. arXiv preprint arXiv:2305.15062.
+[Huang et al.2023b] Yuzhen Huang, Yuzhuo Bai, Zhihao Zhu, Junlei Zhang, Jinghan Zhang, Tangjun Su, Junteng Liu, Chuancheng Lv, Yikai Zhang, Jiayi Lei, et al. 2023b. C-eval: A multi-level multidiscipline chinese evaluation suite for foundation models. arXiv preprint arXiv:2305.08322.
+[Ji et al.2023] Yunjie Ji, Yong Deng, Yan Gong, Yiping Peng, Qiang Niu, Baochang Ma, and Xiangang Li. 2023. Belle: Be everyone’s large language model engine. https://github.com/ LianjiaTech/BELLE.
+[Lee et al.2020] Jinhyuk Lee, Wonjin Yoon, Sungdong Kim, Donghyeon Kim, Sunkyu Kim, Chan Ho So, and Jaewoo Kang. 2020. Biobert: a pretrained biomedical language representation model for biomedical text mining. Bioinformatics, 36(4):1234–1240.
+
+5 Discussion and Conclusions
+In this study, we introduce ChatHome, a large language model specifically designed for home renovation tasks. We conducted extensive experiments and performance evaluations, assessing domainspecific capabilities and general performance using various base models and data ratios.
+However, our model still exhibits hallucination defects, and enhancing the assessment of its professional capabilities remains an ongoing area for improvement.In the future, we plan to conduct further experimental explorations, including the implementation of knowledge base and reinforcement learning techniques, to enhance ChatHome’s performance.
+
+[Li et al.2023] Haonan Li, Yixuan Zhang, Fajri Koto, Yifei Yang, Hai Zhao, Yeyun Gong, Nan Duan, and Timothy Baldwin. 2023. Cmmlu: Measuring massive multitask language understanding in chinese. arXiv preprint arXiv:2306.09212.
+[Ling et al.2023] Chen Ling, Xujiang Zhao, Jiaying Lu, Chengyuan Deng, Can Zheng, Junxiang Wang, Tanmoy Chowdhury, Yun Li, Hejie Cui, Xuchao Zhang, Tianjiao Zhao, Amit Panalkar, Wei Cheng, Haoyu Wang, Yanchi Liu, Zhengzhang Chen, Haifeng Chen, Chris White, Quanquan Gu, Jian Pei, Carl Yang, and Liang Zhao. 2023. Domain specialization as the key to make large language models disruptive: A comprehensive survey.
+[OpenAI2023a] OpenAI. 2023a. Chatgpt: Optimizing language models for dialogue. Blog post.
+[OpenAI2023b] OpenAI. 2023b. Gpt-4 technical report. Blog post.
+
+References
+[Aribandi V2021] Schuster T Rao J Zheng HS Mehta SV Zhuang H Tran VQ Bahri D Ni J Gupta J Aribandi V, Tay Y. 2021. Ext5: Towards extreme multi-task scaling for transfer learning.
+
+[Ouyang et al.2022] Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul Christiano,
+
+6
+
+Jan Leike, and Ryan Lowe. 2022. Training language models to follow instructions with human feedback.
+[Peng et al.2023] Baolin Peng, Chunyuan Li, Pengcheng He, Michel Galley, and Jianfeng Gao. 2023. Instruction tuning with gpt-4. arXiv preprint arXiv:2304.03277.
+[Ram et al.2023] Ori Ram, Yoav Levine, Itay Dalmedigos, Dor Muhlgay, Amnon Shashua, Kevin LeytonBrown, and Yoav Shoham. 2023. In-context retrieval-augmented language models.
+[Taylor et al.2022] Ross Taylor, Marcin Kardas, Guillem Cucurull, Thomas Scialom, Anthony Hartshorn, Elvis Saravia, Andrew Poulton, Viktor Kerkez, and Robert Stojnic. 2022. Galactica: A large language model for science.
+[Technology2023] Baichuan Intelligent Technology. 2023. Baichuan-13b. https://github.com/ baichuan-inc/Baichuan-13B.
+[Wang et al.2023a] Guangyu Wang, Guoxing Yang, Zongxin Du, Longjun Fan, and Xiaohu Li. 2023a. Clinicalgpt: Large language models finetuned with diverse medical data and comprehensive evaluation.
+[Wang et al.2023b] Haochun Wang, Chi Liu, Nuwa Xi, Zewen Qiang, Sendong Zhao, Bing Qin, and Ting Liu. 2023b. Huatuo: Tuning llama model with chinese medical knowledge.
+[Wu et al.2023] Shijie Wu, Ozan Irsoy, Steven Lu, Vadim Dabravolski, Mark Dredze, Sebastian Gehrmann, Prabhanjan Kambadur, David Rosenberg, and Gideon Mann. 2023. Bloomberggpt: A large language model for finance. arXiv preprint arXiv:2303.17564.
+[Yang et al.2023] Hongyang Yang, Xiao-Yang Liu, and Christina Dan Wang. 2023. Fingpt: Open-source financial large language models.
+[Yuan et al.2021] Sha Yuan, Hanyu Zhao, Zhengxiao Du, Ming Ding, Xiao Liu, Yukuo Cen, Xu Zou, Zhilin Yang, and Jie Tang. 2021. Wudaocorpora: A super large-scale chinese corpora for pre-training language models. AI Open, 2:65–68.
+[Zeng et al.2022] Aohan Zeng, Xiao Liu, Zhengxiao Du, Zihan Wang, Hanyu Lai, Ming Ding, Zhuoyi Yang, Yifan Xu, Wendi Zheng, Xiao Xia, Weng Lam Tam, Zixuan Ma, Yufei Xue, Jidong Zhai, Wenguang Chen, Peng Zhang, Yuxiao Dong, and Jie Tang. 2022. Glm-130b: An open bilingual pretrained model.
+[Zhao et al.2023] Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang, Xiaolei Wang, Yupeng Hou, Yingqian Min, Beichen Zhang, Junjie Zhang, Zican Dong, Yifan Du, Chen Yang, Yushuo Chen, Zhipeng Chen, Jinhao Jiang, Ruiyang Ren, Yifan Li, Xinyu Tang, Zikang Liu, Peiyu Liu, Jian-Yun Nie, and JiRong Wen. 2023. A survey of large language models.
+
+A Appendix
+Prompts used for generating one-turn and multiturn dialogues by GPT-4, examples of EvalHome and the detail socres of C-Eval and CMMLU are presented in this appendix.
+在建筑工程中，现在更常用的砌砖墙的砖材料 是什么？ What is the most commonly used brick material for building walls in construction projects nowadays? "A": "红砖" "A": "Red brick" "B": "青砖" "B": "Blue brick" "C": "水泥砖" "C": "Concrete brick" "D": "加气砖" "D": "Aerated concrete brick" 答案： "C": "水泥砖" Answer: "C": "Concrete brick" 解析: "由于环保的考虑，红砖在我国已经被 禁止使用。青砖的烧成工艺复杂且成本高，也 基本退出了历史的舞台。加气砖虽然使用较 多，但在建筑工程中主要用于保温隔热，作为 墙体填充材料。所以在现在的建筑工程中，水 泥砖成为了砌砖墙最常用的砖材料。” Explanation: "Due to environmental considerations, red brick has been banned from use in China. Blue brick has a complex firing process and high costs, and has also basically withdrawn from the historical stage. Although aerated concrete brick is used more frequently, it is mainly used for insulation and heat preservation as a filling material for walls in construction projects. Therefore, in modern construction projects, concrete brick has become the most commonly used brick material for building walls."
+Figure 3: Example of EvalHome. English translations are shown below the corresponding Chinese for better readability.
+
+7
+
+!human!"##!$%&'()*+,-./0123!# "human": "Hello, how can I achieve green and environmentally friendly decoration?" !assistant!"#!-./01245612789&:;<=>/?@ABCDE@FG&HIJ KLMN;&0OPQRSTUV4WXYZ[\]^_#`a/0Yb[cd/0ef@Yb& )ghijkljkm@nojpbqTrstuvwwmxN@bo&)hijyqT\]z_# {|}~[6}~•€•‚ƒL„…†j‡ˆj‰Šq‹Œ&HIL„•uŽ&<=FGT\]•_# •‘}’[`a•‘“”•j–—}’q&˜g‘™T\]š_#-.›x[JKœ•-.›x& žUŸ LM&HIJKLMN;T\]¡_#<=12¢£[612789&:;<=12¢£ @¤¥&>¦§¨x©ª«•¬-|&:;®¯•uT\]°_#•±²³[´1•±“µ¶}’& )•±·¸j•±¹ºq&˜g±DEFGT\]»_#¼;12[rs7½12&:;0¾JK L„¿ÀjÁ¼T\]Â_#‰ŠÃM[12ÄÅÆ&©€•‰ŠÃM&UÇ•JK@wmMQT \]È_#12³É[6³É789&:;‡u/0³ÉÊË&<=ÌÍjÎÏqABT\]^Ð_#` aÑÒ12ÓÔ[`aw/0³ÉÕÖ@12ÓÔ&×012789@/0©ØÙ,ÚÛT!# "assistant": "Green and environmentally friendly decoration refers to minimizing environmental pollution and resource waste during the decoration process, and improving indoor air quality to protect human health. Here are some suggestions: 1. Choose environmentally friendly building materials: Buy environmentally certified building materials, such as low-formaldehyde, non-toxic, and harmless paints, panels, etc. Avoid using materials containing harmful substances, such as formaldehyde and benzene. 2. Reasonable design: Fully consider space layout, lighting, ventilation, and other factors during design, improving space utilization and reducing waste. 3. Energy-saving equipment: Choose energy-saving appliances, lighting equipment, etc., to reduce energy consumption. 4. Green plants: Place green plants indoors, which can purify the air and improve indoor air quality. 5. Reduce decoration waste: During the decoration process, try to reduce the generation of decoration waste. For waste products, carry out classification and recycling as much as possible. 6. Water-saving measures: Install water-saving sanitary equipment, such as water-saving toilets and water-saving faucets, to reduce water resource waste. 7. Moderate decoration: Avoid excessive decoration and try to keep the indoor space simple and comfortable. 8. Ventilation and air exchange: After decoration, fully ventilate and exchange the air to remove harmful gases from the indoor space. 9. Decoration construction: During the construction process, try to adopt environmentally friendly construction methods, reducing noise and dust pollution as much as possible. 10. Choose a professional decoration company: Choose a decoration company with experience in environmentally friendly construction to ensure that environmental protection requirements are implemented during the decoration process."
+Figure 4: Example of one-turn dialogue. English translations are shown below the corresponding Chinese for better readability.
+8
+
+Table 5: Prompts used in the data generation process
+
+Type
+one-turn dialogue
+
+Prompts
+
+English translation
+
+你是一位资深家装领域从业
+
+者，现在请根据一段文本
+
+出5至20道题并给出对应的答 You are an experienced professional in the field of home
+
+案 ， 出 的 题 目 要 覆 盖 全 部 decoration. Now, please create 5 to 20 questions and
+
+文 本 内 容 ， 出 题 的 类 别 是 provide corresponding answers based on a given text.
+
+以下40个类别之一：“行业标 The questions should cover all the content of the text
+
+准、安装工程、工程验收、 and be categorized into one of the following 40 cate-
+
+油漆工程、门窗工程......”。 gories: "Industry Standards, Installation Engineering,
+
+具体文本是：(相关知识)
+
+Engineering Acceptance, Painting Engineering, Door
+
+根 据 以 上 内 容 出 题 并 and Window Engineering..."
+
+给 出 答 案 ， 严 格 按 The specific text is: (Relevant Knowledge)
+
+照{[’question’:’xx’,’answer’:’xx’, Please provide questions and answers according to the
+
+’category’:’xx’]} 的 格 式 提 供 format [’question’:’xx’,’answer’:’xx’, ’category’:’xx’].
+
+问题和答案。
+
+multiturn dialogue
+multiplechoice question
+
+请基于以下背景信息，生成
+一个user和你的对话，需要满 足：1、用户不会称呼你的名 字。2、你的每一次回答，都 和你日常回答一样，都是高 质量的非常详尽的回答。3、 用户有可能会基于你的回答 提出指令。4、对话内容需要 尽可能的涵盖背景信息中的 内容 背景信息: (相关知识) 以下是生成的对话: 你是一位资深家装领域从业 者，请根据给定的知识设计 一道单选题或判断题。单选 题应包括A、B、C、D四个选 项，其中只有一个选项是正 确的；判断题只需判断对或 错，以AB两个选项表示。最 后请输出正确选项，并提供
+理由。 具体知识是：(相关知识) 结 果 严 格 按 照{’question’:’单 选题或者判断题题 目’,’question_type’:’单 选 或 判 断’,’candidate_options’:’此 项 是 候 选 项 内 容 ， 也 以json格 式 输 出 ， 其 中key是 选 项 名 ，value是 选 项 内 容’, ’answer’:{’correct_option’:’输 出 唯一正确的选项名，应与理 由 保 持 一 致’,’reason’:’选 项 正 确的理由’}}的json格式输出。
+
+Please generate a dialogue between a user and you based on the following background information, meeting the following requirements: 1) The user will not address your name. 2) Your every answer should be of high quality and very detailed, the same as your usual answers. 3) The user may issue instructions based on your answers. 4) The dialogue content should cover as much of the background information as possible. Background information: (Relevant Knowledge) Here is the generated dialogue:
+You are an experienced professional in the field of home decoration. Please design a multiple-choice question or a judgment question based on the given knowledge. The multiple-choice question should include options A, B, C, and D, with only one option being correct. The judgment question only needs to judge whether it is right or wrong, represented by options A and B. Finally, please output the correct option and provide the reason. Specific knowledge is: (Relevant Knowledge) The output should strictly follow the JSON format { ’question’: ’Multiple-choice or judgment question title’, ’question_type’: ’multiple-choice or judgment’, ’candidate_options’: ’This item is the content of the candidates, also output in JSON format, where the key is the option name and the value is the option content’, ’answer’: {’correct_option’: ’Output the name of the only correct option, which should be consistent with the reason’, ’reason’: ’The reason why the option is correct’ } }
+
+9
+
+!human!"# !$%&'()*+,-./0&12'345/06789:*;<2=>?& @A'BCDEFG!# "human": "Hello, I am going to renovate my house recently, but I am not very clear about the requirements for interior decoration construction quality. Can you help me answer some questions?" !assistant!"#!HIJK&45/067892LMNOPQRSTU@VWXYZ[\]^_ :&`Ka*bc3defghijk:lmnG!# "assistant": "Of course, the quality of interior decoration construction is directly related to the functional use, safety, and aesthetic effects of residential buildings, so it needs to be taken seriously. What aspects of questions do you have?" !human!"#!'(No:2pqrsjk&tuvwrsxynG!# "human": "I am most concerned about green environmental protection. How do I choose environmentally friendly materials?" !assistant!"#!vwrsxy2z{|*:&}~•NOP'€:•‚Kƒr„s…efJKv w†grsb‡:xy&ˆt‰Šrs‹Œ•ŽV••rs‹Œ•Ž‘e’“&”JKvw• Irsxy&–t—xV˜™[šx‘e!# "assistant": "Choosing environmentally friendly materials is very important because it affects our health and environmental protection. You can choose materials with environmental certification, such as national environmental label products, European environmental label products, etc. In addition, natural environmental protection materials like bamboo, hemp rope, and stone can also be chosen." !human!"#!›45/067:œ•žŸ2 ¡:nG!# "human": "What is the general process of interior decoration construction?" !assistant!"#!45/067œ•¢*£¤¥¦j§¨©Vª-V«¬67V-7V®7V¯°V Y/V>±‘r²e³´µ¶r²·&¸¹677º:xy[677\»2<¼:&a*½¾ ¿ÀÁÂ+,ÃÄ:ÅÆ[YÇe!# "assistant": "The process of interior decoration construction mainly includes determining the design scheme, inspecting the house, water and electricity construction, mudwork, carpentry, painting, installation, and cleaning. In these links, the materials and construction techniques of each construction trade are different, and need to be carefully considered and arranged according to the actual situation." !human!"#!›ÈÉKÊ:œ•“&”a*ËÌÍ¶mÎnG!# "human": "Are there any other issues that need to be noticed besides the above steps?" !assistant!"#!ÈÉ67œ•Ï“&”a*ËÌ67mÎ:ÐÑÒ6eˆt&*Ó±YÇÑ«Ô :Õ¥‘e’“&'€´67Ö×&ØaËÌÙ±[YZÒ6&s‡67:89[YZÚe!# "assistant": "In addition to construction steps, attention also needs to be paid to the prevention of construction problems. For example, reasonable arrangement of waterproof layer construction is required. In addition, during the construction process, we also need to pay attention to and implement management and safety measures to ensure the quality and safety of construction." # # Figure 5: Example of multi-turn dialogue. English translations are shown below the corresponding Chinese for better readability.
+10
+
+Table 6: Detailed evaluation score on C-Eval and CMMLU
+
+11
+
+Base Model for DAPT Baichuan-13B-Base Baichuan-13B-Base Base Model for SFT Baichuan-13B-Base
+Baichuan-13B-Base-DAPT(1:0)
+Baichuan-13B-Base-DAPT(1:5)
+Baichuan-13B-Chat Baichuan-13B-Chat Base Model for MIP Baichuan-13B-Base
+
+PreTrain Data-ratio
+– 1:0 1:1 1:2 1:5 1:10 SFT Data-ratio 1:0 1:1 1:2 1:5 1:10 1:0 1:1 1:2 1:5 1:10 1:0 1:1 1:2 1:5 1:10 1:0 1:1 1:2 1:5 1:10 – MIP Data Ratio 1:0
+
+Avg 56.99 48.17 51.26 46.12 54.42 49.26
+46.02 38.88 36.84 34.43 38.52 43.37 41.14 40.81 39.90 35.01 44.15 42.07 42.08 38.08 37.79 37.13 42.01 41.12 38.88 35.56 47.37
+49.07
+
+STEM 44.21 37.95 39.89 33.76 38.87 40.54
+35.38 35.38 33.05 30.65 35.02 35.35 35.79 34.88 35.81 33.03 36.10 37.82 36.43 33.21 34.84 32.55 34.46 34.14 34.64 32.87 43.28
+35.76
+
+C-Eval Social Science
+71.77 56.20 64.13 58.28 69.55 63.65
+54.88 41.04 40.25 37.70 42.98 47.74 43.70 43.78 41.16 38.62 50.17 41.86 44.32 40.34 38.49 36.95 47.48 46.73 40.58 37.81 54.47
+64.88
+
+Humanities 60.65 52.82 54.21 50.34 59.50 50.60
+49.43 41.93 41.55 35.84 39.72 48.69 47.78 46.00 45.03 35.78 49.62 46.01 48.76 41.91 41.26 42.33 47.41 45.75 37.87 33.08 49.27
+51.39
+
+Others 51.92 45.72 46.79 42.08 49.76 42.23
+44.38 38.14 32.52 33.53 36.35 41.68 37.27 38.60 37.60 32.62 40.70 42.59 38.83 36.84 36.57 36.68 38.68 37.84 42.43 38.47 42.44
+44.24
+
+Avg 55.83 48.57 51.69 47.75 52.75 48.59
+43.88 40.18 39.89 36.84 37.15 43.84 39.03 39.92 35.00 35.83 44.44 41.33 39.60 35.46 37.49 34.62 37.87 39.72 37.26 36.99 50.68
+49.12
+
+STEM 42.61 37.60 39.09 35.75 40.40 37.86
+32.75 34.22 31.59 30.26 30.75 33.35 32.11 32.49 30.34 30.13 35.08 33.33 31.63 29.88 29.55 28.67 31.75 33.42 31.40 29.98 39.1
+36.82
+
+CMMLU
+
+Social Science Humanities
+
+60.47
+
+61.47
+
+52.76
+
+52.92
+
+56.08
+
+56.47
+
+53.42
+
+51.29
+
+58.03
+
+58.14
+
+53.78
+
+50.12
+
+-
+
+48.25
+
+49.39
+
+42.03
+
+42.31
+
+42.93
+
+42.15
+
+39.09
+
+38.94
+
+39.09
+
+40.10
+
+48.68
+
+48.21
+
+41.65
+
+41.99
+
+42.85
+
+43.32
+
+35.65
+
+37.45
+
+38.26
+
+36.04
+
+47.89
+
+49.48
+
+44.33
+
+44.91
+
+42.64
+
+43.49
+
+37.35
+
+36.35
+
+40.26
+
+40.31
+
+35.96
+
+37.26
+
+39.00
+
+40.88
+
+41.71
+
+42.05
+
+37.84
+
+40.25
+
+40.04
+
+38.66
+
+55.29
+
+54.82
+
+-
+
+54.57
+
+53.52
+
+Others 59.13 51.07 55.38 49.97 54.34 51.81
+45.28 42.37 42.90 39.16 39.04 44.83 40.45 41.09 37.22 38.57 45.63 42.89 40.81 38.25 39.98 37.11 40.55 41.94 40.44 39.03 53.45
+51.24
+
+China specific 56.81 48.68 51.10 48.08 53.90 49.65
+44.37 40.29 41.65 36.74 37.68 45.26 41.07 40.57 34.02 36.08 45.67 42.80 40.22 36.43 35.62 35.96 37.85 40.17 36.82 36.99 52.26
+49.09
+

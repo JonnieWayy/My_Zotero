@@ -1,0 +1,78 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2306.17567
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 30 Jun 2023]
+Title: Counting Guidance for High Fidelity Text-to-Image Synthesis
+Authors: Wonjun Kang , Kevin Galim , Hyung Il Koo
+Download a PDF of the paper titled Counting Guidance for High Fidelity Text-to-Image Synthesis, by Wonjun Kang and 2 other authors
+Download PDF
+
+    Abstract: Recently, the quality and performance of text-to-image generation significantly advanced due to the impressive results of diffusion models. However, text-to-image diffusion models still fail to generate high fidelity content with respect to the input prompt. One problem where text-to-diffusion models struggle is generating the exact number of objects specified in the text prompt. E.g. given a prompt "five apples and ten lemons on a table", diffusion-generated images usually contain the wrong number of objects. In this paper, we propose a method to improve diffusion models to focus on producing the correct object count given the input prompt. We adopt a counting network that performs reference-less class-agnostic counting for any given image. We calculate the gradients of the counting network and refine the predicted noise for each step. To handle multiple types of objects in the prompt, we use novel attention map guidance to obtain high-fidelity masks for each object. Finally, we guide the denoising process by the calculated gradients for each object. Through extensive experiments and evaluation, we demonstrate that our proposed guidance method greatly improves the fidelity of diffusion models to object count. 
+
+Comments: 	9 pages, 5 figures
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV)
+Cite as: 	arXiv:2306.17567 [cs.CV]
+  	(or arXiv:2306.17567v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2306.17567
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Wonjun Kang [ view email ]
+[v1] Fri, 30 Jun 2023 11:40:35 UTC (17,876 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Counting Guidance for High Fidelity Text-to-Image Synthesis, by Wonjun Kang and 2 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2306
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

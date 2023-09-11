@@ -1,0 +1,78 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2304.00116
+
+Help | Advanced Search
+Search
+Computer Science > Computation and Language
+(cs)
+[Submitted on 31 Mar 2023]
+Title: Enhancing Large Language Models with Climate Resources
+Authors: Mathias Kraus , Julia Anna Bingler , Markus Leippold , Tobias Schimanski , Chiara Colesanti Senni , Dominik Stammbach , Saeid Ashraf Vaghefi , Nicolas Webersinke
+Download a PDF of the paper titled Enhancing Large Language Models with Climate Resources, by Mathias Kraus and 7 other authors
+Download PDF
+
+    Abstract: Large language models (LLMs) have significantly transformed the landscape of artificial intelligence by demonstrating their ability in generating human-like text across diverse topics. However, despite their impressive capabilities, LLMs lack recent information and often employ imprecise language, which can be detrimental in domains where accuracy is crucial, such as climate change. In this study, we make use of recent ideas to harness the potential of LLMs by viewing them as agents that access multiple sources, including databases containing recent and precise information about organizations, institutions, and companies. We demonstrate the effectiveness of our method through a prototype agent that retrieves emission data from ClimateWatch ( this https URL ) and leverages general Google search. By integrating these resources with LLMs, our approach overcomes the limitations associated with imprecise language and delivers more reliable and accurate information in the critical domain of climate change. This work paves the way for future advancements in LLMs and their application in domains where precision is of paramount importance. 
+
+Subjects: 	Computation and Language (cs.CL) ; Information Retrieval (cs.IR)
+Cite as: 	arXiv:2304.00116 [cs.CL]
+  	(or arXiv:2304.00116v1 [cs.CL] for this version)
+  	https://doi.org/10.48550/arXiv.2304.00116
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Mathias Kraus [ view email ]
+[v1] Fri, 31 Mar 2023 20:24:14 UTC (68 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Enhancing Large Language Models with Climate Resources, by Mathias Kraus and 7 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CL
+< prev   |   next >
+new | recent | 2304
+Change to browse by:
+cs
+cs.IR
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

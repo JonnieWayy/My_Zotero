@@ -1,0 +1,79 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2305.03726
+
+Help | Advanced Search
+Search
+Computer Science > Computer Vision and Pattern Recognition
+(cs)
+[Submitted on 5 May 2023]
+Title: Otter: A Multi-Modal Model with In-Context Instruction Tuning
+Authors: Bo Li , Yuanhan Zhang , Liangyu Chen , Jinghao Wang , Jingkang Yang , Ziwei Liu
+Download a PDF of the paper titled Otter: A Multi-Modal Model with In-Context Instruction Tuning, by Bo Li and 5 other authors
+Download PDF
+
+    Abstract: Large language models (LLMs) have demonstrated significant universal capabilities as few/zero-shot learners in various tasks due to their pre-training on vast amounts of text data, as exemplified by GPT-3, which boosted to InstrctGPT and ChatGPT, effectively following natural language instructions to accomplish real-world tasks. In this paper, we propose to introduce instruction tuning into multi-modal models, motivated by the Flamingo model's upstream interleaved format pretraining dataset. We adopt a similar approach to construct our MultI-Modal In-Context Instruction Tuning (MIMIC-IT) dataset. We then introduce Otter, a multi-modal model based on OpenFlamingo (open-sourced version of DeepMind's Flamingo), trained on MIMIC-IT and showcasing improved instruction-following ability and in-context learning. We also optimize OpenFlamingo's implementation for researchers, democratizing the required training resources from 1 × A100 GPU to 4 × RTX-3090 GPUs, and integrate both OpenFlamingo and Otter into Huggingface Transformers for more researchers to incorporate the models into their customized training and inference pipelines. 
+
+Comments: 	Technical Report
+Subjects: 	Computer Vision and Pattern Recognition (cs.CV) ; Computation and Language (cs.CL)
+Cite as: 	arXiv:2305.03726 [cs.CV]
+  	(or arXiv:2305.03726v1 [cs.CV] for this version)
+  	https://doi.org/10.48550/arXiv.2305.03726
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Bo Li [ view email ]
+[v1] Fri, 5 May 2023 17:59:46 UTC (4,781 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled Otter: A Multi-Modal Model with In-Context Instruction Tuning, by Bo Li and 5 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CV
+< prev   |   next >
+new | recent | 2305
+Change to browse by:
+cs
+cs.CL
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

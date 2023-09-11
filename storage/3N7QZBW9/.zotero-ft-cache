@@ -1,0 +1,1143 @@
+CAIBC: Capturing All-round Information Beyond Color for
+
+Text-based Person Retrieval
+
+Zijie Wang
+Nanjing Tech University Nanjing, China
+zijiewang9928@gmail.com
+
+Aichun Zhu∗
+Nanjing Tech University Nanjing, China
+aichun.zhu@njtech.edu.cn
+
+Jingyi Xue
+Nanjing Tech University Nanjing, China
+jyx981218@163.com
+
+Xili Wan
+Nanjing Tech University Nanjing, China
+xiliwan@njtech.edu.cn
+
+Chao Liu
+Jinling Institute of Technology Nanjing, China
+liuchao@jit.edu.cn
+
+Tian Wang
+Beihang University Beijing, China
+wangtian@buaa.edu.cn
+
+Yifeng Li
+Nanjing Tech University Nanjing, China
+lyffz4637@163.com
+
+ABSTRACT
+Given a natural language description, text-based person retrieval aims to identify images of a target person from a large-scale person image database. Existing methods generally face a color overreliance problem, which means that the models rely heavily on color information when matching cross-modal data. Indeed, color information is an important decision-making accordance for retrieval, but the over-reliance on color would distract the model from other key clues (e.g. texture information, structural information, etc.), and thereby lead to a sub-optimal retrieval performance. To solve this problem, in this paper, we propose to Capture Allround Information Beyond Color (CAIBC) via a jointly optimized multi-branch architecture for text-based person retrieval. CAIBC contains three branches including an RGB branch, a grayscale (GRS) branch and a color (CLR) branch. Besides, with the aim of making full use of all-round information in a balanced and effective way, a mutual learning mechanism is employed to enable the three branches which attend to varied aspects of information to communicate with and learn from each other. Extensive experimental analysis is carried out to evaluate our proposed CAIBC method on the CUHK-PEDES and RSTPReid datasets in both supervised and weakly supervised text-based person retrieval settings, which demonstrates that CAIBC significantly outperforms existing methods and achieves the state-of-the-art performance on all the three tasks.
+∗Corresponding author.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than ACM must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org. MM ’22, October 10–14, 2022, Lisboa, Portugal © 2022 Association for Computing Machinery. ACM ISBN 978-1-4503-9203-7/22/10. . . $15.00 https://doi.org/10.1145/3503161.3548057
+
+CCS CONCEPTS
+• Information systems → Image search; • Computing methodologies → Object identification.
+KEYWORDS
+Text-based Person Retrieval, Person Re-identification, Cross-modal Retrieval, Multi-branch, Color Information, Mutual Learning
+ACM Reference Format: Zijie Wang, Aichun Zhu, Jingyi Xue, Xili Wan, Chao Liu, Tian Wang, and Yifeng Li. 2022. CAIBC: Capturing All-round Information Beyond Color for Text-based Person Retrieval. In Proceedings of the 30th ACM International Conference on Multimedia (MM ’22), October 10–14, 2022, Lisboa, Portugal. ACM, New York, NY, USA, 9 pages. https://doi.org/10.1145/3503161.3548057
+1 INTRODUCTION
+Given a natural language description, text-based person retrieval aims to identify images of a target person from a large-scale person image database. As in most real application scenarios, textual descriptions are much more accessible than other type of queries (e.g. images), text-based person retrieval is of significance in the field of video surveillance and has drawn more and more attention. Nevertheless, currently the majority of existing methods mainly focus on image-based person retrieval (aka. person re-identification), while the study of text-based person retrieval is still in its infancy.
+The core problem of text-based person retrieval is how to properly capture and match discriminative clues from multi-modal data, namely, raw person images and textual descriptions. Many approaches have been proposed to handle this problem. However, most of the existing methods are generally still faced with a common difficulty, which can be termed as the color over-reliance problem. Some typical incorrect text-based person retrieval examples given by a single-branch baseline model (detailed in Sec. 3.2) are illustrated in Fig. 1. The matched (mismatched) person images are marked with green (red) rectangles. It can be observed that many of the mismatched images in the retrieved top-10 list well meet the color information in the query sentence and have similar
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+The woman is wearing a black, white and pink floral patterned shirt with long sleeves, black dress pants and strap-backed shoes. She carries a cross-body bag on her left side and has short black hair.
+Man is wearing a blue t-shirt with khaki shorts. He has on a black watch on his left wrist. He is wearing a camera bag over his left shoulder that is resting on his right back hip.
+He is dark haired, has on a white shirt, a black back pack with white stripes, and high top shoes.
+Figure 1: Text-based person retrieval examples given by a single-branch baseline model. The matched (mismatched) person images are marked with green (red) rectangles.
+colors with the matched images. However, some tiny but discriminative clues like ‘cross-body bag’, ‘camera bag’, ‘high top shoes’ in the examples are ignored by the model, which as a result leads to the failure in retrieval. And in some cases, even if the colors in an image are corresponding to wrong local parts according to the query sentence, the image still ranks high. All these observations suggest that existing methods rely heavily on color information when matching multi-modal data.
+Indeed, color information is an important decision-making accordance for retrieval, but the over-reliance on color would distract the model from other key clues (e.g. texture information, structural information, etc.), and thereby leads to a sub-optimal retrieval performance. So it seems that managing to alleviate this color overreliance problem can be a key to further promote the research on this task. In Fig. 2, we display the feature response maps of several RGB/grayscale (GRS) image pairs, which are respectively generated by two single-branch baseline models trained on data with/without color information. It can be observed that for RGB and GRS data, the models focus on different local regions, and hence it is reasonable to deduce that the joint utilization of RGB and GRS data could benefit from the complementary effect between them and alleviate the color over-reliance problem.
+To this end, in this paper, we propose to Capture All-round Information Beyond Color (CAIBC) via a jointly optimized multibranch architecture for text-based person retrieval. Specifically, besides a conventionally employed RGB branch which takes raw
+
+Zijie Wang et al.
+RGB images and description sentences as input, two more branches including a grayscale (GRS) branch and a color (CLR) branch are further proposed to handle the color over-reliance problem. For the GRS branch, a Color Deprivation Module (CDM) is utilized to deprive an input RGB image of color information and output a grayscale image, while a Color Masking Module (CMM) is adopted to mask all the color-related words in a textual description. After that, as the color information contained in multi-modal data is almost completely removed, there is no chance for the GRS branch to rely on color information when retrieving, and hence it is supposed to seek for other discriminative clues beyond color. In addition, as the goal of CAIBC is to make full use of all-round information in a balanced and effective way, rather than overly emphasize on some information and ignore the other, the situation that the model well captures non-color clues but lose attention on discriminative color information is also not desired. Therefore, a CLR branch is further employed to explicitly care for color information, in which a Color Prior Module (CPM) is employed to enhance the extracted color information. In addition, a mutual learning mechanism [34] is adopted to enable the three branches to communicate with and learn from each other. We evaluate our proposed method on the CUHK-PEDES [16] and RSTPReid [39] datasets. Experimental results demonstrate that CAIBC outperforms previous methods and achieves the state-of-the-art performance in both supervised [16] and weakly supervised [35] text-based person retrieval settings. As further discussed in Sec. 4.3.3, by capturing all-round information beyond color, CAIBC outperforms existing works on the weakly-supervised text-based person retrieval task without any clustering or pseudo label generating based methods.
+The main contributions of this paper can be summarized as fourfold:
+• A jointly optimized multi-branch architecture termed as CAIBC is proposed for text-based person retrieval to Capture All-round Information Beyond Color and tackle the color over-reliance problem, which contains three branches including an RGB branch, a grayscale (GRS) branch and a color (CLR) branch.
+• A mutual learning mechanism is employed to enable the three branches to communicate with and learn from each other, and hence to make full use of all-round information in a balanced and effective way.
+• To our knowledge, we are the first to consider utilizing grayscale data along with RGB data to boost the performance on the task of Text-based Person Retrieval.
+• Extensive experimental analysis demonstrates that CAIBC significantly outperforms existing methods and achieves the state-of-the-art performance in both supervised and weakly supervised text-based person retrieval settings.
+2 RELATED WORKS
+2.1 Person Re-identification
+The goal of Person re-identification is to identify the targeted person images given a query image. The key challenges lie in the large intra-class and small inter-class variation caused by different views, poses, illuminations, and occlusions [22, 23, 29, 38]. Yi et al. [32] firstly proposed deep learning methods to match people with the
+
+CAIBC: Capturing All-round Information Beyond Color for Text-based Person Retrieval
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+1 2 3 4567
+
+to learn subtle feature representations from three different granularities. Zhu er al. [39] proposed a Deep Surroundings-person Separation Learning (DSSL) model to effectively extract and match person information. Besides, they construct a Real Scenarios Textbased Person Re-identification (RSTPReid) dataset to benefit future research. Wu et al. [31] introduce two color reasoning sub-tasks including image colorization and text completion to enable the model to learn fine-grained cross-modal association. Zhao et al. [35] introduce the weakly supervised person retrieval task and proposed a Cross-Modal Mutual Training (CMMT) framework to handle this problem. Jing et al. [13] combines the challenges from both crossmodal (text-based) person search and cross-domain person search, and a moment alignment network (MAN) to solve this task.
+
+RGB
+
+GRS
+
+Figure 2: Feature response maps for RGB and grayscale person images, which are generated respectively by singlebranch models trained on data with/without color information. The response map of each image is calculated by the mean of all feature maps. First and third rows denote the RGB and grayscale images, respectively, and second and fourth rows are their corresponding feature response maps.
+same identification. In order to strengthen the representation capability of the deep neural network, Hou et al. [11] proposed the Interaction-and-Aggregation (IA) Block. Hao et al. [9] propose a Modality Confusion Learning Network (MCLNet), of which the basic idea is to confuse two modalities, ensuring that the optimization is explicitly concentrated on the modality-irrelevant perspective.
+2.2 Text-based Person Retrieval
+Text-based person retrieval aims to search for the corresponding pedestrian image according to a given text query. This task is first introduced by Li et al. [16] and a GNA-RNN model is employed to handle the cross-modal data. Jing et al. [12] utilize pose information as soft attention to localize the discriminative regions. Niu et al. [18] adopt a Multi-granularity Image-text Alignments (MIA) model exploit the combination of multiple granularities. Liu et al. [17] generate fine-grained structured representations from images and texts of pedestrians with an A-GANet model to exploit semantic scene graphs. CMAAM [1] is proposed to learn an attribute-driven space along with a class-information driven space by introducing extra attribute annotation and prediction. Zheng et al. [36] propose a Gumbel attention module to alleviate the matching redundancy problem and a hierarchical adaptive matching model is employed
+
+3 METHODOLOGY
+3.1 Problem Formulation
+The goal of the proposed framework (shown in Fig. 3) is to measure the similarity between cross-modal data, namely, a given textual description query and a gallery person image. Formally, let 𝐷 = {𝑝𝑖, 𝑞𝑖 }𝑖𝑁=1 denotes a dataset consists of 𝑁 image-text pairs. Each pair contains a pedestrian image 𝑝𝑖 captured by one certain surveillance camera along with its corresponding textual description query 𝑞𝑖 . The IDs of the 𝑄 varied pedestrians in the dataset are denoted as 𝑌 = {𝑦𝑖 }𝑖𝑁=1 with 𝑦𝑖 ∈ {1, · · · , 𝑄 }. Given a textual description, the aim is to identify images of the most relevant pedestrian from a large scale person image gallery.
+3.2 Branch Prototype
+First, we introduce the branch prototype which extracts and matches multi-granular representations from multi-modal data. It can be utilized to implement both the RGB and GRS branches in CAIBC.
+3.2.1 Visual Representation Extraction. Given either an RGB or grayscale image, a pretrained ResNet-50 [10] backbone is utilized to extract multi-granular visual representations. To obtain the global representation 𝑣𝑔 ∈ R𝑃 , the feature map before the last pooling layer of ResNet-50 is down-scaled with a global max pooling (GMP) operation and converted to a 2048-dim vector, which is then passed through a fully-connected (FC) layer and transformed to 𝑃-dim. In the local branch, the same feature map is first horizontally 𝑘-partitioned with GMP, and then the local strips are separately passed through an FC layer to form 𝐾 𝑃-dim fine-grained local visual representations 𝑉𝑓 = {𝑣𝑓 𝑘 }𝑘𝐾=1.
+3.2.2 Textual Representation Extraction. For textual representation extraction, an input sentence is processed by a bi-directional Gated Recurrent Unit (bi-GRU) after the words are embedded via a pretrained BERT language model [24]. The 𝑖-th last hidden states of the forward and backward GRUs are averaged to represent the 𝑖-th word in the query sentence as 𝑒𝑖 ∈ R𝐶 . The overall 𝑛 word representations are concatenated as 𝐸 ∈ R𝑛×𝐶 to represent the whole sentence, on which a row-wise max pooling (RMP) operation followed by an FC layer is performed to get the global textual representation 𝑡𝑔 ∈ R𝑃 . After that, we propose a Word Attention Module following SSAN [4] to obtain 𝐾 local textual representations
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+Zijie Wang et al.
+
+.........
+
+CDM
+
+ResNet-50
+
+Mrgb Mclr
+
+...
+
+.........
+
+.........
+
+...
+
+ReID Loss
+
+vgrgb Vfrgb
+
+ML Loss RGB Branch ML Loss
+
+Tfrgb tgrgb
+
+ML Loss
+
+...
+
+...
+
+ReID Loss
+
+vclr
+
+ML Loss
+
+CLR Branch
+
+tclr
+
+ML Loss
+
+ML Loss
+
+.........
+
+ResNet-50
+
+Mgrs
+
+vggrs Vfgrs
+
+...
+
+.........
+
+ReID Loss
+GRS Branch
+
+Tfgrs tggrs
+
+...
+... ......... .........
+
+.........
+
+...
+
+Ergb
+Bi-GRU
+
+BERT
+
+This man is wearing an orange coat with
+a grey-orange backpack. He has light blue jeans and
+black-white sneakers.
+
+CPM
+
+Color Prior
+
+CMM
+
+Bi-GRU
+Egrs
+
+BERT
+
+This man is wearing an [CLR] coat with a [CLR] backpack. He has light [CLR]
+jeans and [CLR] sneakers.
+
+Figure 3: The overall framework of the proposed CAIBC model, which contains an RGB branch, a grayscale (GRS) branch and a color (CLR) branch to capture all-round information beyond color.
+
+according to word-part correspondences:
+
+𝑘
+𝑠
+𝑖
+
+=
+
+𝜎 (𝑊𝑝𝑘𝑒𝑖 ),
+
+𝐸𝑘
+
+=
+
+{𝑠𝑘
+𝑖
+
+𝑒𝑖
+
+}𝑛𝑖=1,
+
+𝑘
+
+=
+
+{1, 2, . . . , 𝐾 },
+
+(1)
+
+where 𝜎
+
+denotes the
+
+Sigmoid
+
+function
+
+and
+
+𝑊𝑘
+𝑝
+
+∈
+
+R1×𝐶
+
+stands
+
+for
+
+a
+
+linear transformation operation. Then each modified sentence rep-
+
+resentation 𝐸𝑘 is processed separately by RMP + FC and stacked to obtain the fine-grained local textual representations 𝑇𝑓 = {𝑡𝑓 𝑘 }𝑘𝐾=1.
+After obtaining both visual and textual multi-granular represen-
+
+tations, the fine-grained feature representations in 𝑉𝑓 and 𝑇𝑓 are first concatenated with each other to form the unified visual and
+
+textual local feature representations 𝑣𝑙 and 𝑡𝑙 ∈ R𝐾𝑃 . And then the cross-modal global and local similarities can be calculated as
+
+𝑆𝑔
+
+=
+
+𝑣𝑔𝑇 𝑡𝑔 ,
+||𝑣𝑔 ||||𝑡𝑔 ||
+
+𝑆𝑙
+
+=
+
+𝑣𝑇
+𝑙
+
+𝑡𝑙
+
+.
+
+||𝑣𝑙 ||||𝑡𝑙 ||
+
+(2)
+
+3.3 Color Deprivation and Masking
+Given a certain RGB image ∈ R3×𝐻 ×𝑊 , its corresponding grayscale image can be conveniently obtained via a Color Deprivation Module (CDM), which can be formulated as:
+
+𝑅(𝑖, 𝑗) 
+
+𝐺𝑅𝑆 (𝑖, 𝑗) = 0.299
+
+0.587
+
+0.114
+
+ 𝐺
+
+(𝑖,
+
+𝑗
+
+)
+
+,
+
+(3)
+
+ 𝐵
+
+(𝑖,
+
+𝑗
+
+)
+
+ 
+
+
+
+where 𝑖 ∈ {1, 2, . . . , 𝐻 }, 𝑗 ∈ {1, 2, . . . ,𝑊 }. 𝐺𝑅𝑆 (𝑖, 𝑗), 𝑅(𝑖, 𝑗), 𝐺 (𝑖, 𝑗)
+
+and 𝐵(𝑖, 𝑗) denote the pixel value in the 𝑖-th row and the 𝑗-th column
+
+of the grayscale image and the three RGB channels, respectively.
+
+0.299, 0.587 and 0.114 are empirical coefficients for RGB-to-GRS
+
+conversion which are widely used in famous tools like OpenCV
+
+and Photoshop. To process the obtained grayscale images with
+
+ResNet-50, we expend them to three channels by duplicating the
+
+grayscale channel three times.
+
+When it comes to color removing for the textual modality, a
+
+Color Masking Module (CMM) is proposed. First, with the person
+
+description corpus from text-based person retrieval datasets, a color
+
+bank is constructed by collecting color-related words that appear
+
+with high frequency. The word cloud constructed based on the frequency of color-related words is illustrated in Fig. 4. And then given an input textual description, all the color-related words are masked as a unified token [𝐶𝐿𝑅] to remove the color information.
+Note that both CDM and CMM have no parameters to learn and can be simply applied to the input raw multi-modal data.
+
+Figure 4: Word cloud constructed based on the frequency of color-related words in the color bank.
+
+3.4 Capturing All-round Information via Multi-branch Architecture
+
+3.4.1 RGB Branch. The RGB branch takes an RGB image along
+
+with a textual description as input, which outputs visual/textual
+
+multi-modal
+
+RGB
+
+representations
+
+as
+
+𝑟𝑔𝑏
+𝑣𝑔
+
+/
+
+𝑟𝑔𝑏
+𝑡𝑔
+
+∈
+
+R𝑃
+
+and
+
+𝑟𝑔𝑏
+𝑣
+𝑙
+
+/
+
+𝑟𝑔𝑏
+𝑡
+
+∈
+
+R𝐾𝑃 .
+
+The
+
+similarities
+
+for
+
+this
+
+branch
+
+are
+
+computed
+
+as
+
+𝑙
+
+𝑟𝑔𝑏
+𝑆𝑔
+
+=
+
+(𝑣𝑔𝑟𝑔𝑏
+
+)𝑇
+
+𝑟𝑔𝑏
+𝑡𝑔
+
+,
+
+||𝑣𝑔𝑟𝑔𝑏 ||||𝑡𝑔𝑟𝑔𝑏 ||
+
+𝑟𝑔𝑏
+𝑆
+𝑙
+
+=
+
+(𝑣
+
+𝑟
+
+𝑔𝑏
+
+)𝑇
+
+𝑟𝑔𝑏
+𝑡
+
+𝑙
+
+𝑙
+
+.
+
+||𝑣𝑟𝑔𝑏 ||||𝑡𝑟𝑔𝑏 ||
+
+𝑙
+
+𝑙
+
+(4)
+
+CAIBC: Capturing All-round Information Beyond Color for Text-based Person Retrieval
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+3.4.2 GRS Branch. The GRS branch takes in a converted grayscale
+
+image and a textual description with color-related words masked.
+
+Similar
+
+to
+
+the
+
+RGB
+
+branch,
+
+it
+
+gives
+
+out
+
+𝑔𝑟
+𝑣𝑔
+
+𝑠
+
+/
+
+𝑔𝑟 𝑠
+𝑡𝑔
+
+∈
+
+R𝑃
+
+along
+
+with
+
+𝑔𝑟 𝑠
+𝑣
+
+/
+
+𝑔𝑟 𝑠
+𝑡
+
+∈
+
+R𝐾𝑃 ,
+
+and
+
+the
+
+similarities
+
+for
+
+the
+
+GRS
+
+branch
+
+are
+
+𝑙𝑙
+
+𝑔𝑟 𝑠
+𝑆𝑔
+
+=
+
+(𝑣𝑔𝑔𝑟
+
+𝑠
+
+)𝑇
+
+𝑔𝑟 𝑠
+𝑡𝑔
+
+, ||𝑣𝑔𝑔𝑟𝑠 ||||𝑡𝑔𝑔𝑟𝑠 ||
+
+𝑔𝑟 𝑠
+𝑆
+𝑙
+
+=
+
+(𝑣𝑔𝑟𝑠 )𝑇 𝑡𝑔𝑟𝑠
+
+𝑙𝑙
+
+.
+
+||𝑣𝑔𝑟𝑠 ||||𝑡𝑔𝑟𝑠 ||
+
+𝑙
+
+𝑙
+
+(5)
+
+3.4.3 CLR Branch. As discussed in the Introduction, the goal of CAIBC is to make full use of all-round information in a balanced and effective way, rather than overly emphasize on some information and ignore the other, so the situation that the model well captures non-color clues but lose attention on discriminative color information is also not desired. To this end, we further propose the color (CLR) branch to explicitly care for color information and hence give a more stable and robust retrieval performance. Intuitively, as the RGB branch cares for general information while the GRS branch cares for discriminative clues beyond color, the non-shared information between the two branches can be pure color information. For the visual modality, the output feature map 𝑀𝑟𝑔𝑏 of ResNet-50 in the RGB branch is subtracted by 𝑀𝑔𝑟𝑠 from the GRS branch to obtain a pure color feature map 𝑀𝑐𝑙𝑟 , which is then processed by GMP along with an FC layer to give the visual color representation 𝑣𝑐𝑙𝑟 ∈ R𝑃 . For the textual modality, a Color Prior Module (CPM) is proposed. Specifically, the representation 𝐸𝑟𝑔𝑏 of a whole sentence is first subtracted by the masked sentence representation 𝐸𝑔𝑟𝑠 to get 𝐸𝑐𝑙𝑟 . And then the color-related words in the sentence are utilized as color prior to further enhance the color information contained in 𝐸𝑐𝑙𝑟 . To be specific, after word embedding, the color prior are summed up and converted as the same dimension with the word representation 𝑒𝑐𝑙𝑟 in 𝐸𝑐𝑙𝑟 , which is then added with each
+𝑖
+𝑒𝑐𝑙𝑟 to give a color prior enhanced representation 𝐸𝑐𝑝 . With an
+𝑖
+RMP operation and an FC layer, the textual color representation 𝑡𝑐𝑙𝑟 ∈ R𝑃 can be obtained. Eventually, the similarity for the CLR branch is calculated as
+
+𝑐𝑙𝑟
+𝑆
+
+=
+
+(𝑣𝑐𝑙𝑟 )𝑇 𝑡𝑐𝑙𝑟
+
+.
+
+(6)
+
+||𝑣𝑐𝑙𝑟 ||||𝑡𝑐𝑙𝑟 ||
+
+3.5 Optimization
+
+As discussed above, the core target of CAIBC is to synchronously
+
+learn the three branches and make full use of all-round information
+
+in a balanced and effective way. Thus a mutual learning mech-
+
+anism is employed to enable knowledge communication across
+
+branches. First, the Kullback Leibler (KL) Divergence is utilized
+
+to quantify the similarity of logits from different branches. Let
+
+𝑣𝑏𝑟
+
+∈
+
+{𝑣𝑟𝑔𝑏
+
+,
+
+𝑔𝑟
+𝑣
+
+𝑠
+
+,
+
+𝑣𝑐𝑙𝑟
+
+}
+
+and 𝑡𝑏𝑟
+
+∈
+
+{𝑡 𝑟 𝑔𝑏
+
+,
+
+𝑔𝑟
+𝑡
+
+𝑠
+
+,
+
+𝑡
+
+𝑐𝑙𝑟
+
+}
+
+denote the
+
+visual
+
+𝑖
+
+𝑔𝑖 𝑔𝑖 𝑖
+
+𝑖
+
+𝑔𝑖 𝑔𝑖 𝑖
+
+and textual features extracted from the 𝑖-th sample pair, which are
+
+used
+
+to
+
+calculated
+
+the
+
+probabilities
+
+𝑝𝑏𝑣𝑚𝑟
+
+and
+
+𝑝𝑏𝑟
+𝑡𝑚
+
+of
+
+class
+
+(person
+
+ID) 𝑚 as:
+
+𝑏𝑟
+𝑝𝑣𝑚
+
+(𝑣𝑏𝑟
+𝑖
+
+)
+
+=
+
+𝑒𝑥
+
+𝑝
+
+(𝛾𝑊𝑚
+
+𝑣𝑏𝑟
+𝑖
+
+)
+
+𝑀 𝑘 =1
+
+𝑒𝑥
+
+𝑝
+
+(𝛾𝑊𝑘
+
+𝑣𝑏𝑟
+𝑖
+
+)
+
+,
+
+𝑏𝑟
+𝑝
+
+(𝑡𝑏𝑟
+
+𝑡𝑚 𝑖
+
+)
+
+=
+
+𝑒𝑥𝑝 (𝛾𝑊𝑚𝑡𝑖𝑏𝑟 )
+
+,
+
+𝑀 𝑘 =1
+
+𝑒𝑥
+
+𝑝
+
+(𝛾𝑊𝑘
+
+𝑡𝑏𝑟
+𝑖
+
+)
+
+(7)
+
+where
+
+𝛾𝑊𝑚
+
+𝑣𝑏𝑟
+𝑖
+
+and
+
+𝛾𝑊𝑚
+
+𝑡𝑏𝑟
+𝑖
+
+are
+
+logits
+
+fed
+
+into
+
+the
+
+softmax
+
+layer
+
+in
+
+the 𝑏𝑟 branch (𝑏𝑟 can be 𝑟𝑔𝑏, 𝑔𝑟𝑠 or 𝑐𝑙𝑟 ). And then each branch is
+
+optimized under the constraint of a mutual learning (ML) loss,
+
+which can be formulated as:
+
+L𝑏𝑟
+𝑀𝐿
+
+=
+
+1 2
+
+(
+𝑠
+
+∑︁
+∈𝐵/{𝑏𝑟
+
+}
+
+𝑁
+∑︁
+𝑖 =1
+
+𝑀
+∑︁
+𝑚=1
+
+𝑏𝑟
+𝑝𝑣𝑚
+
+(𝑣𝑏𝑟
+𝑖
+
+)𝑙𝑜𝑔
+
+𝑝𝑏𝑣𝑚𝑟 𝑝𝑠𝑣𝑚
+
+(𝑣𝑏𝑟
+𝑖
+(𝑣𝑏𝑟
+𝑖
+
+) )
+
++
+
+𝑠
+
+∑︁
+∈𝐵/{𝑏𝑟
+
+}
+
+𝑁
+∑︁
+𝑖 =1
+
+𝑀
+∑︁
+𝑚=1
+
+𝑏𝑟
+𝑝𝑡𝑚
+
+(𝑡𝑏𝑟
+𝑖
+
+)𝑙𝑜𝑔
+
+𝑝𝑏𝑟
+𝑡𝑚
+𝑝𝑠
+𝑡𝑚
+
+(𝑡𝑏𝑟
+𝑖
+(𝑡𝑏𝑟
+𝑖
+
+) )
+
+),
+
+(8)
+
+where 𝐵 = {𝑟𝑔𝑏, 𝑔𝑟𝑠, 𝑐𝑙𝑟 }.
+
+Besides, the commonly utilized triplet ranking loss along with
+
+identification (ID) loss are also adopted to train CAIBC, which are
+
+together denoted as ReID loss. Note that for local representations,
+
+the
+
+ID
+
+loss
+
+is
+
+imposed
+
+on
+
+each
+
+𝑟𝑔𝑏
+𝑣
+
+/
+
+𝑟𝑔𝑏
+𝑡
+
+and
+
+𝑔𝑟 𝑠
+𝑣
+
+/
+
+𝑔𝑟 𝑠
+𝑡
+
+,
+
+while
+
+the
+
+𝑓𝑘 𝑓𝑘
+
+𝑓𝑘 𝑓𝑘
+
+triplet
+
+ranking
+
+loss
+
+is
+
+imposed
+
+on
+
+𝑟𝑔𝑏
+𝑣
+
+/
+
+𝑟𝑔𝑏
+𝑡
+
+and
+
+𝑔𝑟 𝑠
+𝑣
+
+/
+
+𝑔𝑟
+𝑡
+
+𝑠
+
+.
+
+𝑙𝑙
+
+𝑙𝑙
+
+4 EXPERIMENTS
+4.1 Experimental Setup
+4.1.1 Dataset. Our approach is evaluated on two challenging Textbased Person Retrieval datasets : CUHK-PEDES [16] and RSTPReid [39]. (1) CUHK-PEDES: Following the official data split approach [16], the training set of CUHK-PEDES contains 34054 images, 11003 persons and 68126 textual descriptions. The validation set contains 3078 images, 1000 persons and 6158 textual descriptions while the test set has 3074 images, 1000 persons and 6156 descriptions. (2) RSTPReid: The RSTPReid dataset contains 20505 images of 4,101 persons. Each person has 5 corresponding images taken by different cameras and each image is annotated with 2 textual descriptions. For data division, 3701, 200 and 200 identities are utilized for training, validation and test, respectively.
+
+4.1.2 Evaluation Metrics. The performance is evaluated by the Rank-k accuracy (R@k). All images in the test set are ranked by their similarities with a given query natural language sentence. If any image of the corresponding person is contained in the top-k images, we call this a successful search. We report the Rank-1/5/10 accuracies for all experiments.
+
+4.2 Implementation Details
+In our experiments, we set the representation dimensionality 𝑃 = 2048. The dimensionality of embedded word vectors is set to 500. Two separate ResNet-50 [10] models pretrained on the ImageNet database [20] are utilized as the visual CNN backbone for the RGB and GRS branch and a pretrained BERT language model [24] is used to handle the textual input. For the CUHK-PEDES and RSTPReid dataset, the input images are resized to 384 × 128 × 3 while for the Flickr8k and Flickr30k datasets the images are resized to 224×224×3. 𝐾 is set to 6. The random horizontal flipping strategy is employed for data augmentation. An Adam optimizer [14] is adopted to train the model with a batch size of 64. The parameters of BERT is fixed during training. The learning rate is initially set as 0.0001 for finetuning the two pretrained ResNet-50 backbones and 0.001 for the rest parts of our proposed model. The number of training epochs is set to 100.
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+Table 1: Comparison with SOTA (supervised) on CUHKPEDES.
+
+Method
+
+R@1 R@5 R@10
+
+CNN-RNN [19] Neural Talk [25] GNA-RNN [16] IATV [15] PWM-ATH [3] Dual Path [37] GLA [2] CMPM-CMPC [33] MIA [18] A-GANet [17] PMA [12] TIMAM [21] ViTAA [27] CMAAM [1] HGAN [36] NAFS [5] DSSL [39] MGEL [26] SSAN [4] NAFS [5] + TC&IC [31]
+
+8.07 13.66 19.05 25.94 27.14 44.40 43.58 49.37 53.10 53.14 54.12 54.51 55.97 56.68 59.00 59.94 59.98 60.27 61.37 63.40
+
+49.45 66.26 66.93 71.69 75.00 74.03 75.45 77.56 75.84 77.18 79.49 79.86 80.41 80.01 80.15 -
+
+32.47 41.72 53.64 60.48 61.02 75.07 76.26 79.27 82.90 81.95 82.97 84.78 83.52 84.86 86.62 86.70 87.56 86.74 86.73 87.80
+
+CAIBC w/o BERT (Ours) 62.33 81.32 87.35
+
+CAIBC (Ours)
+
+64.43 82.87 88.37
+
+Table 2: Comparison with SOTA on RSTPReid.
+
+Method
+
+R@1 R@5 R@10
+
+IMG-Net [30] AMEN [28] DSSL [39] SSAN [4]
+
+37.60 38.45 39.05 43.50
+
+61.15 62.40 62.60 67.80
+
+73.55 73.80 73.95 77.15
+
+CAIBC w/o BERT (Ours) 45.05 68.15 77.65
+
+CAIBC (Ours)
+
+47.35 69.55 79.00
+
+Table 3: Comparison with SOTA (weakly supervised) on CUHK-PEDES.
+
+Method
+
+R@1 R@5 R@10
+
+MM-TIM [8] CMPM + MMT [6] CMPM + SpCL [7] CMMT [35]
+
+45.35 50.51 51.13 57.10
+
+63.78 70.23 71.54 78.14
+
+70.63 78.98 80.03 85.23
+
+CAIBC w/o BERT (Ours) 57.18 78.17 85.15
+
+CAIBC (Ours)
+
+58.64 79.02 85.93
+
+4.3 Results
+4.3.1 Comparison with SOTA in Supervised Settings. We compare our proposed CAIBC method with previous approaches
+
+Zijie Wang et al.
+in the supervised setting [16] on CUHK-PEDES and RSTPReid, as shown in Tab. 1 and Tab. 2, respectively. Note that in all the tables of this paper, the highest values are marked as bold type while the second high values are underlined. It can be observed that by capturing all-round information beyond color, CAIBC achieves the state-of-the-art performance on both datasets. Specifically, Lapscore [31] introduces two color reasoning sub-tasks including text completion and image colorization (TC&IC) during training to enable the model to better excavate color information and learn fine-grained cross-modal association. On the contrary, the goal of our proposed CAIBC method is to enable the model to take full advantage of other key clues along with color, so as to alleviate the color over-reliance problem. Besides, the two sub-tasks proposed in Lapscore can also be employed as add-on modules in CAIBC to further improve the performance, which remains our future work in the extension version.
+4.3.2 Comparison with SOTA in Weakly Supervised Settings. In addition, we also evaluate CAIBC on the weakly supervised person retrieval task [35] and display the comparison with previous methods in Tab. 3. It can be noticed that CAIBC achieves competitive and even slightly better performance compared with existing SOTA methods on the weakly-supervised text-based person retrieval task without any clustering or pseudo label generating based methods (further discussed in Sec. 4.3.3), which indicates that our proposed method indeed alleviate the color over-reliance problem to some extent.
+4.3.3 Discussion on Superiority of CAIBC for Alleviating Color Over-reliance Problem. In the context of the traditional supervised text-based person retrieval task, it seems that the negative effects caused by the color over-reliance problem may be slightly alleviated with the identity annotation for each pair as prior knowledge. To be specific, when the model is suffering from the color over-reliance problem and fails to properly distinguish person images with similar color information, the identity prior information can tell the model whether the two samples similar in color are belong to a same person or not. Nevertheless, depending all on the identity prior to alleviate the color over-reliance problem is just not enough. During the training process, all the identity prior can do is to tell the model that it has made a mistake in distinguishing samples with similar color information, but it is not able to tell the model exactly what details it has ignored, and hence the positive impact it can bring is quite limited.
+Besides, when there is no identity information given and only the pairwise relationship is available (termed as Weakly Supervised Text-based Person ReID in [35]), the impact of color over-reliance problem can become more significant. Many of the previous works propose clustering or pseudo label generating based methods for the weakly supervised text-based person retrieval task, with the aim to excavate some other prior knowledge to compensate for the lack of identity information. However, as these methods still depend on some kind of prior knowledge and most of the adopted priors are less precise than the directly annotated identity labels, there is no chance for them to better alleviate the color over-reliance problem.
+In conclusion, as discussed above, most of the existing methods for either supervised and weakly supervised text-based person
+
+CAIBC: Capturing All-round Information Beyond Color for Text-based Person Retrieval
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+Table 4: Ablation analysis of key components on CUHK-PEDES and RSTPReid. CP stands for the utilization of color prior.
+
+No.
+
+Branches
+
+Components
+
+CUHK-PEDES
+
+RSTPReid
+
+- RGB GRS CLR CP L𝑀𝐿 L𝑖𝑑 L𝑡𝑟𝑖 BERT R@1 R@5 R@10 R@1 R@5 R@10
+
+Exp.1 ✓ × × × Exp.2 × ✓ × ×
+
+× ✓✓ × ✓✓
+
+× 58.97 79.03 85.38 40.05 64.85 75.20 × 24.89 46.43 57.02 13.45 32.00 44.25
+
+Exp.3 ✓ T × × × ✓ ✓ Exp.4 ✓ V × × × ✓ ✓ Exp.5 ✓ ✓ × × × ✓ ✓ Exp.6 ✓ ✓ × × ✓ ✓ ✓
+
+× 59.68 79.22 86.21 40.15 65.30 75.60 × 59.97 79.40 86.34 41.85 66.85 77.00 × 60.10 79.91 86.34 42.15 67.10 76.75 × 61.01 80.33 86.71 43.10 67.45 77.15
+
+Exp.7 ✓ ✓ ✓ × × ✓ ✓ Exp.8 ✓ ✓ ✓ ✓ × ✓ ✓ Exp.9 ✓ ✓ ✓ × ✓ ✓ ✓
+
+× 61.03 80.46 87.20 42.65 67.05 76.95 × 61.68 80.85 87.18 43.70 67.35 77.05 × 62.02 80.73 87.26 44.25 67.70 77.35
+
+Exp.10 ✓ × × × × × ✓ Exp.11 × ✓ × × × × ✓ Exp.12 ✓ ✓ × × × × ✓ Exp.13 ✓ ✓ × × ✓ × ✓ Exp.14 ✓ ✓ ✓ ✓ × × ✓ Exp.15 ✓ ✓ ✓ ✓ ✓ × ✓ Exp.16 ✓ ✓ ✓ ✓ ✓ × ✓
+
+× 53.64 74.66 82.44 36.30 61.10 71.75 × 21.30 42.48 53.72 10.10 25.05 37.10 × 55.46 76.41 83.80 39.05 62.95 74.40 × 56.48 77.10 84.19 39.40 63.80 74.95 × 56.60 77.26 84.52 40.20 64.85 75.40 × 57.18 78.17 85.15 40.45 65.20 75.75 ✓ 58.64 79.02 85.93 42.10 66.25 76.65
+
+Exp.17 ✓ ✓ ✓ ✓ ✓ ✓ ✓ Exp.18 ✓ ✓ ✓ ✓ ✓ ✓ ✓
+
+× 62.33 81.32 87.35 45.05 68.15 77.65 ✓ 64.43 82.87 88.37 47.35 69.55 79.00
+
+retrieval rely on some certain kind of prior knowledge to tell the model whether it is hindered by the color over-reliance problem without further detailed guidance. This kind of paradigms is indirect and thereby can only lead to a sub-optimal retrieval performance. Instead, within our proposed CAIBC method, the multi-branch architecture is able to explicitly care for different kinds of information. To be specific, the grayscale (GRS) branch handles multi-modal data with color information removed and is thereby forced to focus on other discriminative clues beyond color. On the contrary, the color (CLR) branch is proposed to explicitly attend to color information. In addition, the commonly utilized RGB branch is adopted to generally handle the raw input data. The three branches in CAIBC play varied roles, which complement and constrain each other when extracting and matching information from multi-modal data. Considering that each of the three proposed branches can be guided and corrected by the other two branches by means of the complementary effect among them, the reliance on prior knowledge to tackling the color over-reliance problem can be significantly released. In other words, when one certain branch neglect some key clues, the other branches are able to catch the missed information and still make the complete CAIBC model itself focus on sufficient discriminative clues, instead of waiting for the identity prior to tell it a vague true or false without explicit guidance.
+4.4 Ablation Analysis
+To demonstrate the effectiveness and contribution of each component in CAIBC, a series of ablation experiments are carried out on CUHK-PEDES and RSTPReid. The experimental results are reported in Tab. 4, which are numbered from 1 to 18. Exp.1 is conducted with a single RGB branch baseline model (detailed in Sec. 3.2) while
+
+Exp.2 is carried out with a single GRS branch model. Exp.3∼6 are conducted with double branch structures and V or T in the table means that the GRS branch is employed only for the visual or textual modality. Exp.7∼9 are performed with all the 3 branches while Exp.17 and Exp.18 is carried out with the complete CAIBC. From Exp.10 to Exp.16, we further carried out experimental analysis to see the effectiveness of our proposed components on weakly supervised person retrieval.
+4.4.1 Impact of Multi-branch Learning. It can be observed from Tab. 4 that although there exists a performance gap between the model with a single GRS branch and the one with a single RGB branch, by combining the RGB branch with GRS branch, an obvious performance gain is obtained. And when the CLR branch which explicitly cares for color information is added, the retrieval accuracy is further improved. All these observations indicate that by means of the jointly optimized multi-branch architecture, CAIBC is enabled to separately care for different types of information from varied aspects and the 3 branches can complement each other to achieve a superior retrieval performance.
+4.4.2 Impact of Mutual Learning. By comparing Exp.5 with Exp.6 in Tab. 4, it can be observed that after the mutual learning mechanism is utilized, the performance increases by 0.91%, 0.42%, 0.37% and 0.95%, 0.35% 0.40% on CUHK-PEDES and RSTPReid under the Rank-1/5/10 accuracies, respectively. Besides, comparing Exp.17 with Exp.8, the performance increases by 0.65%, 0.47%, 0.17% and 1.30%, 0.80% 0.60% on CUHK-PEDES and RSTPReid, which proves the benefit of adopting the mutual learning mechanism to enable knowledge communication among branches.
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+Zijie Wang et al.
+
+This person is sitting on a bicycle and is wearing a pink shirt and dark green shorts.
+Man is wearing a blue tshirt with khaki shorts. He has on a black watch on his left wrist. He is wearing a
+camera bag over his left shoulder that is resting on
+his right back hip.
+The female is wearing a ponytail and has dark
+hair. Her blouse is bluish green and she is wearing a floral patterned skirt,
+carrying a canvas shoulder bag.
+
+The woman is wearing a white printed folded long sleeves shirt and a grey sweat pants with a white
+sneakers. She is also pulling a suitcase.
+The woman is wearing white shoes with a pair of light and dark pink track
+pants. She is wearing a white tee-shirt and she has a dark bag over her
+left shoulder.
+The man is wearing a grey shirt with white faces design, black shorts, black socks and grey shoes.
+
+Figure 5: Visualization of Feature Response Maps within RGB and GRS Branches of CAIBC. For each example, the 1st and the 3rd images are respectively the RGB and GRS images fed into the RGB and GRS branches, while the 2nd and the 4th images are their corresponding feature response maps. Each feature response map is calculated by the mean of all feature maps
+
+4.4.3 Impact of Color Prior (CP). In addition, as can be seen from the two pairs of comparison (Exp.7, Exp.8) and (Exp.9, Exp.17), introducing color prior information into the model is able to further bring a performance gain, which proves its effectiveness to enhance the CLR branch.
+The woman is wearing a brown jacket with a fur lined hood. She is also wearing a gray short and black pants. She is carrying a large bag on
+her right shoulder.
+The woman is wearing a black, white and pink floral patterned shirt with long sleeves, black dress pants and strap-backed shoes. She carries a cross-body bag on her left side and
+has short black hair.
+A man wearing a gray and black shirt, a pair of black pants and a
+bag over his right shoulder.
+Figure 6: Text-based person retrieval examples given by CAIBC. Note that for each example, the first and the second row are given by a single-branch model trained on data with and without color information. The matched and mismatched person images are marked with green and red rectangles, respectively.
+4.5 Visualization
+Some typical feature response maps within RGB and GRS Branches of CAIBC are visualized in Fig. 5, while some of the text-based person retrieval examples are displayed in Fig. 6.
+
+5 CONCLUSION
+Text-based person retrieval aims to identify images of a target person from a large-scale person image database according a given natural language description. Existing methods still generally face a color over-reliance problem, which means the models rely heavily on color information when matching cross-modal data. Indeed, color information is an important decision-making accordance for retrieval, but the over-reliance on color would distract the model from other key clues (e.g. texture information, structure information, etc.), and thereby lead to a sub-optimal retrieval performance. To solve this problem, in this paper, we propose to Capture Allround Information Beyond Color (CAIBC) via a jointly optimized multi-branch architecture for text-based person retrieval. CAIBC contains three branches including an RGB branch, a grayscale (GRS) branch and a color (CLR) branch. Besides, with the aim of making full use of all-round information in a balanced and effective way, a mutual learning mechanism is further employed to enable the three branches which attend to varied aspects of information to communicate with and learn from each other. Extensive experimental analysis is carried out to evaluate our proposed CAIBC method on CUHK-PEDES and RSTPReid in both supervised and weakly supervised text-based person retrieval settings, which demonstrates that CAIBC significantly outperforms existing methods and achieves the state-of-the-art performance on all the three tasks.
+ACKNOWLEDGMENTS
+This work is partially supported by the National Natural Science Foundation of China (Grant No. 62101245, 61972016), China Postdoctoral Science Foundation (Grant No.2019M661999) , Natural Science Research of Jiangsu Higher Education Institutions of China (19KJB520009) and Future Network Scientific Research Fund Project (Grant No. FNSRFP-2021-YB-21).
+
+CAIBC: Capturing All-round Information Beyond Color for Text-based Person Retrieval
+
+MM ’22, October 10–14, 2022, Lisboa, Portugal
+
+REFERENCES
+[1] Surbhi Aggarwal, Venkatesh Babu Radhakrishnan, and Anirban Chakraborty. 2020. Text-based person search via attribute-aided matching. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision. 2617–2625.
+[2] Dapeng Chen, Hongsheng Li, Xihui Liu, Yantao Shen, Jing Shao, Zejian Yuan, and Xiaogang Wang. 2018. Improving deep visual representation for person re-identification by global and local image-language association. In Proceedings of the European Conference on Computer Vision (ECCV). 54–70.
+[3] T. Chen, C. Xu, and J. Luo. 2018. Improving Text-Based Person Search by Spatial Matching and Adaptive Threshold. In 2018 IEEE Winter Conference on Applications of Computer Vision (WACV). 1879–1887.
+[4] Zefeng Ding, Changxing Ding, Zhiyin Shao, and Dacheng Tao. 2021. Semantically Self-Aligned Network for Text-to-Image Part-aware Person Re-identification. arXiv preprint arXiv:2107.12666 (2021).
+[5] Chenyang Gao, Guanyu Cai, Xinyang Jiang, Feng Zheng, Jun Zhang, Yifei Gong, Pai Peng, Xiaowei Guo, and Xing Sun. 2021. Contextual Non-Local Alignment over Full-Scale Representation for Text-Based Person Search. arXiv preprint arXiv:2101.03036 (2021).
+[6] Yixiao Ge, Dapeng Chen, and Hongsheng Li. 2020. Mutual Mean-Teaching: Pseudo Label Refinery for Unsupervised Domain Adaptation on Person Reidentification. In International Conference on Learning Representations. https: //openreview.net/forum?id=rJlnOhVYPS
+[7] Yixiao Ge, Feng Zhu, Dapeng Chen, Rui Zhao, and hongsheng Li. 2020. Self-paced Contrastive Learning with Hybrid Memory for Domain Adaptive Object Re-ID. In Advances in Neural Information Processing Systems. Curran Associates, Inc., 11309–11321.
+[8] Raul Gomez, Lluis Gomez, Jaume Gibert, and Dimosthenis Karatzas. 2019. Selfsupervised learning from web data for multimodal retrieval. In Multimodal Scene Understanding. Elsevier, 279–306.
+[9] Xin Hao, Sanyuan Zhao, Mang Ye, and Jianbing Shen. 2021. Cross-Modality Person Re-Identification via Modality Confusion and Center Aggregation. In Proceedings of the IEEE/CVF International Conference on Computer Vision. 16403– 16412.
+[10] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer vision and pattern recognition. 770–778.
+[11] Ruibing Hou, Bingpeng Ma, Hong Chang, Xinqian Gu, Shiguang Shan, and Xilin Chen. 2019. Interaction-and-aggregation network for person re-identification. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 9317–9326.
+[12] Ya Jing, Chenyang Si, Junbo Wang, Wei Wang, Liang Wang, and Tieniu Tan. 2020. Pose-guided multi-granularity attention network for text-based person search. In Proceedings of the AAAI Conference on Artificial Intelligence, Vol. 34. 11189–11196.
+[13] Ya Jing, Wei Wang, Liang Wang, and Tieniu Tan. 2020. Cross-modal cross-domain moment alignment network for person search. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 10678–10686.
+[14] Diederik P. Kingma and Jimmy Ba. 2015. Adam: A Method for Stochastic Optimization. In 3rd International Conference on Learning Representations, ICLR 2015.
+[15] Shuang Li, Tong Xiao, Hongsheng Li, Wei Yang, and Xiaogang Wang. 2017. Identity-aware textual-visual matching with latent co-attention. In Proceedings of the IEEE International Conference on Computer Vision. 1890–1899.
+[16] Shuang Li, Tong Xiao, Hongsheng Li, Bolei Zhou, Dayu Yue, and Xiaogang Wang. 2017. Person search with natural language description. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 1970–1979.
+[17] Jiawei Liu, Zheng-Jun Zha, Richang Hong, Meng Wang, and Yongdong Zhang. 2019. Deep adversarial graph attention convolution network for text-based person search. In Proceedings of the 27th ACM International Conference on Multimedia. 665–673.
+[18] Kai Niu, Yan Huang, Wanli Ouyang, and Liang Wang. 2020. Improving descriptionbased person re-identification by multi-granularity image-text alignments. IEEE Transactions on Image Processing 29 (2020), 5542–5556.
+[19] Scott Reed, Zeynep Akata, Honglak Lee, and Bernt Schiele. 2016. Learning deep representations of fine-grained visual descriptions. In Proceedings of the IEEE conference on computer vision and pattern recognition. 49–58.
+
+[20] Olga Russakovsky, Jia Deng, Hao Su, Jonathan Krause, Sanjeev Satheesh, Sean Ma, Zhiheng Huang, Andrej Karpathy, Aditya Khosla, Michael Bernstein, et al. 2015. Imagenet large scale visual recognition challenge. International journal of computer vision 115, 3 (2015), 211–252.
+[21] Nikolaos Sarafianos, Xiang Xu, and Ioannis A Kakadiaris. 2019. Adversarial representation learning for text-to-image matching. In Proceedings of the IEEE/CVF International Conference on Computer Vision. 5814–5824.
+[22] Yifan Sun, Qin Xu, Yali Li, Chi Zhang, Yikang Li, Shengjin Wang, and Jian Sun. 2019. Perceive Where to Focus: Learning Visibility-aware Part-level Features for Partial Person Re-identification. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 393–402.
+[23] Yifan Sun, Liang Zheng, Yi Yang, Qi Tian, and Shengjin Wang. 2018. Beyond part models: Person retrieval with refined part pooling (and a strong convolutional baseline). In Proceedings of the European conference on computer vision (ECCV). 480–496.
+[24] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. Advances in neural information processing systems 30 (2017).
+[25] Oriol Vinyals, Alexander Toshev, Samy Bengio, and Dumitru Erhan. 2015. Show and tell: A neural image caption generator. In Proceedings of the IEEE conference on computer vision and pattern recognition. 3156–3164.
+[26] Chengji Wang, Zhiming Luo, Yaojin Lin, and Shaozi Li. 2021. Text-based person search via multi-granularity embedding learning. IJCAI.
+[27] Zhe Wang, Zhiyuan Fang, Jun Wang, and Yezhou Yang. 2020. Vitaa: Visualtextual attributes alignment in person search by natural language. In European Conference on Computer Vision. Springer, 402–420.
+[28] Zijie Wang, Jingyi Xue, Aichun Zhu, Yifeng Li, Mingyi Zhang, and Chongliang Zhong. 2021. AMEN: Adversarial Multi-space Embedding Network for TextBased Person Re-identification. In Chinese Conference on Pattern Recognition and Computer Vision (PRCV). Springer, 462–473.
+[29] Zijie Wang, Aichun Zhu, Jingyi Xue, Daihong Jiang, Chao Liu, Yifeng Li, and Fangqiang Hu. 2022. SUM: Serialized Updating and Matching for text-based person retrieval. Knowledge-Based Systems 248 (2022), 108891.
+[30] Zijie Wang, Aichun Zhu, Zhe Zheng, Jing Jin, Zhouxin Xue, and Gang Hua. 2020. IMG-Net: inner-cross-modal attentional multigranular network for descriptionbased person re-identification. Journal of Electronic Imaging 29, 4 (2020), 043028.
+[31] Yushuang Wu, Zizheng Yan, Xiaoguang Han, Guanbin Li, Changqing Zou, and Shuguang Cui. 2021. LapsCore: Language-Guided Person Search via Color Reasoning. In Proceedings of the IEEE/CVF International Conference on Computer Vision. 1624–1633.
+[32] Dong Yi, Zhen Lei, Shengcai Liao, and Stan Z Li. 2014. Deep metric learning for person re-identification. In 2014 22nd International Conference on Pattern Recognition. IEEE, 34–39.
+[33] Ying Zhang and Huchuan Lu. 2018. Deep cross-modal projection learning for image-text matching. In Proceedings of the European Conference on Computer Vision (ECCV). 686–701.
+[34] Ying Zhang, Tao Xiang, Timothy M Hospedales, and Huchuan Lu. 2018. Deep mutual learning. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 4320–4328.
+[35] Shizhen Zhao, Changxin Gao, Yuanjie Shao, Wei-Shi Zheng, and Nong Sang. 2021. Weakly Supervised Text-Based Person Re-Identification. In Proceedings of the IEEE/CVF International Conference on Computer Vision. 11395–11404.
+[36] Kecheng Zheng, Wu Liu, Jiawei Liu, Zheng-Jun Zha, and Tao Mei. 2020. Hierarchical Gumbel Attention Network for Text-based Person Search. In Proceedings of the 28th ACM International Conference on Multimedia. 3441–3449.
+[37] Zhedong Zheng, Liang Zheng, Michael Garrett, Yi Yang, Mingliang Xu, and Yi-Dong Shen. 2020. Dual-Path Convolutional Image-Text Embeddings with Instance Loss. ACM Transactions on Multimedia Computing, Communications, and Applications (TOMM) 16, 2 (2020), 1–23.
+[38] Zhun Zhong, Liang Zheng, Zhiming Luo, Shaozi Li, and Yi Yang. 2019. Invariance matters: Exemplar memory for domain adaptive person re-identification. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 598–607.
+[39] Aichun Zhu, Zijie Wang, Yifeng Li, Xili Wan, Jing Jin, Tian Wang, Fangqiang Hu, and Gang Hua. 2021. DSSL: Deep Surroundings-person Separation Learning for Text-based Person Retrieval. In Proceedings of the 29th ACM International Conference on Multimedia. 209–217.
+

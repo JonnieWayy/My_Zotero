@@ -1,0 +1,1617 @@
+Spatial-temporal Prompt Learning for Federated Weather Forecasting
+
+arXiv:2305.14244v1 [cs.LG] 23 May 2023
+
+Shengchao Chen AAII, School of CS, FEIT University of Technology Sydney shengchao.chen.uts@gmail.com
+
+Guodong Long AAII, School of CS, FEIT University of Technology Sydney guodong.long@uts.edu.au
+
+Tao Shen AAII, School of CS, FEIT University of Technology Sydney tao.shen@uts.edu.au
+
+Tianyi Zhou UMIACS
+University of Maryland, College Park zhou@umiacs.umd.edu
+
+Jing Jiang AAII, School of CS, FEIT University of Technology Sydney jing.jiang@uts.edu.au
+
+Abstract
+Federated weather forecasting is a promising collaborative learning framework for analyzing meteorological data across participants from different countries and regions, thus embodying a global-scale real-time weather data predictive analytics platform to tackle climate change. This paper is to model the meteorological data in a federated setting where many distributed low-resourced sensors are deployed in different locations. Specifically, we model the spatial-temporal weather data into a federated prompt learning framework that leverages lightweight prompts to share meaningful representation and structural knowledge among participants. Prompts-based communication allows the server to establish the structural topology relationships among participants and further explore the complex spatial-temporal correlations without transmitting private data while mitigating communication overhead. Moreover, in addition to a globally shared large model at the server, our proposed method enables each participant to acquire a personalized model that is highly customized to tackle climate changes in a specific geographic area. We have demonstrated the effectiveness of our method on classical weather forecasting tasks by utilizing three spatial-temporal multivariate time-series weather data.
+1 Introduction
+Climate change is a complex problem with significant and far-reaching impacts on natural ecosystems and human societies [1, 2]. Raising temperatures, sea-level rise, extreme weather events, changes in precipitation patterns, and ocean acidification are just some of the consequences [3, 4]. These effects seriously affect food security, water resources, public health, and the economy. Therefore, reliable and efficient weather forecasting has great economic, scientific, and social significance.
+Meteorological factors such as temperature, precipitation, and humidity can provide analysis support to determine weather variation tendencies. Unlike conventional Numerical Weather Prediction (NWP) [5], which utilizes physical models to simulate meteorological dynamics in the atmosphere
+Preprint. Under review.
+
+or on the surface, machine learning techniques can achieve higher efficiency in weather forecasting without considering physical constraints. The characteristics of weather time-series data are collected from multiple sensing entities (e.g., ground weather stations). This makes a great challenge to weather forecasting due to distinct location characteristics patterns and privacy concerns across devices.
+
+Federated Learning (FL) is a promising learning paradigm that enables multiple clients to train a model without exposing private data [6]. Vanilla FL aims to train a uniform model by synchronizing the local model parameters of all participating clients periodically. However, due to statistical heterogeneity, the model often does not perform well on all clients. Personalized FL (PFL) offers an efficient strategy to solve this problem by training a customized model for each client. Recent studies on PFL have leveraged various techniques to achieve meaningful information sharing across clients, leading to better personalization. These make PFL applicable to weather forecasting tasks [7].
+
+In weather forecasting, large-scale neural networks (NNs) are usually used as models capable of comprehending nonlinear temporal dynamics on entities. However, this leads to high communication overhead between the server and clients, making it challenging to train reasonable models involving low-resourced sensors. To address this issue, training a foundation model (FM) with large-scale weather data is a solution that can reduce the influence of heterogeneity while maintaining a low cost. This model can then be fine-tuned with relatively fewer data to achieve personalized weather dynamic analysis for each entity. However, it is crucial to consider both the location patterns of each station and spatial-temporal correlation during the personalized training. Even stations that are physically close to each other may exhibit considerable data drift due to their topographic dissimilarities (e.g., seaside and mountainous areas). This poses a significant challenge in personalized training.
+
+To address the above issues, Table 1: Compared with training Encoder-only Transformer as the foundation this paper proposes Spatial- model to process weather data forecasting tasks. Experiments are implemented
+
+temporal Prompt Learning with FedAvg [6], and our proposed method. The number of communication
+
+for Federated Weather rounds is 30, and the local process only five updating.
+
+Forecasting (also called
+
+Model
+
+Trainable Param. MAE RMSE
+
+FedWing) that leverages
+
+Training from scratch
+
+5,284,173 0.403 0.512
+
+lightweight prompts to share meaningful representation and structural knowledge
+
+Using pre-trained FM Using pre-trained FM & Prompts Using pre-trained FM & Prompts & Graph
+
+215,089 159,649 159,649
+
+0.335 0.445 0.311 0.419 0.270 0.376
+
+among participants. Specif-
+
+ically, Adaptive prompts (APs) are adopted to represent each participant’s temporal dynamics
+
+and encode spatial information from the local dataset. Sharing prompts allows better knowledge
+
+sharing across heterogeneous clients, which has been proved in vision [8], time-series [7], and
+
+language [9] under the FL setting. To enhance the personalized representational ability for every
+
+client with a distinct location characteristics pattern, we regard APs as knowledge representers and
+
+perform multi-level APs-based communication during local updating. This means additionally
+
+sharing APs across clients, instead of sharing specific information performing only the server-clients
+
+communication by specific information carriers [10, 7, 11]. In the server, we introduce Dynamic
+
+Graph Modelling to establish spatial-temporal correlations among clients based on APs and latitude
+
+and longitude information uploaded by each participant. The proposed method can both represent
+
+nonlinear dynamics of multiple meteorological factors and establish the spatial-temporal correlation
+
+among clients to achieve high forecasting accuracy while maintaining high communication efficiency.
+
+Using the pre-trained FM as the fixed encoder can efficiently reduce the costs because neither
+
+complicated backward propagation computation nor large-scale parameters transmission between
+
+the server and clients is needed during the training stage. In addition to a globally shared large
+
+model at the server, our proposed method enables each participant to acquire a personalized model
+
+that is highly customized to tackle climate changes in a specific geographic area. As shown in
+
+Table 1, compared to training a model from scratch using FedAvg [6], a much smaller number of
+
+parameters are communicated per round when using pre-trained FM. Besides, higher performance
+
+can be achieved when using our proposed framework after the same communication rounds.
+
+We quantitatively evaluate the performance of FedWing and state-of-the-art FL algorithms under the adaptive-prompts-based and fine-tune-based frameworks based on publicly available multi-sensor weather multivariate time-series datasets. We also perform extensive ablation studies to validate the effectiveness of FedWing. The main contributions of this work are summarized in three-fold:
+
+2
+
+• We propose incorporating a simple prompting mechanism to establish a lightweight framework for federated weather forecasting. This allows each client to acquire a personalized model that is highly customized to tackle climate changes in a specific geographic area while maintaining high communication efficiency.
+• We propose Spatial-temporal Prompt Learning for Federated Weather Forecasting (FedWing), which employs lightweight prompts to represent highly nonlinear temporal dynamics and encode spatial information on the local dataset, then establish dynamic spatial-temporal correlation among participants to achieve better personalized updating.
+• We conduct extensive experiments on three real-world spatial-temporal multivariate timeseries weather datasets from the National Aeronautics and Space Administration (NASA) to demonstrate FedWing’s effectiveness and superiority. The results indicate that the proposed FedWing outperforms popular FL algorithms on both multivariate to univariate and multivariate to multivariate forecasting tasks.
+2 Related Work
+Weather forecasting. Weather forecasting is a crucial tool of meteorology that analyzes the variations in weather patterns. Traditional Numerical Weather Prediction (NWP) has been used to simulate weather processes through physical models [5]. Recently, weather forecasting has made significant strides by incorporating data-driven approaches [12–14]. However, these shallow models face difficulties in comprehending highly nonlinear dynamics. RNN-based models have shown promising in weather forecasting [15, 16]. Besides, Transformer-based models [17, 19, 20] can capture non-stationary changes, which have contributed to their widespread use in weather analysis. However, the intricate spatial-temporal correlation challenges these methods. To overcome this challenge, spatial-temporal modeling methods such as ST-GCN [21] can be an effective solution for weather forecasting. Nevertheless, these models overlook that practical forecasting tasks rely on multi-sensor data, and exposure concerns persist across different regions.
+Personalized Federated Learning. Multi-sensor weather forecasting presents significant data security concerns across regions. Federated learning (FL) is a learning paradigm that facilitates the collaborative training of models without exposing data from each participant, such as meteorological sensors. Vanilla FL suffers from the heterogeneity of client-side private data [6]. Personalized FL (PFL) aims to train a personalized model for each client. Existing PFLs are based on various techniques. Refs. [22–24] add a regularization term that benefits decomposing the personalized model optimization from global model learning. Refs. [10, 25] share part of the model and keep personalized layers private to achieve personalization. Ref. [26] enables a more flexible personalization by adaptively weighted aggregation. Ref. [27] study PFL from a Model-Agnostic Meta-Learning where a meta-model is learned to generate the initialized local model for each client. In addition, Refs. [28, 7] utilize structure information to explore the topological relations among clients.
+Pre-trained Foundation Model. Pre-trained foundation models (FMs) provide high-efficient solutions for scenario-specific tasks due to they can understand potential representation for various downstream tasks using much fewer data, empowered by the huge number of parameters and the large data available for training. Nowadays, pre-trained FMs have been proven great success in natural language process (NLP) [29] and vision, such as ViT [30], Bert [31], Dert [32], and CLIP [33]. How to maximize the representation capability of pre-trained foundation models in low-resource devices at the lowest possible cost has become a focus of attention for different real-world applications [7, 11].
+Prompt Learning. Prompt learning is widely used in NLP that shows promise in improving the efficiency of language models [34, 35], which guide a model to generate more relevant output by providing it with the context in the form of prompts. Due to its requiring few parameters and being more adaptive than fine-tuning, it has been widely applied in vision [36–39], and time-series [7, 40] applications. Some works have introduce prompts techniques to FL [41, 9, 7, 8] to reduce the computation cost [41, 9] and achieve personalization [7, 8]. However, these methods overlook the spatial-temporal correlation among clients with distinct geographical locations. Among them, Ref. [7] considers multiple variables within a client as individual nodes within a specific space and explores spatial associations between variables rather than geographic location patterns. This paper
+3
+
+introduces a spatial-temporal prompt learning mechanism for federated weather forecasting, which utilizes lightweight prompts to represent temporal dynamics and encode spatial information while incorporating geographic information to enhance personalization for each client.
+
+3 Problem Formulation
+
+Weather Forecasting. Considering a ground weather station possesses multivariate time series data denoted by Xi ∈ Rm×n, where m and n indicate the length of the time series and the number of variables, respectively. Each time step’s sample is represented by xt ∈ R1×n. Forecasting multivariate spatial-temporal weather data requires an understanding of the individual station’s
+time series and the complex temporal-spatial pattern of the entire region. Based on the forecasting objective of a single station, we categorize the forecasting task into two classes. Task1: multivariate to univariate forecasting: predicting a specific variable in the future Q periods via all variables from the past P periods. Task2: multivariate to multivariate forecasting: predicting all variable in the future Q periods via all variables from the past P periods. These can be defined as follow:
+
+Task1: [xt−P , xt−P +1, · · · , xt] −f→ xTt+11, xTt+12, · · · , xTt+1Q ,
+
+(1)
+
+Task2: [xt−P , xt−P +1, · · · , xt] −f→ xTt+21, xTt+22, · · · , xTt+2Q ,
+
+where f denotes the learning system on the stations, xTt 1 ∈ R1×1 is the value of the forecasting variable at the t-th step, and xTt 2 ∈ R1×n is the value of the forecasting variable at the t-th step.
+
+Typical Federated Learning. In typical FL, a server manages N clients to train a uniform model
+
+collectively [6]. In each communication round t, the server selects a fraction C of all clients to
+
+participate in the training. The server broadcasts the global model w to these clients, who then obtain
+
+it on their respective private datasets Dk. Each selected client obtains their local model wk by using
+
+the global model in their local training process: wk ← w − η∇ℓ(w; xi, yi), (xi, yi) ∈ Dk. The k-th
+
+client uploads their trained local model wk to the server, which aggregates them to update the global
+
+model as w =
+
+K −1 k=0
+
+nk n
+
+wk
+
+.
+
+The
+
+aim
+
+of
+
+the
+
+server
+
+is
+
+to
+
+minimize
+
+the
+
+average
+
+loss
+
+of
+
+the
+
+global
+
+model w on all clients’ local datasets.
+
+F
+
+(w):
+
+=
+
+arg min
+w1 ,w2 ,...,wN
+
+N k=1
+
+nk n
+
+Fk (wk ),
+
+(2)
+
+where nk is the number of samples held by the k-th client. n is the number of samples held by all clients. Fk(wk) denotes the local objective function of k-th client that can be formulated as Lk(wk) = ℓk(wk; (xi, yi)), where the L is the local loss function.
+
+Spatial-temporal Federated Weather Forecasting. For the task of spatial-temporal federated weather forecasting, each client holds a distinct dataset due to the complex location characteristics patterns, causing statistical heterogeneity. This makes typical FL unsuitable, and the task is updated to the PFL problem that solves the bi-level optimization below.
+
+F
+
+(v;
+
+w):
+
+=
+
+arg min
+{v1,v2,...,vN }
+
+N k=1
+
+nk n
+
+Fk (vk )
+
++
+
+λR(vk ,
+
+w),
+
+s.t. w ∈ arg min G(F1(w), F2(w), ..., FN (w)),
+
+(3)
+
+w
+
+i.e. R(vk, w): = Lp(vk, w),
+
+where each client hold a personalized model parameterized by vi, w denotes the global model. R(·) is a regularization term. Most existing methods struggle to handle the heterogeneity of geographic settings and ignore that the spatial-temporal correlation is influenced by factors beyond geographic location. Therefore, regularization terms such as distance or similarity hard to optimize the personalized model parameters for each client. In addition, the need for real-time weather forecasting and extreme weather warnings emphasizes the importance of efficient knowledge sharing between the client and server. To address these issues, we propose spatial-temporal prompt learning that explores potential correlation among clients using lightweight personalized parameters.
+
+4
+
+Client N
+
+Prompt-based Communication
+
+Client 2
+
+Client 1
+
+Server Dynamic Graph Modelling
+
+PromptC-boamsmedunInicteart-icolnients
+
+Geographic Information
+
+Figure 1: Schematic diagram of the basic architecture of the proposed framework, the mentioned Adaptive Prompts (APs) comprise the Spatial Prompt, Temporal Prompt, and Inter-variables Prompt. Prompt-based Interclient communication (indicated by the red arrow) exchanges APs information among clients. Communication based on prompts (indicated by the green arrow) enables the exchange of APs between clients and the server.
+4 Spatial-temporal Prompt Learning for Federated Weather Forecasting
+
+In this section, we elaborate on the proposed spatial-temporal Prompt Learning for Federated Weather Forecasting (FedWing), whose structure is shown in Figure 1. Each client possesses a pre-trained FM and utilizes adaptive prompts (APs) to encode the spatial-temporal pattern of the weather data from latent multivariate spaces. We employ a prompt-based communication strategy that transmits APs containing spatial-temporal information, facilitating the sharing of data patterns among clients and the server, and enabling the update of personalized models for each client based on structural information. By utilizing prompts provided by the server, we perform local optimization using a well-crafted prompt-wise loss function. This loss function captures the spatial-temporal representation along with geographic information, taking into account potential correlations with neighboring nodes. Detailed illustrations for each procedure will be provided in the remaining part of this section.
+
+Adaptive Prompts as Knowledge Representers. Our approach proposes the utilization of APs for communication between the server, clients, and inter-clients. This strategy offers three advantages over transmitting full parameters solely between clients and the server. Firstly, AP-based communication is lightweight, effectively reducing communication overheads, and particularly suitable for low-resourced devices. Secondly, AP-based communication enables each client to learn highly customized models by capturing distinct location-specific patterns. Lastly, AP-based inter-client communication provides sufficient pattern information instead of sharing raw data, allowing for reliable personalized updates without privacy concerns.
+We introduce APs as knowledge representers. Specifically, in representing the complex nonlinear association between both of inter- time step and variables, we present temporal prompts (PT ) and inter-variables prompts (PV ) in parallel, which are defined as a set of learnable parameters to be attached to the data fed to the fixed FM. The iterative learning process of PT and PV was adopted to achieve more accurate multivariate time-series modeling, as shown in Algorithm 1.
+
+Algorithm 1 Learning process of temporal prompts (PT ) and inter-variables prompts (PV ).
+
+Initialize temporal prompt updating step (mt), inter-variables prompts updating step (nt), total foretasted length of time-series m, and the number of variable n, the foundation model FM for local updating epoch e = 1, 2, ... do
+
+for time forecasting step q = 1, 2, ... do Xtemp = FM (∥Xipt, PT ∥T ), PT ∈ Rqmt×n
+PT ← ∥PT , PT′ ∈ Rmt×n∥T
+end for
+
+▷ ∥.∥T : concat along temporal dimension ▷ PT′ : The next temporal prompt block
+
+for variable forecasting step p = 1, 2, ... do Xivar = FM (∥Xipt, PV ∥S ), PV ∈ Rm×pnt
+PV ← ∥PV , PV′ ∈ Rm×nt ∥V
+end for
+
+▷ ∥.∥V : concat along variable dimension ▷ PV′ : The next inter-variable prompt block
+
+end for
+
+5
+
+After the above learning of PT and PV , we used two independent weight matrices Wbt and Wbv to weight them for achieving more comprehensive data representation, as X = PT ⊙ Wbt + PV ⊙ Wbv. To encode the location pattern of the client, we adopt a spatial prompt PS as Eq. 4 to update the PV , PT with geographic location pattern while encoding the spatial information of a client, and represent this client’s specific location pattern. And the final output of the local updating is
+Head(F (Xipt + X)), where Head(·) is a fine-tuned layer.
+
+PS, X ← N orm(∥Pipt, ϕ, λ∥, ∥PX , PS∥).
+
+(4)
+
+Local Training. To represent temporal dynamics, location patterns and explore potential associations among neighboring clients, we proposed the adaptive-prompt-wise loss that includes multi-level regularization terms, i.e., global, local, and neighboring prompts terms. The adaptive prompts-based local loss function can be formulated as below.
+
+1m Lap = m · n
+
+n
+(yi,j − yˆi,j )2 + R({Pi}; {Pj }l; {Pi}l; {P }∗),
+
+(5)
+
+i=1 j=1
+
+where m and n denote the temporal and variable dimension of local weather time-series, respectively, y and yˆ are the ground truth and predictions, respectively, R({Pi}; {Pj}l; {Pi}l; {P }∗) is the
+regularization term utilized to measure the distance between the local {Pi}, the corresponding personalized {Pi}l, neighboring {Pj}l, and global adaptive prompts {P }∗. The local loss function
+can be formulated as
+
+1m Lap = m · n
+
+n
+
+(yi,j
+
+− yˆi,j )2
+
++
+
+1 λ2
+
+L2
+
+({Pi},
+
+{P
+
+}∗)
+
++
+
+1 λ2
+
+L2
+
+({Pi},
+
+{Pi
+
+}l
+
+)
+
+i=1 j=1
+
+(6)
+
++
+
+1 τ2
+
+·
+
+1 (|N |/SG)
+
+−
+
+1
+
+j∈N
+
+L2({Pi}, {Pj}l)
+
++
+
+4{log2(λ)
+
++
+
+log2(τ )}.
+
+Here, the λ and τ are importance coefficients that obey λ, τ ∈ (0, 1), the L2 is L2 regu-
+
+larization (e.g., Euclidean distance, cosine similarity, etc.). SG represents the subgraph step
+
+used to adjust the scope of interaction between clients. The inter-client regularization term
+
+1 τ2
+
+·
+
+1 (|N |/SG)−1
+
+j∈N L2({Pi}, {Pj}) forces local models to move closer to clients with similar pat-
+
+terns and away from those with significantly different patterns, thereby enabling more comprehensive
+
+personalized updates on clients.
+
+Graph-based Server Aggregation. We introduce Dynamic Graph Modelling (DGM) in the server’s aggregation process to construct the spatial-temporal correlation among clients for better personalization. DGM receives the APs uploaded by participants and geographic information (e.g., latitude and longitude coordinates) to generate graphs that reflect the potential association between clients. Specifically, APs {Pi}Ni=1 have been categorized into three classes before fed into DGM: (1) Temporal and Inter-variables Prompts {PT,i, PV,i}Ni=1; (2) Spatial Prompts {PS,i}Ni=1; (3) Full Adaptive Prompts {Pi}Ni=1. We first construct the three distinct static graphs corresponding to the above three classes: AT V , AS, A based on cosine similarity. In addition, the server generates the static graph according to the geographic information via Haversine formula [42]:
+
+AGi,jeo = 2R · tan−1
+
+sin2(
+
+∆ϕ 2
+
+)
+
++
+
+cos(ϕi
+
+)
+
+·
+
+cos(ϕj
+
+)
+
+·
+
+sin2(
+
+∆λ 2
+
+)
+
+1
+
+−
+
+(sin2(
+
+∆ϕ 2
+
+)
+
++
+
+cos(ϕi
+
+)
+
+·
+
+cos(ϕj
+
+)
+
+·
+
+sin2(
+
+∆λ 2
+
+)))
+
+, i, j ∈ N , i ̸= j,
+
+(7)
+
+where ϕi and ϕj are the latitude coordinates of client i and j, respectively, ∆ϕ = ϕi − ϕj is the difference in latitude between the two points in radians, ∆λ = λi − λj is the difference in longitude between the client i and client j, R is the radius of the Earth is 6536.9088 km.
+
+To understand the dynamic spatial correlation among clients, we applied linear transformation
+
+parameterized by two learnable matrices Wi are Wj to two clients during constructing the dynamic graph. The importance of i-th client to j-th client with vector Zi and Zj, respectively, can be expressed as ei,j = α(WiZi, WjZj). Then we use an additional matrix W to compute the edge’s weight and build an adjacent as
+
+Ai,j
+
+=
+
+ei,j
+
+.
+
+1 + e−W [WiZi−Wj Zj ]
+
+(8)
+
+6
+
+Algorithm 2 FedWing
+
+1: Initialized learning rate η, private dataset {Di}Ni=1, fixed foundation model FM , and adaptive prompts {Pi}Ni=1, participation rate C, the frozen layer of the FM {FM,layer,i}Ni=1.
+2: Server executes: 3: Initialized adaptive prompts {PT,i, PV,i, Wbt,i, Wbs,i, PS,i}Ni=1 as {Pi}Ni=1.
+4: for each communication round T = 1, 2, ... do
+
+5: for each client i = 1, 2, ..., N in parallel do
+
+6:
+
+{Pi} ← LocalUpdate(FM , Di, {Pi}Ni=1)
+
+7: end for
+
+8: Graph-guide Adaptive Prompts Aggregation and Updating:
+
+9: for each set of Adaptive Prompts do
+
+10:
+
+A/AT V /AS ← DGM({P }set)
+
+11: end for
+
+12: for m = 1, 2, ... do
+
+13:
+
+{Pi}Ni=1 ← αA{Pi}Ni=1 + (1 − α)A′{Pi}Ni=1
+
+▷ Update personalized APs
+
+14:
+
+{FM,layer,i}Ni=1 ← αA{FM,layer,i}Ni=1 + (1 − α)A′{FM,layer,i}Ni=1 ▷ Update fixed FM layer
+
+15: end for
+
+16:
+
+{Pi}∗
+
+←
+
+n nk
+
+N i=1
+
+P
+
+s,
+
+wr
+
+←
+
+n nk
+
+N i=1
+
+wr,i
+
+▷ Update global APs and remaining parameters
+
+17: end for
+
+18: LocalUpdate(FM , {Di}Ni=1, {Pi}Ni=1, {Flayer,i}Ni=1):
+
+19: Receives FM , {FM,layer,i}Ni=1 and global and personalized adaptive prompts {P }l, {P }∗
+
+20: for each local epoch e = 1, 2, ... do
+
+21:
+
+Update {FM,layer,i}Ni=1
+
+22: Temporal and Inter-variables Prompts Updating (According to Algorithm 1)
+
+23: Compute local loss by Eq. 6. 24: Update and upload Adaptive Prompts {P }Ni=1
+25: end for
+
+For three different APs classes, four adjacent matrices are constructed according to Eqs. 7, 8, as
+
+AGeo, AST , AG, and A. Then we aggregated them according to the attention mechanism to achieve more accurate correlation representation, and reconstructive APs according to these adjacent matrices
+
+as:
+
+A′ ← Attention(AGeo, AS, AT V , A) = softmax
+
+(AGeo −√AS )A⊤T V dk
+
+A,
+
+(9)
+
+{Pi}Ni=1 ← αA{Pi}Ni=1 + (1 − α)A′{Pi}Ni=1, √ where dk is the dimension of adjacent matrix, and α is importance coefficient. The term AGeo − AS highlights the discrepancy between the actual geographic correlation and the encoded spatial
+
+correlation, enabling the dynamic adjustment of spatial-temporal correlation among clients to achieve
+
+a more precise graph modeling.
+
+Optimization for FedWing. The optimization objective of FedWing is to solve a bi-level optimization problem on federated weather forecasting. FedWing applies an APs-based communication strategy, which allows the local model to be updated based on the fixed FM while keeping low parameters interacting with the server to minimize the sum of loss for all clients. The optimization objective of FedWing can be formulated below.
+
+arg min
+{Pi };A
+
+N
+
+[
+
+ni n
+
+Fi({Pi};
+
+Di)
+
++
+
+R({Pi};
+
+{Pj
+
+}l;
+
+{Pi}l;
+
+{P
+
+}∗
+
+)]
+
++
+
+τ
+
+G(A),
+
+i=1
+
+(10)
+
+s.t.
+
+{P }∗
+
+∈
+
+arg min
+{P1},...,{PN }
+
+N i=1
+
+ni n
+
+Fi
+
+({Pi}),
+
+{P
+
+}l
+
+∈
+
+arg min
+{Pi}l j∈N
+
+Aj,iS({Pi}l, {Pj }l)
+
+where {P } denotes APs that include PT , PV , and PG, {P }∗ is the global APs, the local model was parameterized by {P } after receiving the pre-trained FM. The {Pj}l is personalized local models from other clients that achieve by the additional regularization term G(·). The learned graph with the adjacent matrix A (computed by A′, A) is expected to be sparse and able to preserve proximity
+relationships among clients. The implementation of FedWing is presented in Algorithm 2.
+
+7
+
+Table 2: Performance comparison of the proposed FedWing with FL baselines based on the pre-trained foundation model with different tuning strategy (TS), including HDs (Conventional Fine-tuning) and APs (The proposed APs-based tuning), under Task1 and Task2, evaluation metrics for each item are presented in the format of MAE/RMSE, the Bold and Underline denote the best and second best results respectively, all results are in units of 100 times the original result for a clearer comparison.
+
+TS
+
+Algorithm
+
+AvePRE Task1 Task2
+
+SurTEMP Task1 Task2
+
+SurUPS Task1 Task2
+
+FedAvg [6] 34.6/44.8 56.0/90.1 47.6/64.4 56.5/78.3 53.5/74.2 54.1/74.6
+
+FedProx [43] 31.7/42.1 54.4/87.2 44.4/62.7 52.9/76.4 51.2/69.5 52.3/72.4
+
+Per-FedAvg [27] 30.9/40.7 54.3/71.5 41.4/60.9 51.8/73.3 50.2/69.7 51.7/71.8
+
+APFL [45]
+
+32.5/43.8 56.1/84.9 46.2/63.1 59.4/77.3 54.3/73.7 53.8/73.4
+
+HDs FedAMP [? ] 31.9/41.3 54.7/84.2 43.8/62.9 52.3/73.7 51.5/70.0 53.2/73.4
+
+FedATT [44] 34.5/44.7 63.2/89.8 48.7/63.1 61.0/79.4 58.8/73.6 64.6/82/0
+
+pFedMe [22] 32.2/42.7 64.0/85.2 42.9/61.8 50.7/74.6 51.7/70.1 52.5/72.0
+
+SFL [28]
+
+30.0/40.2 53.1/81.2 39.9/62.6 51.7/76.1 48.0/69.1 51.0/70.4
+
+FedAvg [6] 32.4/42.8 51.0/76.3 41.2/61.7 54.4/76.8 52.1/72.2 53.2/73.8
+
+FedProx [43] 27.1/38.0 47.1/70.2 39.7/61.5 51.7/75.2 48.1/67.1 51.0/67.6
+
+Per-FedAvg [27] 29.3/37.9 45.3/67.4 37.8/60.0 51.3/72.2 47.6/68.2 50.1/69.5
+
+APFL [45]
+
+29.5/38.7 46.0/67.7 38.6/64.2 55.7/75.7 56.2/67.1 59.7/68.2
+
+APs FedAMP [? ] 27.1/37.4 46.7/69.7 39.2/61.0 51.2/73.1 51.5/67.9 52.1/69.3
+
+FedATT [44] 30.5/40.8 58.7/79.7 38.4/63.7 52.4/79.1 50.9/70.0 53.5/72.6
+
+pFedMe [22] 28.2/39.7 47.5/69.9 38.5/61.4 50.5/74.1 48.4/66.9 51.2/68.8
+
+SFL [28]
+
+31.1/39.2 46.4/68.8 37.6/59.3 54.2/73.7 47.2/66.0 49.8/67.2
+
+FedWing (Ours) 23.7/32.9 44.3/65.5 35.7/55.0 51.4/71.2 43.9/62.5 45.2/63.9
+
+5 Experiments
+
+Datasets. Three weather multivariate time series datasets from the National Aeronautics and Space Administration (NASA)1, named Average Precipitation (AvePRE), Surface Temperature (SurTEMP),
+and Surface Upstream (SurUPS) collected by 88, 525, and 238 ground weather devices, respectively.
+All three datasets cover the hour-by-hour variability of 12 weather-related variables, and detailed information about datasets and setting can be found at Appendix A. 1.
+
+Baselines and Implementation. We compare our proposed method with popular FL algorithms, including FedAvg [6], FedProx [43], pFedMe [22], Per-FedAvg [27], FedATT [44], APFL [45], FedAMP [? ], and SFL [28], while keeping the FM is consistent. The introduction about baselines, the hyper-parameters of the foundation model, and the pre-training strategy can be found in Appendix A. 2, Appendix A. 3, and Appendix A. 4, respectively. For all baselines, we have two implementations for the local model: Conventional Fine-tuning: FM with fully connected layers as the fine-tune head (# of trainable parameters: 215,089); The proposed APs-based tuning: FM with the proposed adaptive prompts (# of trainable parameters: 159,649).
+We use a batch size of 256, and AdamW optimizer with weigh decay 1e−4 and initial learning rate 0.01. For three datasets, the participant rate C = 0.3 by default, respectively, and the importance coefficients are γ = 0.7 and τ = 0.3. For the graph training on the server aggregation, the epoch is 40. The optimizer is SGD, with a learning rate is 0.001. The α = 0.99 during aggregation. The objective of our study is to forecast the next 12 hours using the data from the previous 12 hours. Then parameters of temporal prompt updating step mt, inter-variables prompts updating step nt, and subgraph step SG are set to 1 (other setting can be found in Appendix C). Main experiments are conducted in 25 local training epoch within 50 federated communication round. Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) are utilized as evaluation metrics. We implement all the models using PyTorch and conduct experiments on one NVIDIA RTX 3090 GPU.
+
+5.1 Performance Comparison
+Table 2 reports the result of our method and baselines with different tuning strategy (TS) under Task1 and Task2. The results suggest that: (1) compared with the conventional fine-tuning (BA is
+1https://disc.gsfc.nasa.gov/
+
+8
+
+Table 3: Results of ablation studies about adaptive prompts setting and the proposed local loss function, evaluation metrics for each item are presented in the format of MAE/RMSE, the Bold denotes the optimal results, note that all results displayed are the original results ×100.
+
+PV PT Wbv Wbt PS
+
+Aggregation Strategy
+
+Local Loss Task1 Task2
+
+w/o w -
+
+-
+
+w {Pi}Ni=1 ← AT {Pi}Ni=1 + (1 − α)AS {Pi}Ni=1
+
+Our loss MSE
+
+29.9/40.4 53.7/78.4 31.7/42.4 54.4/80.0
+
+w w/o -
+
+-
+
+w {Pi}Ni=1 ← AS {Pi}Ni=1 + (1 − α)AS {Pi}Ni=1
+
+Our loss MSE
+
+28.2/37.2 57.1/85.0 29.2/39.0 58.2/85.9
+
+w/o w/o -
+
+-w
+
+{Pi}Ni=1 ← AS {Pi}Ni=1
+
+Our loss 30.8/41.2 52.0/77.7 MSE 31.8/42.4 54.8/78.9
+
+w w w w w/o
+
+{Pi}Ni=1 ← AST {Pi}Ni=1
+
+Our loss 30.1/40.9 48.7/74.7 MSE 31.6/42.1 50.9/76.0
+
+w w/o -
+
+- w/o
+
+{Pi}Ni=1 ← AS {Pi}Ni=1
+
+Our loss 29.4/39.8 56.2/84.7 MSE 31.1/40.8 59.0/87.8
+
+w/o w -
+
+- w/o
+
+{Pi}Ni=1 ← A{Pi}Ni=1
+
+Our loss 30.1/40.6 53.7/79.0 MSE 31.7/43.5 54.2/80.5
+
+ww w
+
+w
+
+w {Pi}Ni=1 ← αA{Pi}Ni=1 + (1 − α)A′{Pi}Ni=1
+
+Our loss 23.7/32.8 44.3/65.5 MSE 25.0/34.4 47.7/68.0
+
+HDs, our proposed APs-based tuning (TS is APs) leads to higher forecasting performance while keeping fewer parameters (∼ 74%) under either Task1 and Task2; (2) when the proposed APs fixed as TS, our proposed method outperform baselines in all of three dataset and different forecasting tasks; (3) compared with the graph-based personalized FL strategy, SFL, our method achieves higher performance when the communication parameters are consistency and adopted the same APs setting, which demonstrates that FedWing can provide more meaningful knowledge representation and focus on the spatial-temporal correlations instead of considering the client’s parameters only. In summary, the APs-based tuning strategy proposed in this study demonstrates superior performance compared to conventional fine-tuning for two distinct weather forecasting tasks. It achieves this with fewer parameters exchanged between the client and server. This suggests that the proposed method can achieve improved communication efficiency. Additionally, the proposed methods demonstrate superior performance across two tasks, while utilizing the same TS as the baselines. These results provide validation for the effectiveness and superiority of the proposed FedWing.
+
+5.2 Ablation Study
+This section presents the results of ablation experiments to demonstrate the effectiveness of the adaptive prompts, graph-based aggregation, and the local loss function. All ablation experiments are conducted on the AvePRE dataset and keep the same setting as the former experiments.
+We evaluate the performance of APs in seven different forms: (1) inter-variables Prompt PV & Spatial Prompt PS; (2) Temporal Prompt PT & Spatial Prompt PS; (3) Spatial Prompt-only PS; (4) Without Spatial Prompt; (5) Temporal Prompt-only PT ; (6) inter-variables Prompt-only PV : (7) Full Adaptive Prompts. Note that the dependency among PV , PT , Wbv, Wbt, e.g., if PV exits but PT is not exist, Wbs, Wbt will also not exist. In addition, based on the above different APs forms, we perform ablation experiments on different local loss functions: (1) Conventional MSE without any regularization terms; (4) Our proposed (Eq. 6). These results as shown in Table 3 indicate that: (1) Our proposed local loss function outperforms the MSE loss in different tasks under all ablation settings regarding APs; (2) when keeping the loss function consistent, any of the prompts (PT , PV , PS) in APs can boost the model’s performance. Overall, the proposed APs can effectively represent nonlinear temporal dynamics and potential spatial information on clients, and the effectiveness and superiority of our proposed APs-based communication strategy have been demonstrated.
+
+6 Conclusion and Limitations
+To tackle the heterogeneous data challenges resulting from variations in geographic areas in federated weather forecasting, this paper models the spatial-temporal weather data within a federated prompt learning framework that utilizes lightweight prompts to facilitate the sharing of spatial-temporal representations and structural knowledge. By utilizing prompts-based communication, the server can establish the topology relationships among participants, explore potential spatial-temporal cor-
+
+9
+
+relations, and mitigate communication overhead without transmitting private data. Furthermore, our proposed method allows each participant to obtain a personalized model specifically tailored to address climate changes in a particular geographic area, in addition to the globally shared model residing at the server. Extensive experiments conducted on real-world multivariate weather time-series datasets demonstrate the superior performance and effectiveness of the proposed method.
+Limitations. Firstly, our experiments are conducted on real datasets comprising hundreds of groundbased weather stations. However, the number of ground-based equipment in a given region (state) far exceeds this amount. As a result, we currently lack sufficient computational power to apply our approach to scenarios involving thousands or even tens of thousands of equipment. Secondly, our approach assumes that the central server has access to the location information of each weather station within the region. However, in a cross-country or global-scale forecast system, specific latitude and longitude information may not be available due to the relevant protocols. Nevertheless, our method still has significant potential for weather forecasting at the global scale.
+References
+[1] Thomas R Karl, Jerry M Melillo, and Thomas C Peterson. Global climate change impacts in the United States: a state of knowledge report from the US Global Change Research Program. Cambridge University Press, 2009.
+[2] Tord Kjellstrom, David Briggs, Chris Freyberg, Bruno Lemke, Matthias Otto, and Olivia Hyatt. Heat, human performance, and occupational health: a key issue for the assessment of global climate change impacts. Annual review of public health, 37:97–112, 2016.
+[3] Stefan Hagemann, Cui Chen, Douglas B Clark, Sonja Folwell, Simon N Gosling, Ingjerd Haddeland, Naota Hanasaki, Jens Heinke, Fulco Ludwig, Frank Voss, et al. Climate change impact on available water resources obtained using multiple global climate and hydrology models. Earth System Dynamics, 4(1):129–144, 2013.
+[4] Stéphane Hallegatte, Nicola Ranger, Olivier Mestre, Patrice Dumas, Jan Corfee-Morlot, Celine Herweijer, and Robert Muir Wood. Assessing climate change impacts, sea level rise and storm surge risk in port cities: a case study on copenhagen. Climatic change, 104:113–137, 2011.
+[5] Peter Bauer, Alan Thorpe, and Gilbert Brunet. The quiet revolution of numerical weather prediction. Nature, 525(7567):47–55, 2015.
+[6] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-efficient learning of deep networks from decentralized data. In Artificial intelligence and statistics, pages 1273–1282. PMLR, 2017.
+[7] Shengchao Chen, Guodong Long, Tao Shen, and Jing Jiang. Prompt federated learning for weather forecasting: Toward foundation models on meteorological data. arXiv preprint arXiv:2301.09152, 2023.
+[8] Guanghao Li, Wansen Wu, Yan Sun, Li Shen, Baoyuan Wu, and Dacheng Tao. Visual prompt based personalized federated learning. arXiv preprint arXiv:2303.08678, 2023.
+[9] Haodong Zhao, Wei Du, Fangqi Li, Peixuan Li, and Gongshen Liu. Reduce communication costs and preserve privacy: Prompt tuning method in federated learning. arXiv preprint arXiv:2208.12268, 2022.
+[10] Xiaoxiao Li, Meirui Jiang, Xiaofei Zhang, Michael Kamp, and Qi Dou. Fedbn: Federated learning on non-iid features via local batch normalization. arXiv preprint arXiv:2102.07623, 2021.
+[11] Yue Tan, Guodong Long, Jie Ma, Lu Liu, Tianyi Zhou, and Jing Jiang. Federated learning from pre-trained models: A contrastive learning approach. arXiv preprint arXiv:2209.10083, 2022.
+[12] Ling Chen and Xu Lai. Comparison between arima and ann models used in short-term wind speed forecasting. In 2011 Asia-Pacific Power and Energy Engineering Conference, pages 1–4. IEEE, 2011.
+10
+
+[13] Nicholas I Sapankevych and Ravi Sankar. Time series prediction using support vector machines: a survey. IEEE computational intelligence magazine, 4(2):24–38, 2009.
+[14] Cyril Voyant, Marc Muselli, Christophe Paoli, and Marie-Laure Nivet. Numerical weather prediction (nwp) and hybrid arma/ann model to predict global radiation. Energy, 39(1):341–355, 2012.
+[15] Xingjian Shi, Zhourong Chen, Hao Wang, Dit-Yan Yeung, Wai-Kin Wong, and Wang-chun Woo. Convolutional lstm network: A machine learning approach for precipitation nowcasting. Advances in neural information processing systems, 28, 2015.
+[16] Aditya Grover, Ashish Kapoor, and Eric Horvitz. A deep hybrid model for weather forecasting. In Proceedings of the 21th ACM SIGKDD international conference on knowledge discovery and data mining, pages 379–386, 2015.
+[17] Haoyi Zhou, Shanghang Zhang, Jieqi Peng, Shuai Zhang, Jianxin Li, Hui Xiong, and Wancai Zhang. Informer: Beyond efficient transformer for long sequence time-series forecasting. In Proceedings of the AAAI Conference on Artificial Intelligence, volume 35, pages 11106–11115, 2021.
+[18] Tian Zhou, Ziqing Ma, Qingsong Wen, Xue Wang, Liang Sun, and Rong Jin. Fedformer: Frequency enhanced decomposed transformer for long-term series forecasting. arXiv preprint arXiv:2201.12740, 2022.
+[19] Haixu Wu, Jiehui Xu, Jianmin Wang, and Mingsheng Long. Autoformer: Decomposition transformers with auto-correlation for long-term series forecasting. Advances in Neural Information Processing Systems, 34:22419–22430, 2021.
+[20] Shengchao Chen, Ting Shu, Huan Zhao, Guo Zhong, and Xunlai Chen. Tempee: Temporalspatial parallel transformer for radar echo extrapolation beyond auto-regression. arXiv preprint arXiv:2304.14131, 2023.
+[21] Bing Yu, Haoteng Yin, and Zhanxing Zhu. Spatio-temporal graph convolutional networks: A deep learning framework for traffic forecasting. arXiv preprint arXiv:1709.04875, 2017.
+[22] Canh T Dinh, Nguyen Tran, and Josh Nguyen. Personalized federated learning with moreau envelopes. Advances in Neural Information Processing Systems, 33:21394–21405, 2020.
+[23] Filip Hanzely, Slavomír Hanzely, Samuel Horváth, and Peter Richtárik. Lower bounds and optimal algorithms for personalized federated learning. Advances in Neural Information Processing Systems, 33:2304–2315, 2020.
+[24] Tian Li, Shengyuan Hu, Ahmad Beirami, and Virginia Smith. Ditto: Fair and robust federated learning through personalization. In International Conference on Machine Learning, pages 6357–6368. PMLR, 2021.
+[25] Liam Collins, Hamed Hassani, Aryan Mokhtari, and Sanjay Shakkottai. Exploiting shared representations for personalized federated learning. In International Conference on Machine Learning, pages 2089–2099. PMLR, 2021.
+[26] Michael Zhang, Karan Sapra, Sanja Fidler, Serena Yeung, and Jose M Alvarez. Personalized federated learning with first order model optimization. arXiv preprint arXiv:2012.08565, 2020.
+[27] Alireza Fallah, Aryan Mokhtari, and Asuman Ozdaglar. Personalized federated learning with theoretical guarantees: A model-agnostic meta-learning approach. Advances in Neural Information Processing Systems, 33:3557–3568, 2020.
+[28] Fengwen Chen, Guodong Long, Zonghan Wu, Tianyi Zhou, and Jing Jiang. Personalized federated learning with graph. arXiv preprint arXiv:2203.00829, 2022.
+[29] Rishi Bommasani, Drew A Hudson, Ehsan Adeli, Russ Altman, Simran Arora, Sydney von Arx, Michael S Bernstein, Jeannette Bohg, Antoine Bosselut, Emma Brunskill, et al. On the opportunities and risks of foundation models. arXiv preprint arXiv:2108.07258, 2021.
+11
+
+[30] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An image is worth 16x16 words: Transformers for image recognition at scale. arXiv preprint arXiv:2010.11929, 2020.
+[31] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. Bert: Pre-training of deep bidirectional transformers for language understanding. arXiv preprint arXiv:1810.04805, 2018.
+[32] Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-end object detection with transformers. In Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part I 16, pages 213–229. Springer, 2020.
+[33] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In International conference on machine learning, pages 8748–8763. PMLR, 2021.
+[34] Taylor Shin, Yasaman Razeghi, Robert L Logan IV, Eric Wallace, and Sameer Singh. Autoprompt: Eliciting knowledge from language models with automatically generated prompts. arXiv preprint arXiv:2010.15980, 2020.
+[35] Timo Schick and Hinrich Schütze. Exploiting cloze questions for few shot text classification and natural language inference. arXiv preprint arXiv:2001.07676, 2020.
+[36] Yuan Yao, Ao Zhang, Zhengyan Zhang, Zhiyuan Liu, Tat-Seng Chua, and Maosong Sun. Cpt: Colorful prompt tuning for pre-trained vision-language models. arXiv preprint arXiv:2109.11797, 2021.
+[37] Yuhang Zang, Wei Li, Kaiyang Zhou, Chen Huang, and Chen Change Loy. Unified vision and language prompt learning. arXiv preprint arXiv:2210.07225, 2022.
+[38] Shangchen Zhou, Kelvin Chan, Chongyi Li, and Chen Change Loy. Towards robust blind face restoration with codebook lookup transformer. Advances in Neural Information Processing Systems, 35:30599–30611, 2022.
+[39] Menglin Jia, Luming Tang, Bor-Chun Chen, Claire Cardie, Serge Belongie, Bharath Hariharan, and Ser-Nam Lim. Visual prompt tuning. In Computer Vision–ECCV 2022: 17th European Conference, Tel Aviv, Israel, October 23–27, 2022, Proceedings, Part XXXIII, pages 709–727. Springer, 2022.
+[40] Hao Xue and Flora D Salim. Prompt-based time series forecasting: A new task and dataset. arXiv preprint arXiv:2210.08964, 2022.
+[41] Tao Guo, Song Guo, Junxiao Wang, and Wenchao Xu. Promptfl: Let federated participants cooperatively learn prompts instead of models–federated learning in age of foundation model. arXiv preprint arXiv:2208.11625, 2022.
+[42] C Carl Robusto. The cosine-haversine formula. The American Mathematical Monthly, 64(1):38– 40, 1957.
+[43] Tian Li, Anit Kumar Sahu, Manzil Zaheer, Maziar Sanjabi, Ameet Talwalkar, and Virginia Smith. Federated optimization in heterogeneous networks. Proceedings of Machine learning and systems, 2:429–450, 2020.
+[44] Jing Jiang, Shaoxiong Ji, and Guodong Long. Decentralized knowledge acquisition for mobile internet applications. World Wide Web, 23(5):2653–2669, 2020.
+[45] Yuyang Deng, Mohammad Mahdi Kamani, and Mehrdad Mahdavi. Adaptive personalized federated learning. arXiv preprint arXiv:2003.13461, 2020.
+[46] Yutao Huang, Lingyang Chu, Zirui Zhou, Lanjun Wang, Jiangchuan Liu, Jian Pei, and Yong Zhang. Personalized cross-silo federated learning on non-iid data. In Proceedings of the AAAI Conference on Artificial Intelligence, volume 35, pages 7865–7873, 2021.
+12
+
+A Foundation Model, Dataset, and Baseline
+This section provides missing information in the main manuscript about the structure, implementation, datasets, and baselines.
+A.1 Detailed Information of Datasets
+All three meteorological datasets based on multivariate time series proposed in our work are collected by NASA data website. The detailed information of these datasets in presented in Table 4.
+AvePRE. The dataset was collected by 88 meteorological satellites spanning a latitude and longitude range of (38.41055, -91.08764) to (34.75988, -86.7999). The dataset contains 12 different meteorological variables designed for forecasting surface precipitation to prevent the negative impacts of extreme rainfall on human lives and properties. The dataset includes all data monitored by these sensing devices from April 1, 2012, to February 28, 2016.
+SurTEMP. The dataset was collected by 525 meteorological satellites and observatories spanning a latitude and longitude range of (33.90689, 84.55078) to (30.63791, -79.56200). The dataset contains 12 different meteorological variables designed for forecasting surface temperature to prevent surface drought, which can cause sea level rise and ice melting. The dataset includes all data monitored by these devices from January 3, 2019, to May 2, 2022.
+SurUPS. The dataset was collected by 238 meteorological satellites, observatories, and solar radiation monitors spanning a latitude and longitude range of (38.84179, 81.22352) to (37.03761, -76.90420). The dataset contains 12 different meteorological variables designed for forecasting upstream longwave flux to prevent regions from abnormal thunderstorm activity. The dataset includes all data monitored by these devices from January 2, 2019, to July 29, 2022. All these datasets were observed in hours, where missing data beyond 12 consecutive hours are padded with zeros, while missing up to 2 consecutive hours are padded by interpolation. In the training process, we partition the three datasets as follows: for the pre-trained foundation model, we use the first 50% of the dataset for training and validation, where the first 40% is the training set and the first 40% to the first 50% is the validation set. For the conventional fine-tuning and the proposed APs-based fine-tuning, we use the last 50% of the complete dataset for the experiments and divide the training, validation and test sets in the ratio of 6:2:2.
+A.2 Baselines
+We compare our proposed GradPFL with popular FL algorithms, including FedAvg, FedProx, pFedMe, PerFedAvg, FedATT, APFL, FedAMP, and SFL.
+FedAvg. Aggregating locally trained models to obtain a globally representative model via average strategy, while preserving the privacy of each individual’s data.
+FedProx. An extension of FedAvg that adds a proximal term to the objective function to encourage closer alignment with the global model 2 .
+pFedMe. A pFL approach that adapts the global model to each user’s local data distribution while taking into account the similarity between users to improve model generalization 3.
+Per-FedAvg. A variation of the FedAvg algorithm that allows for personalized model updates for each client by adding client-specific parameters to the global model and optimizing them in a decentralized manner during training 4.
+2https://github.com/litian96/FedProx 3https://github.com/CharlieDinh/pFedMe 4https://github.com/ki-ljl/Per-FedAvg
+13
+
+Table 4: Information of three weather forecasting datasets, which the bold is the forecasting weatherrelated variable in each dataset in the multivariate to unvariate forecasting task.
+
+Dataset AvePRE SurTEMP SurUPS
+
+Period April 1, 2012 to February 28, 2016
+January 3, 2019 to May 2, 2022 January 2, 2019 to July 29, 2022
+
+Devices 88 525 238
+
+Features
+Root zone soil wetness Root zone soil moisture content Mean land surface temperature
+Total surface precipitation Snow mass Snow depth Transpiration
+Overland runoff Fractional snow-covered area Surface downward PAR beam flux
+Evaporation from land Total water stored in land reservoirs
+Long-wave radiation absorbed by the surface Surface emissivity
+Cloud area fraction in high cloud areas Surface temperature Surface albedo
+Surface Incident Short Wave Stream Optical thickness of all clouds
+Surface downlink longwave traffic Surface albedo for visible beam Surface incident shortwave flux Long-wave flux from the surface Surface albedo of NIR beams
+cloud area fractiom Surface emissivity Short-wave flux without aerosols Surface temperature
+Surface albedo Flux of upwelling long waves
+Short-wave flow Downlink shortwave flux Downlink shortwave flux without aerosols Total upstream longwave flux
+Short-wave flux Rising flux without aerosols
+
+FedATT. An FL algorithm that uses attention techniques to address the heterogeneity of local data distributions (the code comes from this repository 5).
+APFL. A variant of Federated Learning that enables asynchronous communication among the clients, allowing them to perform local updates at their own pace and reducing the overall communication cost of the system (the code comes from this repository 6).
+FedAMP. An FL algorithm that aims to improve the convergence speed and communication efficiency of federated optimization (the code comes from this repository 7).
+SFL. An PFL algorithm with graph structure information to make a more personalized model according to client-wise personalization 8.
+5https://github.com/dawenzi098/SFL-Structural-Federated-Learning 6https://github.com/TsingZ0/PFL-Non-IID 7https://github.com/TsingZ0/PFL-Non-IID 8https://github.com/dawenzi098/SFL-Structural-Federated-Learning
+14
+
+A.3 Hyper-parameters of The Foundation Model
+The foundational model employed in this study is the Encode-only Transformer. Detailed information regarding the model’s hyperparameter settings is presented in Table 5.
+
+Table 5: Detailed of hyper-parameters of the foundation model.
+
+Parameters / Strategy
+Feature dimension Internal dimension of embeddings
+Number of heads Dimension of dense feedforward part
+Dropout parameters Normalization Activation
+Number of encoder layers Position encoding
+
+Numbers
+12 256 8 256 0.3 Group ReLu 4 learnable
+
+A.4 Pre-Training Strategy for Foundation Model
+
+The pre-training strategy employed in our work for the Transformer foundation model on multivariate
+
+time series. In this approach, a binary noise mask, denoted by M , is independently created for
+
+each training sample and epoch, which is then applied to the input, denoted by X, resulting in the
+
+masked input Xˆ = M ⊙ X. For multivariate time series data, each variable is masked using an
+
+independent mask vector of length w, which alternates between segments of 0 and 1. The state
+
+transition probabilities are modeled as having a length that follows a geometric distribution with a
+
+mean
+
+of
+
+lm.
+
+This
+
+is
+
+then
+
+followed
+
+by
+
+an
+
+unmasked
+
+segment
+
+of
+
+mean
+
+length
+
+lu
+
+=
+
+1−r r
+
+lm,
+
+where
+
+r
+
+is
+
+the masking probability. The mask rate r in our work is set to 0.15, and mean masked length lm is set
+
+to 3. The objective function for the pre-training process is formulated as follows:
+
+1 mn Lpre = mn
+
+Xi,j − Xˆi,j
+
+2
+,
+
+i=1 j=1
+
+(11)
+
+Here, X and Xˆ represent the ground truth and forecasting value, respectively. However, the objective function differs from the MSE loss function in that it considers only the prediction values on the masked locations, instead of all the elements in the multivariate time series data. It is important to note that we perform FL-based pre-training, where the epoch of local training is set to 20 within a communication round of 20. The participation rate C is 0.5, and the aggregation strategy is set to FedAvg [6] by default. Pre-trained foundation models can be found in the Supplementary file.
+
+A.5 Evaluation Metrics
+
+Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) are utilized to evaluate the performance of our proposed FedWing and baseline, which can be formulated as
+
+1 nT
+
+MAE = nT
+
+|yi,j − yˆi,j | ,
+
+i=1 j=1
+
+(12)
+
+RMSE =
+
+1n nT
+
+T
+(yi,j − yˆi,j )2,
+
+i=1 j=1
+
+where n is the number of time series, T is the number of forecasting periods, yi,j is the actual value of the j-th period of the i-th time series, and yˆi,j is the predicted value of the j-th period of the i-th time series. Smaller MAE and RMSE means better model prediction performance.
+
+15
+
+B Discussion about Privacy
+Federated Learning is vulnerable to data leakage, although data is not directly exposed to other clients during collaborative training of a global model. An attacker can reverse-engineer raw data using the gradient update transmitted from a client, especially when the chosen batch size and local training step in the local training phase are small. In our setting, the same privacy leakage concerns may exist when transmitting other participants’ adaptive prompts (e.g., PV , PT , PS, etc.) parameters during client-specific training. In the proposed FedWing framework, each participant holds their own local model, including a pre-trained foundation model, adaptive prompts, and some forecasting heads used for fine-tuning with private data. Among them, the adaptive prompts and forecasting heads are trainable, but the heads are not involved in the parameter-sharing process between clients and the server. This means that it is difficult to reverse-engineer the original data using gradients because not all gradients will be exposed. Additionally, we include coefficients on the local loss function, which makes it difficult for an attacker to perform inference attacks to infer the original data, even when the training reaches an infinite number of rounds: e → ∞.
+
+C More Experiments Results
+
+This section presents additional experimental results regarding differential privacy and explores the major impact factors in our proposed FedWing framework.
+
+C.1 FedWing with Differential Privacy
+
+To protect the privacy of each client, we introduce noise to the gradient during the server’s graphbased aggregation and prompt-based inter-client communication. We compare the performance of FedWing with and without the addition of noise. This noise is multiplied by a factor and added to the shared parameters, including adaptive prompts PT , PV , PS. For this experiment, we set the factor τ = 0.01 to implement differential privacy. Table 6 presents the results of these approaches on three datasets, showing a reduced performance of FedWing for forecasting after the addition of noise. However, as indicated in Table 2 (refer to the main manuscript), it still outperforms other baselines. Moreover, since FedWing only utilizes the adaptive prompts on the server-side to generate the graph that constructs the spatial-temporal correlation among clients, adding noise solely to adaptive prompts is sufficient to ensure privacy protection. This results in a mitigated decline in performance due to differential privacy, compared to adding noise to all trainable parameters.
+
+Table 6: Performance comparison of the proposed FedWing with differential privacy under Task1 and Task2, evaluation metrics are presented in the format of MAE/RMSE, the Bold denotes the best results respectively, all results are in units of 100× the original result for a clearer comparison.
+
+Implementation
+FedWing FedWing with noise Performance Falling
+
+AvePRE
+
+Task1
+
+Task2
+
+23.7/32.9
+
+44.3/65.5
+
+24.8/33.9
+
+46.1/66.9
+
+↓ 4.62%/↓ 4.04% ↓ 3.63%/↓ 2.13%
+
+SurTEMP
+
+Task1
+
+Task2
+
+35.7/55.0
+
+51.4/71.2
+
+37.0/56.6
+
+52.7/73.0
+
+↓ 2.73%/↓ 2.65% ↓ 2.53%/↓ 2.52%
+
+SurUPS
+
+Task1
+
+Task2
+
+43.9/62.5
+
+45.2/63.9
+
+45.1/63.7
+
+46.4/65.2
+
+↓ 2.73%/↓ 1.92% ↓ 2.65% / ↓ 2.03%
+
+C.2 Study of Major Impact Factors
+In this section, we perform experiments to investigate the impact of key factors of our proposed FedWing framework based on the AvePRE dataset. These factors include the updating steps of Adaptive Prompts PT and PV (see Algorithm 1), as well as the step of subgraph SG (refer to the local loss function, Eq. 6 ). The experimental settings for this section are as follows: the local updating epoch is set to 5, the communication round is set to 10, and the remaining settings are the same as those in the main manuscript’s experiments.
+Updating Step of Adaptive Prompts. We investigated six different combinations of adaptive prompt updating steps, namely {1, 2, 3, 4, 6, 12}, to explore the influence of these steps during local updating. The impact of the adaptive prompt updating steps on model performance during the local model updating process is presented in Table 7. The shapes of the prompts (PT and PV ) are affected by the number of steps, as described in Algorithm 1. The results indicate the following: (1) In the
+16
+
+experimental setting discussed in the main manuscript (refer to Table 2), when the updating steps of PT and PS are both set to 1, the model achieves optimal performance on Task2. However, to optimize performance on Task1, both updating steps need to be set to 6. (2) When the updating steps of PT and PS are set to 2, 3, 4, or 12, the performance cannot be optimized, despite the periodicity observed in weather variations. This section focuses only on the model performance with two consistent update steps and does not consider more varied combinations, as these would require extensive meteorological expert knowledge due to the non-stationary nature of the weather process and its irregular periodicity. We plan to explore this further in future work.
+Table 7: Impact of PT , PV updating steps, the Bold and Underline denote the best and the second best result respectively, all results are 100× the original result for a clearer comparison.
+
+Updating step of PT 1 2 3 4 6 12
+
+Updating step of PV 1 2 3 4 6 12
+
+Task Class
+Task1 Task2
+Task1 Task2
+Task1 Task2
+Task1 Task1
+Task1 Task2
+Task1 Task2
+
+MAE ↓
+39.9 51.5
+38.1 53.7
+37.1 52.9
+38.6 53.2
+35.7 52.6
+39.3 53.7
+
+RMSE ↓
+50.2 79.5
+48.8 85.0
+47.9 80.4
+47.7 80.1
+46.1 80.7
+50.3 84.8
+
+Question: Why did we select the combination {1, 1} for our method?
+Answer: The combination {1, 1} demonstrates the best result on Task2, although it is not as effective as other combinations on Task1. Given the significant uncertainty in the weather process, characterized by its non-periodic nature and environmental disturbance factors, we choose the {1, 1} combination to flexibly handle different weather processes. The other combinations are well-crafted for specific weather processes. Moreover, although the {1, 1} combination requires more iterative updates (e.g., 24 iterations to predict the weather for the next 24 hours), the time consumption is not significantly different from using the {24, 24} combination, as the difference in prompt shape due to the updating step is also present. In terms of computational resources, the multiple iterations do not result in a sharp increase because a fixed FM is used to update the adaptive prompts.
+Table 8: Impact of subgraph step, the Bold and Underline denote the best and the second best result respectively, all results are 100× the original result for a clearer comparison.
+
+Step of subgraph SG 1 2 4 6 8 10
+
+Range of Loss & Grap-based Agg. 88 44 22 15 11 9
+
+Task Class
+Task1 Task2
+Task1 Task2
+Task1 Task2
+Task1 Task2
+Task1 Task2
+Task1 Task2
+
+MAE ↓
+36.9 51.7
+39.1 51.5
+38.1 51.8
+38.8 54.0
+39.3 54.4
+35.9 52.4
+
+RMSE ↓
+47.0 79.4
+49.9 79.0
+49.7 78.8
+49.1 81.9
+49.7 81.8
+45.6 79.6
+
+Step of Subgraph Step. To examine the impact of SG on model performance, a series of experiments were conducted using various combinations of parameters. We selected values for SG from
+
+17
+
+within the range {1, 2, 4, 6, 8, 10}, while the inter-client communication range and subgraph size
+considered in the local loss function and graph-based aggregation process were chosen from their corresponding ranges {88, 44, 22, 15, 11, 9}. We present the experimental results in Table 8. The results demonstrate that SG = 1 results in the model achieve suboptimal performance for Task1 and Task2, while optimal results are achieved for Task1 and Task2 when SG = 10 and SG = 6, respectively. Generally, as SG decreases, more clients will be involved in local loss functions and graph-based aggregation. In our experimental setup, not all clients participate in every round of communication for training because of the significant overhead it incurs. Thus, when SG is large, including initialized clients while ignoring those involved in training may negatively impact performance. In our setting, SG = 1 is the default configuration, which considers all clients and provides flexibility for special cases. Since only adaptive prompts PT , PS, PV with few parameters need consideration, SG = 1 does not result in significant communication overhead.
+
+D Algorithm Analysis
+
+D.1 Optimization Objective
+
+As Eq. 10 mentioned in the main manuscript,
+
+arg min
+{Pi };A
+
+N
+
+[
+
+ni n
+
+Fi({Pi};
+
+Di)
+
++
+
+R({Pi};
+
+{Pj
+
+}l
+
+;
+
+{Pi}l;
+
+{P
+
+}∗
+
+)]
+
++
+
+τ
+
+G(A),
+
+i=1
+
+(13)
+
+The main optimization objective of our proposed algorithm is to optimize the adaptive prompts {P }, which include PT , PV , PS. The parameters of the low-parameterized forecasting head, which only exist during Task1 and not Task2, will be excluded from the subsequent analysis.
+
+D.2 Proof of Generalization Bound
+
+Theorem D.1 Consider a federated weather forecasting system with m clients. Let D1, D2, ..., Dm be the true data distribution and Dˆ1, Dˆ2, ..., Dˆm be the empirical data distribution. Denote the head h as the hypothesis from H and d be the VC-dimension of H. The total number of samples over all
+clients is N . Then with probability at least 1 − δ:
+
+max
+({P1 },{P2 },...,{Pm })
+
+m
+
+|Di N
+
+|
+
+Lap,Di
+
+−
+
+m
+
+|Di N
+
+|
+
+Lap,Dˆi
+
+i=1
+
+i=1
+
+(14)
+
+N (m + 1)|{P }|
+
+d eN
+
+≤ log
+
++ log
+
+2
+
+δ
+
+Nd
+
+Proof. We start from the McDiarmid’s inequality as
+
+2ϵ2
+
+P[g(X1, ..., Xn) − E[g(X1, ..., Xn)] ≥ ϵ] ≤ exp (−
+
+n i=1
+
+c2i
+
+)
+
+(15)
+
+when
+
+sup |g(x1, x2, ..., xn) − g(x1, x2, ..., xn)| ≤ ci
+
+(16)
+
+x1 ,...,xn
+
+Eq. 15 equals to
+
+2ϵ2
+
+P[g(·) − E[g(·)] ≤ ϵ] ≥ 1 − exp (−
+
+n i=1
+
+c2i
+
+)
+
+(17)
+
+which means that with probability at least 1 − exp (−
+
+), 2ϵ2
+
+n i=1
+
+c2i
+
+g(·) − E[g(·)] ≤ ϵ
+
+(18)
+
+Let δ = exp (−
+
+2ϵ2
+n
+i=1
+
+c2i
+
+),
+
+the
+
+above
+
+can
+
+be
+
+rewritten
+
+as
+
+with
+
+the
+
+adaptive
+
+prompts
+
+at
+
+least
+
+1
+
+−
+
+δ,
+
+g(·) − E[g(·)] ≤
+
+n i=1
+
+c2i
+
+log
+
+1
+
+2
+
+δ
+
+(19)
+
+18
+
+Now we substitute g(·) with our adaptive prompts as
+
+max
+({P1 },{P2 },...,{Pm })
+
+m
+
+|Di N
+
+|
+
+Lap,Di
+
+−
+
+m
+
+|Di N
+
+|
+
+Lap,Dˆi
+
+i=1
+
+i=1
+
+(20)
+
+we can obtain that with probability at least 1 − δ, the following holds for specific adaptive prompts,
+
+max
+({P1 },{P2 },...,{Pm })
+
+m
+
+|Di N
+
+|
+
+Lap,Di
+
+−
+
+m
+
+|Di N
+
+|
+
+Lap,Dˆi
+
+i=1
+
+i=1
+
+−E
+
+max
+
+({P1 },{P2 },...,{Pm })
+
+m
+
+|Di N
+
+|
+
+Lap,Di
+
+−
+
+m
+
+|Di N
+
+|
+
+Lap,Dˆi
+
+i=1
+
+i=1
+
+N1 ≤ log
+2δ
+
+(21)
+
+Considering there are (m + 1)|{P }| prompts in total ({P } including PT , PV , PS), by using Boole’s inequality, with probability at least 1 − δ, the following holds,
+
+max
+({P1 },{P2 },...,{Pm })
+
+m
+
+|Di N
+
+|
+
+Lap,Di
+
+−
+
+m
+
+|Di N
+
+|
+
+Lap,Dˆi
+
+i=1
+
+i=1
+
+≤E
+
+max
+
+({P1 },{P2 },...,{Pm })
+
+m
+
+|Di N
+
+|
+
+Lap,Di
+
+−
+
+m
+
+|Di N
+
+|
+
+Lap,Dˆi
+
+i=1
+
+i=1
+
+where N is the total number of samples over all clients.
+
+N (m + 1)|{P }|
+
++ log
+
+2
+
+δ
+
+(22)
+
+E
+
+max
+
+({P1 },{P2 },...,{Pm })
+
+m
+
+|Di N
+
+|
+
+Lap,Di
+
+−
+
+m
+
+|Di N
+
+|
+
+Lap,Dˆi
+
+i=1
+
+i=1
+
+≤E
+
+m |Di| max i=1 N {Pi}
+
+≤a m |Di| R(H) N
+i=1
+
+Lap,Di − Lap,Dˆi
+
+≤ m |Di| d log e|Di|
+
+N
+i=1
+
+|Di|
+
+d
+
+≤ m Di N
+i=1
+
+d eN log
+|Di| d
+
+≤b
+
+d eN log
+
+Nd
+
+(23)
+
+where H is the hypothesis set of head h, d is the VC-dimension of H. The a follow from the definition of Rademacher complexity
+
+1n
+
+Rn(F ) = Eσ
+
+sup
+f ∈F
+
+n
+
+i=1
+
+σif (xi)
+
+,
+
+(24)
+
+where σ1, σ2, . . . , σn are independent Rademacher random variables that take values in {−1, 1} with equal probability, Eσ denotes the expectation over the Rademacher variables, x1, x2, . . . , xn are the input data points, and the b follows from Jensen’s inequality, so
+
+max
+({P1 },{P2 },...,{Pm })
+
+m
+
+|Di N
+
+|
+
+Lap,Di
+
+−
+
+m
+
+|Di N
+
+|
+
+Lap,Dˆi
+
+i=1
+
+i=1
+
+(25)
+
+N (m + 1)|{P }|
+
+d eN
+
+≤ log
+
++ log
+
+2
+
+δ
+
+Nd
+
+19
+

@@ -1,0 +1,402 @@
+MEDIAGPT : A LARGE LANGUAGE MODEL FOR CHINESE MEDIA
+Zhonghao Wang, Zijia Lu, Bo Jin, Haiying Deng State Key Laboratory of Media Convergence Production Technology and Systems, China {wangzhonghao, luzijia, jinbo}@xinhua.org, denghaiying@xinhuaskl.com
+ABSTRACT
+Large language models (LLMs) have shown remarkable capabilities in generating high-quality text and making predictions based on large amounts of data, including the media domain. However, in practical applications, the differences between the media’s use cases and the general-purpose applications of LLMs have become increasingly apparent, especially Chinese. This paper examines the unique characteristics of media-domain-speciﬁc LLMs compared to general LLMs, designed a diverse set of task instruction types to cater the speciﬁc requirements of the domain and constructed unique datasets that are tailored to the media domain. Based on these, we proposed MediaGPT, a domain-speciﬁc LLM for the Chinese media domain, training by domain-speciﬁc data and experts SFT data. By performing human experts evaluation and strong model evaluation on a validation set, this paper demonstrated that MediaGPT outperforms mainstream models on various Chinese media domain tasks and veriﬁes the importance of domain data and domain-deﬁned prompt types for building an effective domain-speciﬁc LLM.
+Keywords Artiﬁcial Intelligence · Large Language Model · Media
+1 Introduction
+Large Language Models (LLMs) have gained signiﬁcant attention in recent years for their ability to generate high-quality text and make predictions based on large amounts of data. OpenAI’s InstructGPT research [1] laid the foundation for this technology, and subsequent products like chatGPT [2] have demonstrated its effectiveness in diverse ﬁelds such as natural language processing, machine translation, and content creation.
+The potential of LLM technology has been increasingly realized by the public. However, in order for LLMs to be effectively applied in industries and assist in improving work efﬁciency, they need to be tailored to meet speciﬁc domain demands. There are two main approaches to enhancing LLMs for domain-speciﬁc applications. One approach is to use prompts to improve model accuracy [3], while another approach is to train the model using domain-speciﬁc data, such as BloombergGPT and FinGPT [4, 5].
+In the media domain, for example, many professionals have found that generic LLMs often fail to meet their expectations due to the domain’s particular characteristics, such as unique writing styles, narrative structures, and even differing political stances among media outlets [6, 7]. Consequently, there is a growing need for LLMs speciﬁcally designed for the media domain.
+This paper takes the media domain as the entry point and highlights the uniqueness of domain-speciﬁc large models compared to general large models. These unique features are not only reﬂected in pre-training samples, but also in various aspects such as prompts, SFT data instructions, and veriﬁcation methods. Therefore, MediaGPT, an
+
+domain-speciﬁc large model designed for the Chinese media domain is proposed in this paper. It is trained using domain-speciﬁc data and ﬁne-tuned using experts SFT data that capture media business requirements. With the help of experts, we constructed a validation set for the Chinese media domain, and performed human experts evaluation and strong model evaluation on it. Ultimately, MediaGPT demonstrates superior performance in Chinese media domain tasks and veriﬁed the importance of domain data.
+2 Related Work
+Large language models (LLMs) are neural network models that are trained on massive amounts of text data, and can generate natural language for various tasks and domains. In this section, we review some of the related work on LLMs, focusing on two aspects: domain-speciﬁc large language models (DS-LLMs) and Chinese large language models (CLLMs). DS-LLMs are LLMs that are trained or adapted on data from a speciﬁc domain, such as biomedical, legal, or ﬁnancial text. CLLMs are LLMs that are trained or adapted on data from the Chinese language, which is one of the most widely spoken and written languages in the world. We discuss the potential and challenges of developing and applying DS-LLMs and CLLMs for various domains and applications.
+2.1 Domain-speciﬁc Large Language Models
+Domain-speciﬁc large language models (DS-LLMs) are LLMs that are trained or adapted on data from a speciﬁc domain, such as biomedical, legal, or ﬁnancial text. DS-LLMs aim to capture the domain knowledge, terminology, and style of the target domain, and improve the performance of various downstream tasks in that domain. DS-LLMs can be obtained by either training a new LLM from scratch on domain data, or ﬁne-tuning a pre-trained LLM on domain data. The latter approach is a form of transfer learning, where the pre-trained LLM serves as a general-purpose model that provides a good initialization for the domain-speciﬁc model.
+Several studies have shown the beneﬁts of DS-LLMs for different domains and tasks. For example, BioMedLM is a 2.7B parameter GPT model trained on biomedical data from PubMed, which achieves state-of-the-art results on medical question answering [8]. [9] provides a systematic taxonomy and review of DS-LLM techniques based on the accessibility to LLMs and the availability of domain data. BloombergGPT is a large language model that is speciﬁcally designed for the ﬁnancial domain, with 50 billion parameters and the ability to handle various ﬁnancial data and tasks[4]. It is an improvement over Bloom model, using Bloomberg’s rich data sources and general-purpose datasets for training. It performs well on standard language model benchmarks and open ﬁnancial benchmarks, as well as some internal ﬁnancial tasks. These works illustrate the potential and challenges of developing and applying DS-LLMs for various domains and applications.
+2.2 Chinese Large Language Models
+Chinese large language models (CLLMs) are LLMs that are trained or adapted on data from the Chinese language, which is one of the most widely spoken and written languages in the world. CLLMs aim to capture the linguistic and cultural diversity, complexity, and richness of the Chinese language, and improve the performance of various downstream tasks in Chinese natural language processing. CLLMs can be obtained by either training a new LLM from scratch on Chinese data, or ﬁne-tuning a pre-trained LLM on Chinese data. The latter approach is a form of transfer learning, where the pre-trained LLM serves as a general-purpose model that provides a good initialization for the Chinese-speciﬁc model.
+Several studies have shown the beneﬁts of CLLMs for different domains and tasks. For example, Safety Assessment of Chinese Large Language Models[10] is a technical report that evaluates and analyzes 15 CLLMs including the OpenAI GPT series and other well-known Chinese LLMs, where they observe some interesting ﬁndings on their safety issues and challenges. [11] is a paper that presents a practice on training large-scale autoregressive language models named PanGu, with up to 200 billion parameters, which demonstrates superior capabilities of performing various tasks under few-shot or zero-shot settings. An open source CLLM named Wu Dao 2.0 was trained using FastMoEs by Beijing
+2
+
+Academy of Artiﬁcial Intelligence (BAAI), which claims to be 10 times larger than GPT-3 and can handle both natural language and images[12]. These works illustrate the potential and challenges of developing and applying CLLMs for various domains and applications.
+3 Dataset
+3.1 Unlabeled Pretrain Data
+Unlabeled pretrain data is the data used for pre-training LLM before ﬁne-tuning it on the target domain of Chinese media. We selected all the published data from inﬂuential Chinese media outlets since about 2000, as well as the published data from inﬂuential English media outlets with ofﬁcial backgrounds , totally about 250GB. These data sources are produced by highly professional media practitioners, and have high quality and credibility. The data provides a rich and diverse source of text data for LLM to learn from. It covers a wide range of topics and domains related to Chinese media, such as politics, economy, culture, society, sports, entertainment, science, technology, health, education, and international affairs, etc. It also includes some English texts from ofﬁcial media outlets that can help our LLM learn cross-lingual knowledge and skills. The unlabeled pretrain data can enhance the generality and robustness of the LLM’s representations and knowledge for various tasks or domains in Chinese media.
+3.2 Supervised Fine-tuning(SFT) Data
+Supervised ﬁne-tuning (SFT) is a technique that involves training or adapting a pre-trained large language model on a speciﬁc task or domain, using labeled data. SFT can be used to improve the performance of a language model on natural language generation, question answering, or text summarization tasks, by ﬁne-tuning it on data that contains input-output pairs for the desired task or domain.
+To enable MediaGPT to better learn the main tasks in the media domain, we surveyed the expert opinions of more than ten media companies or departments in China, and designed four major categories of SFT based on the main needs of Chinese media practitioners in the workﬂow of editing, writing and publishing, see Table 1. These categories contain over 80 speciﬁc types of SFT data:
+• Opinion creation, which requires the MediaGPT to generate more content without deviating from the facts given by the prompt, such as adding opinions and presenting positions. Typical business scenarios include: outline generation based on topics, comment article generation, etc.
+• Article transcription, which requires the MediaGPT to create content based on the information given by the prompt, without adding opinions or modifying facts, such as news script generation based on manuscripts, news style transcription, summary article writing, etc.
+• Media understanding, which requires the MediaGPT to understand and extract the content or elements of the information given by the prompt, without adding opinions or modifying facts, such as headline generation, news element extraction, etc.
+• Other QA, which are some additional general knowledge QA samples to improve the generalization and emergence abilities of the MediaGPT.
+In the process of constructing these instruction samples, we aimed to make the MediaGPT’s creation more professional. For the SFT samples that mainly focus on media creation, we used real-world excellent media articles as outputs, and let humans or code generate inputs. This way, the difﬁculty of constructing SFT samples was greatly reduced, and the professional outputs also improved the quality of the MediaGPT’s generation.
+3
+
+Table 1: Rules and examples for constructing the Chinese media instruction dataset
+
+Major categories Opinion creation Article transcription Media understanding Other QA
+
+Examples of speciﬁc instruction type Theme-based review article writing Outline creation
+Summary generation
+New media style transcription Headline generation
+News element extraction
+Self-awareness instruction
+
+Example rules of speciﬁc samples {} means referenced content
+Q:˜˙é{ theme};ò ⇣ «ƒ∫{á‡ A:{published high-quality commentary news}
+Q:˜˙éÂ↵Öπ ⇣ «á‡'≤: {theme, information or something} A:{article outline}
+Q:˜`9nÂ↵∞˚ ⇣ µ100WÊÛ¸ e ?ˆ‡sÑ·o: {a published article}
+A:{the abstract article that meets the requirements}
+Q:˜`⌃Â↵%Éá‡lô: «l⌫˜Œ<?ˆ: {a published article} A:{corresponding article published on WeChat}
+Q:˜:↵bá‡ ⇣ *C íSŒ<Ñ⌥ò: {a published article} A:{headlines of the article in Q}
+Q:˜–÷↵bá‡Ñ∞˚Å : {a published article} A:{5W1H of the article in Q}
+Q:`Î¿H? A:⌘ÎMediaGPT
+
+4 Model
+In recent times, it has come to our attention that LLMs have opened up new possibilities and sparked a revolution in various domains. The LLMs in media domain differ primarily in their application areas and the datasets they are trained on.This paper aims to improve the performance of LLMs in the media domain through the implementation of domain-speciﬁc pre-training and the precise deﬁnition of datasets for supervised ﬁne-tuning. Additionally, we build upon the structure of popular generative open-source LLMs’ structure to complete our model.
+Initially, we employed two popular generative open-source LLMs: BLOOMZ-7B[13] and LLaMA-7B[14] respectively as our base models. However, as our experiments progressed, it became evident that LLaMA-7B consistently outperformed BLOOMZ-7B. Therefore, we propose MediaGPT, a novel approach that involves supervised ﬁne-tuning of the pre-trained model: LLaMA-7B. This decision was driven by LLaMA’s superior performance and suitability for media domain tasks.
+4.1 Architecture
+LLaMA is a collection of LLMs trained on publicly available datasets and achieving efﬁcient performance on various benchmarks. A variety of model sizes were trained ranging from 7 billion to 65 billion parameters. The underlying code of LLaMa is made available to researchers, enabling them to adjust the model according to their needs for various research, without any requirement for commercial licenses. LLaMA is designed as a multi-functional model that is suitable for various use cases, rather than just ﬁne-tuning models for speciﬁc tasks. Furthermore, its requirements for computational power are relatively low.
+LLaMA is based on the transformer architecture with various improvements that were subsequently proposed. Compared to GPT-3[15], LLaMA incorporates RMSNorm as a normalizing function to enhance training stability by normalizing the input of each transformer sub-layer, replaces ReLU non-linearity with the SwiGLU activation function
+4
+
+for improved performance, and replaces absolute positional embeddings with rotary positional embeddings (RoPE) added at each layer of the network.
+4.2 Scale
+MediaGPT is based on LLaMA-7B so the parameters of the model is about 7 billion. The number of hidden layers is 32, the number of attention heads is 32 and the hidden size is 4096. LLaMA possesses an impressive multilingual and cross-lingual understanding capability, especially within European languages. Its training dataset consists of 1.4 trillion tokens, primarily in English, along with some other European languages in Latin or Cyrillic scripts [14]. As a result, its ability to generate Chinese text is limited. To address this issue and improve encoding efﬁciency, we propose augmenting the LLaMA vocabulary with additional Chinese tokens and employing the model for the extended vocabulary[16]. By combining the Chinese tokenizer with the original LLaMA tokenizer, we have created the Chinese LLaMA tokenizer, which now encompasses about 50k tokenized words.
+4.3 Training
+In this paper, we present the MediaGPT model, which is built upon the open-source generative model LLaMA-7B. Initially, the model was pre-trained on unlabeled data from the Chinese media domain, as described in Section 3.1. Subsequently, we conducted ﬁne-tuning using two different SFT datasets. The version ﬁne-tuned on the open-source dataset is referred to MediaGPT-generalSFT, while the one ﬁne-tuned on the Chinese media domain dataset described in Section 3.2 is referred to MediaGPT-domainSFT.
+5 Evaluation
+Quantitative evaluation of generative large language models is challenging, as there is no single dimension that can directly measure their performance. Most objective methods use multiple-choice or judgment questions, but the main goal of the Chinese media large language model is to handle subjective and open-ended questions, such as writing and creativity. These kinds of questions are best evaluated by human judges, but this approach is time-consuming and costly. Some recent works have used strong models as judges[17], where the models select which model is better, which slightly reduces the evaluation cost, but also severely affects the credibility.
+We collected opinions from dozens of media domain experts, and selected several typical cases for evaluation in the Chinese media scenario, including human evaluation and strong model evaluation. We developed domainspeciﬁc dataset for the evaluation task, which is about main categories mentioned in Section 3.2. Each main category contains about 100 questions. Answers were generated by four different LLMs: ChatGPT-3.5[2], ERNIE Bot[18], MediaGPT-generalSFT and MediaGPT-domainSFT. ChatGPT-3.5 and ERNIE Bot are mainstream English and Chinese 100B-level models respectively, and we use api for testing. It should be noted that about 2% of ernie’s answers refused to answer because of some security issues. The architecture, scale and pre-training data of MediaGPT-generalSFT and MediaGPT-domainSFT are exactly the same. The only difference between them is the SFT data, as mentioned in Section 4.3.
+We proposed three performance evaluation metrics to quantify the quality and relevance of the model’s outputs for each case: Avg.rank, Rank-n rate, and Compared win rate. We calculated the Rank-n rate for each model, which is the number of times the model is ranked 1st, 2nd, 3rd, or 4th. Avg.rank is the average of Rank-n. Compared win rate is the winning probability under the situation of pairwise comparison.
+5.1 Human experts evaluation
+In human evaluation, we enlisted the participation of a dozen journalists and editors as media domain experts to assess the results of the random half evaluation set, which answers generated by four different LLMs.
+5
+
+Before the evaluation process, we ﬁrstly asked some of the most senior of the dozen experts to devise evaluation criteria based on the news values and editorial standards. For example, for Opinion Creation tasks, the criteria encompassed ﬁve general evaluation dimensions and speciﬁc dimensions for each subtask. As for Article Transcription tasks, the criteria primarily comprised four general evaluation dimensions and speciﬁc dimensions for respective subtask.
+In the formal evaluation process, we formulated a series of questions for all types of tasks and had the ChatGPT-3.5, ERNIE Bot, MediaGPT-generalSFT and MediaGPT-domainSFT generate answers to these questions. The media domain experts conducted a double-blind test of the answers provided by the four LLMs, and throughout this process, the experts were required to assign scores and rank the answers strictly following predetermined criteria.
+The human evaluation results are as follows ,see Table 2. It can be observed that under the criteria of news expertise, MediaGPT-domainSFT achieves the highest average rate and the Rank-1 rate, and the win-rate. MediaGPT-domainSFT performs well in the following two aspects: 1) Understanding the question within the realm of news and consistently crafting the answers in the role of mainstream media. 2) Producing outputs that align better with the format of news, avoiding excessive stiffness. However, MediaGPT-domainSFT still has some shortcomings, such as sometimes missing the details of the question and writing in an overconceptualization way.
+Known as main stream models, ChatGPT-3.5 and ERNIE Bot’s most notable features lie in their meticulous comprehension of the nuances of the questions and clear presentation logic. But it’s like a double-edged sword, ChatGPT-3.5 and ERNIE Bot tend to be overly formulaic in their logic and expressions, and they sometimes fail to contextualize certain abstract topics within the domain of news and current affairs. Besides, ERNIE Bot falls short compared to ChatGPT-3.5 in terms of shorter and less logical answer, and it sometimes tends to avoid addressing sensitive political topics, which is critical for news writing and may not meet the necessary usage requirements.
+Regarding MediaGPT-general SFT, its biggest problem is often generating results in the wrong format. This indicates the LLM couldn’t tell the difference of each news genre and emphasizes the signiﬁcance of domain SFT.
+
+Table 2: Results of human experts evaluation
+
+Model name
+ChatGPT3.5[2] ERNIEBot[18]
+MediaGPTgeneralSFT MediaGPTdomainSFT
+
+Avg. rank
+2.19 2.60 3.18 2.03
+
+Rank1
+29.9%
+14.9%
+10.5%
+44.8%
+
+Rank-n rate
+
+Rank- Rank-
+
+2
+
+3
+
+35.8% 19.4%
+
+32.8% 29.9%
+
+13.4% 23.9%
+
+17.9% 26.9%
+
+Rank4
+14.9%
+22.4%
+52.2%
+10.5%
+
+ChatGPT3.5 -
+34.3%
+29.9%
+55.2%
+
+Compared win rate ERNIE- MediaGPT-
+Bot generalSFT
+65.7% 70.1%
+
+-
+
+68.7%
+
+31.3%
+
+-
+
+62.7%
+
+79.1%
+
+MediaGPTdomainSFT
+44.8%
+37.3%
+20.9%
+-
+
+5.2 Strong model evaluation
+Conventional reference-based metrics, such as BLEU and ROUGE, have demonstrated relatively low correlation with human judgments. [19] discussed the potential of employing a more strong model to evaluate the performance of less strong models. Additionally, [20] delved into methods for reducing bias and increasing the alignment with human judgment in the strong models evaluation.
+We use GPT-4 as the evaluation model and have proposed an evaluator prompt set for media-domain LLMs. Based on [21], strong model evaluation has the problem of validity and reliability. We present our Finetuned Evaluator Prompts Set, using four techniques to improve the stability and precision of evaluation. 1) Insert empty answer text in the ﬁrst position of the answer list generated by LLMs given to the evaluation model to prevent evaluation biases caused by the order of the answers. 2) Randomly mix the order of the other answers for the same reason mentioned above. 3)
+6
+
+Reference each answer with normal names to avoid chaos caused by the additional meaning of the reference name. 4) Rank the answers instead of scoring them to minimize the instability caused by the evaluation model. Through our experiments, we found that by using ﬁnely-tuned prompts, the accuracy and stability of the evaluation were signiﬁcantly improved.
+The evaluator prompt set is the same as human experts evaluation. We monitored the performance of our models MediaGPT-generalSFT and MediaGPT-domainSFT with two other mainstream models ChatGPT-3.5 and ERNIE Bot. The results demonstrate the MediaGPT’s superior performance in Chinese media domain tasks. The comparison of MediaGPT-generalSFT and MediaGPT-domainSFT proves that the performance of DS-LLMs improves steadily, and correlates with the using of SFT data, see Table3.
+In our experiments, we saw that ﬁnetuned evaluator prompts can enable strong model evaluation to achieve similar results to human experts judgement. The ﬁnal judgement results3 also shows a great similarity with those of humans2, which further demonstrated the value of prompt tuning. However, it cannot be denied that the unstable performance of Strong Model itself [22] still poses a certain risk to the use of Strong model evaluation, even though it has the advantage of being fast and scalable.
+
+Table 3: Results of strong model (GPT-4) evaluation
+
+Model name
+ChatGPT3.5[2] ERNIEBot[18]
+MediaGPTgeneralSFT MediaGPTdomainSFT
+
+Avg. rank
+2.62 2.37 2.87 2.14
+
+Rank1
+6.7%
+24.4%
+14.3%
+54.6%
+
+Rank-n rate
+
+Rank- Rank-
+
+2
+
+3
+
+46.2% 25.2%
+
+24.4% 41.2%
+
+24.4% 21.9%
+
+5.0% 11.8%
+
+Rank4
+21.9%
+10.1%
+39.5%
+28.6%
+
+ChatGPT3.5 -
+61.3%
+39.5%
+61.3%
+
+Compared win rate
+
+ERNIE- MediaGPTBot generalSFT
+
+38.7%
+
+60.5%
+
+-
+
+63.0%
+
+37.0%
+
+-
+
+61.3% 63.0%
+
+MediaGPTdomainSFT
+38.7%
+38.7%
+37.0%
+-
+
+5.3 Some results
+In the appendix4, we show some typical questions in the working scenarios of the Chinese media domain, as well as the answers given by MediaGPT.
+6 Conclusion
+In this paper, we presented MediaGPT, a large language model for the Chinese media domain, which can generate high-quality and relevant outputs for various tasks in the Chinese media domain. We propose and construct a set of media instructions to cover the main demands of the Chinese media workﬂow, and built a system of SFT data based on these. Due to the difﬁculty of evaluation in the media domain, we proposed a adversarial evaluation method that combines human evaluation and strong model evaluation to measure the quality of the generative tasks. Under this evaluation framework, we demonstrated the superior performance of MediaGPT over existing models on main media domain cases, and veriﬁed the importance of domain data and domain-deﬁned prompt types for building an effective domain-speciﬁc large language models. We hope that MediaGPT can be a valuable resource and tool for Chinese media practitioners and researchers, and inspire more innovations and applications in this domain.
+References
+[1] Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with human
+7
+
+feedback. Advances in Neural Information Processing Systems, 35:27730–27744, 2022. [2] OpenAI. Introducing chatgpt. https://openai.com/blog/chatgpt, 2022.
+[3] Jules White, Quchen Fu, Sam Hays, Michael Sandborn, Carlos Olea, Henry Gilbert, Ashraf Elnashar, Jesse Spencer-Smith, and Douglas C Schmidt. A prompt pattern catalog to enhance prompt engineering with chatgpt. arXiv preprint arXiv:2302.11382, 2023.
+[4] Shijie Wu, Ozan Irsoy, Steven Lu, Vadim Dabravolski, Mark Dredze, Sebastian Gehrmann, Prabhanjan Kambadur, David Rosenberg, and Gideon Mann. Bloomberggpt: A large language model for ﬁnance. arXiv preprint arXiv:2303.17564, 2023.
+[5] Hongyang Yang, Xiao-Yang Liu, and Christina Dan Wang. Fingpt: Open-source ﬁnancial large language models. arXiv preprint arXiv:2306.06031, 2023.
+[6] Som Biswas. The function of chat gpt in social media: According to chat gpt. Available at SSRN 4405389, 2023. [7] Robert Dale. Gpt-3: What’s it good for? Natural Language Engineering, 27(1):113–118, 2021.
+[8] A Venigalla, J Frankle, and M Carbin. Biomedlm: a domain-speciﬁc large language model for biomedical text. MosaicML. Accessed: Dec, 23(3):2, 2022.
+[9] Xujiang Zhao Chen Ling et al. Domain specialization as the key to make large language models disruptive: A comprehensive survey. arXiv preprint arXiv:2305.18703, 2023.
+[10] Hao Sun, Zhexin Zhang, Jiawen Deng, Jiale Cheng, and Minlie Huang. Safety assessment of chinese large language models. arXiv preprint arXiv:2304.10436, 2023.
+[11] Wei Zeng, Xiaozhe Ren, Teng Su, Hui Wang, Yi Liao, Zhiwei Wang, Xin Jiang, ZhenZhang Yang, Kaisheng Wang, Xiaoda Zhang, et al. Pangu : Large-scale autoregressive pretrained chinese language models with auto-parallel computation. arXiv preprint arXiv:2104.12369, 2021.
+[12] Jiaao He, Jiezhong Qiu, Aohan Zeng, Zhilin Yang, Jidong Zhai, and Jie Tang. Fastmoe: A fast mixture-of-expert training system. arXiv preprint arXiv:2103.13262, 2021.
+[13] Niklas Muennighoff, Thomas Wang, Lintang Sutawika, Adam Roberts, Stella Biderman, Teven Le Scao, M Saiful Bari, Sheng Shen, Zheng-Xin Yong, Hailey Schoelkopf, et al. Crosslingual generalization through multitask ﬁnetuning. arXiv preprint arXiv:2211.01786, 2022.
+[14] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin, Edouard Grave, and Guillaume Lample. Llama: Open and efﬁcient foundation language models. 2023.
+[15] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are few-shot learners. Advances in neural information processing systems, 33:1877–1901, 2020.
+[16] Ziqing Yang, Zihang Xu, Yiming Cui, Baoxin Wang, Min Lin, Dayong Wu, and Zhigang Chen. Cino: A chinese minority pre-trained language model. 2022.
+[17] Kangkang Zhao Lei Zhu Liang Xu, Xuanwei Zhang and others from SuperCLUE team. Superclue: A benchmark for foundation models in chinese. https://github.com/CLUEbench/SuperCLUE, 2023.
+[18] Baidu. Ernie bot. https://yiyan.baidu.com/, 2023. [19] Jinlan Fu, See-Kiong Ng, Zhengbao Jiang, and Pengfei Liu. Gptscore: Evaluate as you desire. arXiv preprint
+arXiv:2302.04166, 2023.
+[20] Peiyi Wang, Lei Li, Liang Chen, Dawei Zhu, Binghuai Lin, Yunbo Cao, Qi Liu, Tianyu Liu, and Zhifang Sui. Large language models are not fair evaluators. arXiv preprint arXiv:2305.17926, 2023.
+[21] Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. Gpteval: Nlg evaluation using gpt-4 with better human alignment. arXiv preprint arXiv:2303.16634, 2023.
+8
+
+[22] Lingjiao Chen, Matei Zaharia, and James Zou. How is chatgpt’s behavior changing over time? arXiv preprint arXiv:2307.09009, 2023.
+9
+
+A Some results
+
+Table 4: Some opinion generation results
+
+Questions by human ˜ ` Â“é ﬂ & ® ≈ 8”: ; ò ô *-Ì«Eƒ∫ á‡⇥
+` Åô «8001000W Ñ ˆ ã ƒ ∫ LáÅw ⌥∞N>Œ< Â⇣“›«¶ ⇧≈ ©ΩP ﬁ R“ü s”⌘ : ⌥ò vùn Ÿ*∞˚Ão ãˆ⇣BB∆
+L' *< “ ≈8*60K Õ Ñ“˜ ` Ω” . ˜368C. . . . . . Ô H4— {<⇧ ≈jN q4A ≥ ˜<®Ñp ~⌦CCÑΩP <“ FÌ∞´
+õ5Fså 'ãFÖ ß RóI:@⇥⌘ U⇥
+
+Answers by MediaGPT
+
+éﬂ/≈8⇢ÑÕÅƒ⇣Ë⌃ É ≈˝ 8 8¢Ñ<⇤ ÿ˝ –GS0ba
+
+åÂ ¶⇥è@˝ÖœNÑ—UÂ E⌘ ;4sÑ–ÿ ∫Ï˘éá z/I
+
+æ^BbÑ B_Â û⇥(®®œN—UÑ ˆ ÇU√€á  —U⇣
+
+:S↵üÖ„≥ÑÓòK ⇥ ⇢«—%, yréﬂÑ⇠øe&®≈8ß⇢ ‡
+
+ë/ ÕÔLÑπ✏⇥
+
+ñH éﬂÔÂ:≈8ß⇢&eAœ⇥⌫@hÂ ⇣n
+
+⇢/ ˙@_/ ;õÑœNL⇢K v˘0πœN—Uå>⇢1⇢Ñ!.
+
+Ô✏—⇥‡d ∏⇢0π?ú˝ä€F D\:—UÑÕÅKµ $v/à˘⇣n
+
+⇢€L€F D⇥Ÿ_1✏s@ ÍÅ }Ñ⇣nyÓ=0 £H≈6⇢&®'
+
+œÑ∫A fA iA € &®¯sß⇢˛Ñ—U⇥ŒŸ*“¶e↵ éﬂ˘é
+
+≈8ß⇢—UÑ\(/
+
+ªÑ⇥
+
+v! éﬂ_˝ –GŒ⇥ba⇥œ*0
+
+:˝ ÍÒÏyÑnﬂá Ÿõﬂi ≈/∫ÏÂ8Ñ ;≈ ¡ Ù/S∞0
+
+ﬂá ïtÑ Õπ✏⇥ãÇ €›k⇧ ⌧È6 ⌫¨‰-II ÉÏ ≈≈
+
+/ SSéss¥ Ù„h@ 0:ÑÜÚÔ¿åá ﬂ⇥‡d ⌃,0yr
+
+éﬂçe0Œ⇥ba˙æK-ª ‚˝U:˙S0Ï ÑŒ ∫≈ _ÔÂ©Ù⇢
+
+Ñ8¢Ü„v1⌦S0Ñá Œ≈⇥6 ÅÛ cû∞éﬂ ≈8ç ÿ Å
+
+€ eåÑMW °⇥‘Ç S w yrÑéﬂW: éﬂ⇥: –õÙ†øw
+
+ÿHÑ⇣nM ° U¯sÑéﬂSå;®II⇥Í Ÿ7M˝©∫Ï(¡
+
+éﬂÑ ˆ Ù}0 ◊S0Ñá Ù⇥
+
+¸⌦@ éﬂ ≈8 @'∆Ñ
+
+T˚ å⇧¯Ö¯⇣Ñs˚_( ≠†Ò⇥*e ⌘Ï ÅÁÌ¢"Ù⇢⇥ ⌅0
+
+yrÑéﬂC v⌃vE⌃ e0≈8;®- Œ b⇣Ù:0Ã⇢iÑ≈8ß
+
+¡ ©õ≈8⇢Ñ—U⇥
+
+BB∆ L' *<“ ≈8*60KÕÑ“˜`Ω” .˜368C. . . . . . ÔHÇ4— {
+
+<⇧≈jN q4A≥ ˜<®Ñp~⌦CCÑΩP<“ FÌ∞´ õ5Fs
+
+å'ãFÖ ßRóI:@⇥
+
+µˆÙÂe ΩP⇣ÜF∂<-Ñ“ô}
+
+}”⇥Œ |06ˆ ç0Ç ÑΩP<“ ≠ GÑ˜<Ã /  »Ñ˙
+
+j9Œ⇥ õ∫:Ü˝Bÿc! •ËDS ΩP¡L õ∫Ìwé-p)˜
+
+| < lK✓VZ÷Ó˜ ÿ ∫◆Ë«∫(Q⌦—⇤ZG·o M˜˙
+
+.ÿÔΩP. . . . . . ·dÕÕ ≈%Õ%OÜ>⇢Œ Ù©Ü“baKÀ q°K
+
+⇣”Ñ o>⌘⇥
+
+“ΩPœN”/⇥:œNÑßiK ü,(e™ı1˝◊∫
+
+Hü⇥6 —te (F⇢) q®↵ ΩP⇣⇣ÿÜsS⇢ ∫⇤ΩPt pâ
+
+Ö? Ñ∫äΩPSˆﬂ †Ç60ﬂ(⇢ÛLZ✏à9 Ù ⇢⇧ ⌃ΩP
+
+\:% Kµ :í\Çı€L“e% ”“‹—;I”. . . . . . ÕÕqa¸ÙΩPO
+
+ªÜ,I ÃªÜ √⇥
+
+Œ‰Û ‡∫/⇧ ⌦≥˛-⇧@ΩP8W:⌫
+
+ÿ/ÔHÇ⇥~ˆ÷≤[≈2´ ë /~”Í∂⇧ΩPm`HV ˝t+@-N
+
+⌘œ˘é} ;Ñ⌘Ä ¸⇥6 è@i( ;Â 0Ã ∫ÏäeäËÕ⇤
+
+OLÑ¡(–G ΩPŸÕ“✏∂ßâ”⇣⇣´∑=⇥Ÿv-˙6 ﬂá Â⇣✏
+
+ÆÑ‡ F_ OD,⇣)å“/)/˛”Ñü≥⇥F∂↵∆Ü∫Ï˘é} ;Ñ⌘
+
+Äå˘ ﬂá Ñ ı 1Cπ~°Œ à9⇧√⌃ ®˙⇧≈æé ˜<ÿ⇥Ñ
+
+ΩP<“ d·≥Ë⌃∫ÑZc√å G√⌃ Œ b⇣ ÕxbÑ“ΩPœN”⇥
+
+Å9O“ΩPœN”jŒ™ 1ÅZ≥R⇤xb°é¬ Z ⌥ŒûE˙— œõ
+
+L œe:˙ M˙ j9⇥ ˆ sËËî†:—°õ¶ %âS˚ï:
+
+ª%L: ˘“ΩPœN”-Ñ›ƒ›’L:%È 7 ˆÿî!¸e∑á Ñnﬂ
+
+`Ô ¸'§⌫⌃'à9 Í…µ6N◊∏◊ö◊∞a q % ⌥ÌëbÑ
+
+>⇢ Ù⇥
+
+Í “›“ΩPœN”«¶⇧≈ M˝ c©ΩPﬁR“üs” û∞
+
+cÑˇrà9 á à9⇥
+
+10
+
+Table 5: Some article transcription results
+
+Questions by human ˜˘Â↵µ=€L¶rå9€ ÌÂ ⇢z (Õæn⇢Ÿ‡t ⌘?Ë Ù (†:aQ0 ˙æÑ·o ° sË 0 ~”˙L ⇧ Î✓~ 00πÑ ∞ûÓò ⌘?Ë©íTQ0˛s ƒ⇤⌥ËaQ0 670⇢⌥a ∞û† Ñ0 Ü÷Üh˝200⇢*‘É⇢∫O ÑúQ0π Ÿõ∞ûÑ0 /°π˚ œ ‡Aø∫! Ÿà}0√€ÜúQ ∫⌘˙L¸* Î✓ 0QÃåúß¡
+0ŒÃ⇥
+
+Answers by MediaGPT —te ⌘?ËÙõé9ÑúQ0:E⌘Ñ ; (†:aQ 0 ·o °å„≥§⌫LÔæ ƒ✓ πøIÓòπb€LÜ ÔÅ¢"⇥:·≥'ú⌘§⌫Â ûÑ˙L Bå·o °
+Å ⌘?Ë®®íTQ0˛s g˝∂⌥∆ƒ⇤⌥ËaQ0 q°⌥Ë0 670Y⌥* µ÷Üh˝200⇢*0:É:∆-
+Ñ∫„:Œ⇥d> ≈∫Ï˝ øw0(K:I˚®»Ô⌦∑ ÷¯s·o ÿ H„≥ÜO‹0:Ñ§⇢⌥ æò ◊0Ü
+'ú⌘↵ÀÑ"Œå/ ⇥
+
+˜⌃%É∞˚•S9ô:∞íSS¡⇢
+2023t-˝‡∫:ﬁ l [ wWÍ 8/Ÿ é7 13Â-15Â(wW w„ ⇥>L⇥nƒ‘⇢ÀÕ 65 ¬[ K -ÖJp˝/R⌘tﬁK ✏Ñ¬[
+Kt≈6Å⇥\: y∞tÑz˝— Ä–® ‡∫:ﬁ äeä◊0R⌘t
+å∂Ñ"Œ⇥∞: ⌘ K∂h: √`‡∫:ﬁ ≈0ÃÜiPÑ˛Y
+; Ù–GÜiPÑ®K˝õ óã ˝õåÏÀ„≥ÓòÑ˝õ⇥dÜ◆⇢ [ãÂ ,!‘[ÿænÜ[SSå
+ﬁL8Ì⇢ ˜`‡∫:ﬁ ⌘⇠[ I ˚⌫0ÃÑhπ;®⇥[⇢;ûπ h: È(ë >ûŸ7Ñ˝∂ß‡ ∫:‘[ / (0ÃiPÏÑë
+;Ñ ˆ ◆±Ù⇢R⌘tÔÅ0¬
+0*z*)—ÄŸ7Ñ*e—ÄÑf `-e⇥
+
+2023h˝‡∫:ﬁ l [ wWÍ8/Ÿ 7 13ÂÛ15Â(w„⇥>L eÍh˝⌅065M¬[ K v-tÑ 'Ñ18Å ✏ÑÍ 6Å œ«$)Ñ¿»‘¸
+“⌘t:⇡˝:” ⌘tÏU∞˙^·ÑÕßÄ/
+∞: ⌘ K∂Ù ⇢«√`‡∫:ﬁ iP ≈ÿó«bú≠ ÿ˝˘{÷ÏÑ⇣√å≈õ f}‡∫:ŸyÄ˝ ˘iPÏeÙà ✏I
+—te
+è@—ÄÑ—U n äeä⇢Ñ∫•Ê0Ü‡∫:
+vú"⌦ÜÉ à⇢∫§:
+Ÿy‚:¿»w´Ñ–® ⌃⇣:÷Ï*eÑÂ8 Ì1—Ä–®Ñ⌘tÏ Îe wﬁ⌦›)'
+
+11
+

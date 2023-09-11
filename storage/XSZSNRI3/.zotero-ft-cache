@@ -1,0 +1,82 @@
+
+Skip to main content
+Cornell University
+We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. Donate
+arxiv logo > cs > arXiv:2110.12010
+
+Help | Advanced Search
+Search
+Computer Science > Computation and Language
+(cs)
+[Submitted on 22 Oct 2021 ( v1 ), last revised 17 Dec 2022 (this version, v3)]
+Title: ClimateBert: A Pretrained Language Model for Climate-Related Text
+Authors: Nicolas Webersinke , Mathias Kraus , Julia Anna Bingler , Markus Leippold
+Download a PDF of the paper titled ClimateBert: A Pretrained Language Model for Climate-Related Text, by Nicolas Webersinke and 3 other authors
+Download PDF
+
+    Abstract: Over the recent years, large pretrained language models (LM) have revolutionized the field of natural language processing (NLP). However, while pretraining on general language has been shown to work very well for common language, it has been observed that niche language poses problems. In particular, climate-related texts include specific language that common LMs can not represent accurately. We argue that this shortcoming of today's LMs limits the applicability of modern NLP to the broad field of text processing of climate-related texts. As a remedy, we propose CLIMATEBERT, a transformer-based language model that is further pretrained on over 2 million paragraphs of climate-related texts, crawled from various sources such as common news, research articles, and climate reporting of companies. We find that CLIMATEBERT leads to a 48% improvement on a masked language model objective which, in turn, leads to lowering error rates by 3.57% to 35.71% for various climate-related downstream tasks like text classification, sentiment analysis, and fact-checking. 
+
+Subjects: 	Computation and Language (cs.CL)
+Cite as: 	arXiv:2110.12010 [cs.CL]
+  	(or arXiv:2110.12010v3 [cs.CL] for this version)
+  	https://doi.org/10.48550/arXiv.2110.12010
+Focus to learn more
+arXiv-issued DOI via DataCite
+Submission history
+From: Markus Leippold [ view email ]
+[v1] Fri, 22 Oct 2021 18:47:34 UTC (3,545 KB)
+[v2] Mon, 26 Sep 2022 06:09:21 UTC (3,538 KB)
+[v3] Sat, 17 Dec 2022 12:20:08 UTC (3,539 KB)
+Full-text links:
+Download:
+
+    Download a PDF of the paper titled ClimateBert: A Pretrained Language Model for Climate-Related Text, by Nicolas Webersinke and 3 other authors
+    PDF
+    Other formats 
+
+Current browse context:
+cs.CL
+< prev   |   next >
+new | recent | 2110
+Change to browse by:
+cs
+References & Citations
+
+    NASA ADS
+    Google Scholar
+    Semantic Scholar
+
+DBLP - CS Bibliography
+listing | bibtex
+Mathias Kraus
+a export BibTeX citation Loading...
+Bookmark
+BibSonomy logo Reddit logo
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer ( What is the Explorer? )
+Litmaps Toggle
+Litmaps ( What is Litmaps? )
+scite.ai Toggle
+scite Smart Citations ( What are Smart Citations? )
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax ( What is MathJax? )
+
+    About
+    Help
+
+    contact arXiv Click here to contact arXiv Contact
+    subscribe to arXiv mailings Click here to subscribe Subscribe
+
+    Copyright
+    Privacy Policy
+
+    Web Accessibility Assistance
+
+    arXiv Operational Status
+    Get status notifications via email or slack
+

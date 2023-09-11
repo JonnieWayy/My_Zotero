@@ -1,0 +1,737 @@
+Quantitative Characteristics of Lexical-semantic Groups Representing Weather in Weather News Stories (Based on British Online Press)
+Nataliya Bondarchuka, Ivan Bekhtab
+a Lviv Polytechnic National University, Lviv 79013, Ukraine b Ivan Franko National University of Lviv, Lviv 79013, Ukraine
+Abstract The article presents the results of a close examination of the lexical structure of the texts of weather news stories as a novel genre in British online press. In spite of the more concentrated linguistic attention thus paid to the lexical structure of the language, the relative disregard of the lexical structure of the text (understood hereafter as semantic network of relations of lexical constituents on the textual surface level) stands in need of scrutiny. In order to account for the interdisciplinary approach that incorporates linguistic and computer-assisted techniques the survey uncovers the basic constituents of lexical-semantic groups and their relationships in the texts of weather news stories in two quality (The Times, The Guardian) and two mass (The Sun, The Daily Mail) newspapers (2014‒2017). The aim of the article is twofold: (1) to establish basic constituents of lexical-semantic groups and their quantitative characteristics in the texts of weather news stories; and (2) to investigate the relations of lexical-semantic groups which compose lexical structures of the texts in British online press. In the course of the inquiry, using the methods of computer sampling, as well as lexicographic, componential, and lexical-semantic analysis, quantitative and qualitative characteristics of lexical-semantic groups that represent weather have been identified and consequently described. The data reveal substantial differences in the quantitative composition of lexical-semantic groups in quality and mass newspapers. Based on the results, it is claimed that mass newspapers are more emotional and subjective in terms of information presentation compared to quality ones, which are more informative, factual, concise and standardized.
+Keywords 1 Lexical-semantic relations, lexical-semantic group, weather news story, quantitative analysis, lexical units, computer sampling
+1. Introduction
+The idea that the text is a semantic unity, “a unity of meaning in context” [1] has played a central role in the development of linguistic theory. Much work has been concentrated on the semantics of lexical units, their relations and structure [2; 3; 4; 10; 13; 14]. Prior survey on lexical-semantic inquiry has been conducted in the field of computational linguistics using such resources as WordNet [32; 33; 34]. Such natural language processing (hereinafter – NLP) application as WordNet can be used for the study of lexical-semantic relations; in this case context-free correlations are taken into account. However, the twofold goal of this survey is, on the one hand, to introduce the constituents of lexicalsemantic groups in texts of weather news stories and, on the other hand, to analyze lexical-semantic relationships in the texts of weather news story (hereinafter ‒ WNS) with a view to automatic detection of the constituents that comprise lexical-semantic groups. Several other studies have focused on quantitative, qualitative or statistical content analysis of news coverage in press [35; 36; 37]. The
+COLINS-2021: 5th International Conference on Computational Linguistics and Intelligent Systems, April 22–23, 2021, Kharkiv, Ukraine EMAIL: nataliia.i.bondarchuk@lpnu.ua (N. Bondarchuk); ivan.bekhta@lnu.edu.ua (I. Bekhta) ORCID: 0000-0002-5772-8532 (N. Bondarchuk); 0000-0002-9848-1505 (I. Bekhta)
+©️ 2021 Copyright for this paper by its authors. Use permitted under Creative Commons License Attribution 4.0 International (CC BY 4.0).
+CEUR Workshop Proceedings (CEUR-WS.org)
+
+development of present-day technology, in particular software programmes, has substantially transformed the survey of not only technical sciences, but also humanities. A large amount of data can now be accessed easily in electronic archives. In addition, modern textual research requires incorporation of both linguistic and NLP techniques. Furthermore, traditional model of computerassisted text analysis should be complemented with methods from different disciplinary fields.
+This research comes up with the thorough inquiry of lexical structure of weather news stories in British quality and mass press. Especially, much attention is given to the identification of quantitative characteristics of lexical-semantic groups (hereinafter ‒ LSG) that represent weather in the texts under analysis. At the same time, the weather news story is defined as a novel viz. ingoing newspaper genre, which emerged as a result of blurring genre boundaries and genre-style diffusion of traditional meteorological (weather) genres in modern British electronic press. The stratification of lexical units, representing the semantics of weather, is carried out according to the semantic principle and parts of speech − LSGs of nouns, adjectives, verbs and adverbs have been singled out.
+We assume that the lexical structure of weather news stories is described quantitatively and qualitatively. Semantic relations among lexical units are based on the semantic interaction between lexical meanings. Therefore, the study of such relations, which allows the stratification of lexical units in WNS, is best carried out by building a hierarchy, according to which lexis is organized within lexicalsemantic groups with specific semantics. The proposal that the lexicon has a field structure has shown up in many disciplines and has the longest history and widest acknowledgment. Lexical-semantic classification of words is primarily associated with the works of W. Humboldt [43], J. Trier [5], W. Porzig [7], and L. Weisgerber [48]. It was later developed by J. Lyons [45], A. Lehrer [44], E. F. Kittay [44], and R. Grandy [42], who considered the common elements of meaning shared by the constituents of word groups as the basic criterion for their grouping.
+2. Research method
+The selection of material for this survey was the corpus of British electronic newspaper texts (20142017) of the ingoing genre “weather news story”. The material of the inquiry is the corpus of constituents of lexical structures in WNS. The electronic newspapers that served as a source of material for linguistic research are the four most popular British newspapers: quality ‒ The Times, The Guardian and mass ‒ The Sun, The Daily Mail, which are available on Internet sites and provide selected material for the examination. The study of the text is organized by a computer sampling of electronic versions of British quality (www.thetimes.co.uk, www.theguardian.com/uk) and mass (www.www.thesun.co.uk, www.thedailymail.co.uk) newspapers of the beginning of the XXI century (2014–2017) by using keyword searches in the online archival sources of these newspapers. After selecting the newspapers and specifying the time frame, an electronic search for the following ‘node terms’: “weather” and “weather news” was conducted. The overall search resulted in the compilation of the research corpus of contextual representations of 2800 lexical structures of WNS from 5760 pages.
+Further steps are related to the classification of lexical units that represent the semantics of weather into lexical-semantic groups according to the part of speech. They are also related to the selection of the groups of synonyms by means of lexicographic, componential and lexical-semantic analysis. Quantitative analysis is used at all levels of the survey just to determine the quantitative parameters of verbalization and actualization of lexical-semantic groups, as well as to clarify and establish trends in the use of lexical units in WNS. Quantitative analysis was carried out with the use of computer program Tropes V8.4.
+It should be noted that the selected fragments differ in size because the criterion for their identification is the context in which the lexical units are used to denote weather phenomena. Such heterogeneity of units of analysis is justified from the standpoint of the systemic-functional approach which demonstrates the interdependence of the lexical structure of the weather news story and the author's/journalist’s intentions.
+To determine the reliability of the study we use the formula of relative sampling error which reflects the adequacy of the selected contextual representations. It is believed that this value should not exceed 33% [6] with a confidence level of 95% (P = 0.05). The relative sampling error is determined by the formula:
+
+δ = 𝑍𝑝/√((𝑁 × 𝑝)),
+
+(1)
+
+where Zp is a constant, which is 1.96 for a 5 percent significance level, N is the sampling size, p is
+
+the relative frequency of use of units under analysis.
+
+The studied corpus has 2800 contextual representations of the lexical structures. The total amount
+
+of research material is 5760 pages. The frequency of use of contextual representations of lexical
+
+structures is: 2800÷5760, which equals to 0,48. The relative error is calculated by the formula:
+
+δ = 1,96/√((5760 × 0,48)) = 0,037 = 3,7 %,
+
+(2)
+
+Since the value obtained is less than the allowable 33%, we have reason to believe that the selected
+
+number of examples of contextual representations of lexical structures is sufficient to obtain statistically
+
+relevant data about the object.
+
+3. Theoretical background
+
+A prominent place among the newspaper genres is occupied by the news story. According to Bell, journalists do not write articles but stories [38]. The distinctive characteristics of the news story is the presence of a lead (can be more than one) that not necessarily summarizes the story, but “points to the issues of maximum societal disruption” [41]. A considerable boost of communication technologies has provided instant access to news across the world. Traditional newspaper genres have been supplemented with new ones which either co-existed or replaced them. Recent investigation on newspaper genres [39; 40] has examined the process of genre hybridization that occurs, as observed in V. K. Bhatia, when new generic forms are created, innovated or developed to achieve novel communicative goals within the framework of socially accepted generic boundaries [40]. Thus, a weather news story is one of the genres the emergence of which is rather conditioned than spontaneous.
+Most research of the lexical structure of the text fall into the sphere of interest of various linguistic fields: text linguistics (H. G. Widdowson [8], M. A. K Halliday, R. Hasan [3,7], T. A. Van Dijk [31]); linguistic semantics (H. P. Grice [9], J. Lyons [10], G. Lakoff [11]); lexical semantics (L. Lipka [12]); cognitive linguistics (D. Geeraerts [13], N. Evans [14], J.Ch. Fillmore [15, 32]); discursive stylistics (M. Burke [16], R. Carter, P. Simpson [17]); pragmatics and pragmastylistics (J. Angermuller [18], E. Black [19], S. Chapman [20], L. Hickey [21]). According to L. Lipka, the term “lexical structure” refers to both external (syntagmatic and paradigmatic relations) and internal (morphological) structure of the lexicon [46]. This definition is applied in the analysis of language phenomena. In this research of WNS as texts of a specified genre of British online press it should be distinguished with reference to those theorists that consider lexical structure as semantic network of relations of lexical constituents on the surface level of the text [46; 49]. Thus, lexical structure is the structure of lexical units, their grouping and relations among them that “contribute to the continuity of lexical meaning” in the text [47]. Consider the following example: “Snow is a blanket of national humility, the thing that happens just seldom enough that we make no contingency planning for it, just often enough to replenish our stocks of rueful self-effacement. Only snow can do this. Losing at sports just makes us more insular, and rain is annoying. The 2013 snowbomb – five days in January, the heaviest snow in March for 50 years – felt like a crushing iteration of the coalition government, its endless austerity Narnia, always winter, never Christmas, the feeling of sun on your skin a distant memory from a better age, like free tertiary education or a humane social security system. The cold weather held up a mirror to the colder politics. But then it cleared up, while David Cameron remained in charge. They don’t call it a pathetic fallacy for nothing: weather changes on its own, politics only changes when you change it” [50].
+Traditionally, lexical-semantic relations have been viewed as context-independent sets. Basically, various studies have concentrated on lexical relations between word pairs in a language: synonymy, antonymy, hyponymy, and meronymy [2; 3; 22]. However, after the decline of structuralist period, there have been numerous studies on text-based lexical-semantic relations (Lakoff’s non-classical relations [11], Cruse’s patterns of lexical affinity [2], Fillmore’s sentence-specific relations [15], Chaffin and Herrman’s inter-sentence and inter-text relations [23]). According to Paradis, lexical-semantic relations “range from highly conventionalized lexical-semantic couplings to strongly contextually motivated pairings” [24].
+In the terminology of modern linguistics, there are a number of interpretations of the lexicalsemantic group caused by the divergence of views on the criteria for classifying words in such a group.
+
+Classically, lexical-semantic groups include words of one part of speech, connected by a common semantic component ‒ categorical-lexical seme, integral semes, which identify it, common compatibility, as well as uniformity in the development of ambiguity [10; 12; 13; 25]. It is the presence of such an integral categorical seme that distinguishes lexical-semantic group from the lexical-thematic group, which includes classes of words that are united by the same typical situation or topic.
+The use of componential analysis allowed for identification of semantic relations by separating the smallest indivisible unit of meaning ‒ seme. This type of analysis is carried out with the help of lexicographic analysis, which allows combining lexical units into lexical-semantic groups / subgroups. The names of all lexical-semantic groups are selected using the logical-intuitive method and checked by dictionary definitions, and the names of the semes ‒ by the logical-intuitive method through the abstract generalization of semantic components of meaning from the definitions.
+4. Findings
+We perform the analysis of the lexical semantic groups representing weather in the texts of weather news stories. Lexical units, the meaning of which semantically specifies the topic of weather in weather news stories, form lexical-semantic groups of nouns, adjectives, verbs and adverbs. Lexical-semantic groups in WNS consist of smaller units (subgroups, groups of synonyms). This indicates the hierarchical nature of the lexical structure of WNS, in which some units are subordinate to others, higher-level units, and internal relations within the group [12]. Thus, the functionality of language units is expressed in the relations of the hierarchical constitution of elements of higher groups: some elements combine and form groups of elements of higher level, and so on ‒ until language is embodied in speech, which extends syntagmatically.
+In cases when within the LSG there is a clear semantic grouping by a certain aspect or lexical units are united by a narrower range of meanings (for example, within the LSG "Atmosphere", we distinguish such types of precipitation as rain, snow, hail, etc.), we shall use the term "subgroup" and analyze their synonyms using English Thesaurus [26]. Synonymic relations are an important type of semantic relation of words within a particular lexical-semantic group. The organization of words into groups of synonyms indicates the semantic relation of complete or partial identity of the denoted phenomena [28]. Due to the semantic visualization of the synonyms, it can be concluded that the presence of a large number of words in WNS, which name various manifestations of one phenomenon, such as rain, indicates the prevalence and importance of this phenomenon for British culture.
+Consider, for example, this headline of the British mass newspaper: “HOLIDAY SHOCKER: Summer will be a total washout with miserable wet weeks of floods, storms, torrential downpours and even hail” (S, 12.05.2016) [52]. The importance of rain for the British is described by M. Harrison in her book: „Rain: Four Walks in English Weather”: „Rain is co-author of our living countryside; it is also a part of our deep internal landscape which is why we become fretful and uneasy when it’s too long withheld. Fear it as we might, complain about it as we may, rain is as essential to our sense of identity as it is to our soil” [27]. Lexical-semantic groups are formed according to the part of speech principle, which makes it possible to present the lexical structure in a clear hierarchical order ‒ from groups to subgroups. In general, we single out seven LSGs of nouns, which in turn are divided into smaller subgroups. For instance, within the LSG “Atmosphere” we distinguish the subgroups “Precipitation” and “State of atmosphere”. The central seme that provides a stable semantic relationship of meanings is the dual seme “fall” / “atmosphere” and “state” / “atmosphere”, respectively. It is found in the lexicographic definitions of the components of LSG (for example, hail = pellets of frozen rain which fall in showers from cumulonimbus clouds), or by forming a definition chain (for example, sleet = rain containing some ice; rain = the condensed moisture of the atmosphere falling visibly in separate drops). The use of the lexis of this LSG provides the most complete representation of the weather conditions: “The heat and humidity over much of Britain have triggered thunderstorms” (T, 27.05.2014) [53]; “While many people love a bit of sun, extreme heat is deadly” (G, 06.07.2015) [50]. Within the LSG “Precipitation” we distinguish the following groups of synonyms: 1) rain: rainfall, precipitation, raindrops, rainwater, wet weather, the wet, a fall of rain, sprinkle, drizzle, mizzle, shower, rainstorm, cloudburst, torrent, downpour, deluge, squall, thunderstorm, washout (inform); 2) snow:
+
+snowflakes, snowfall, blizzard, snowdrift, snowstorm, sleet, flurry; 3) hail: frozen rain, hailstones, sleet, hailstorm, hail shower [29]. As we can see, the internal organization of lexical-semantic groups is explained in view of the hierarchy of lexical units within these groups, determined by the principle of dominance (i.e. the placement of elements vertically).
+In the hierarchical structure of LSG ,,Weather extremes” (triple seme ‒ “weather” / “extreme ”/ ,, great”) we distinguish subgroups “Atmosphere extremes” and “Hydrosphere extremes”; LSG “ Time" (seme – “time”) ‒ subgroups “Seasons / Seasons”, “Part of the day / day of the week / Parts of the day / weekday”, “Calendar cycle”; LSG “Meteorology” (seme – “meteorology”) ‒ subgroups “Meteorological terms”, “Gathers of weather data”, “Measuring instruments”; LSG “Location” (seme ‒ “location”) ‒ subgroups “City / Town”, “Place”, “Country”, “Region”; LSG “People” (seme – “people”) ‒ subgroups “General names”, “Nationality”, “Profession”, “Single and collective names / Single and collective names”; LSG “Emotional state” (seme ‒ “emotion” / “state”) ‒ subgroups “Cause”, “Peculiarities”, “Intensity”, “Mental state”.
+LSG “Weather extremes” consists of lexical units which denote weather disasters or extreme weather conditions. Let us consider the following example: “Britain faces further downpours over the festive period, with Storm Eva battering parts of the country with winds of up to 70mph, as homeowners and businesses in Cumbria prepared a flood clean-up for the third time this month” (G, 23.12.2015) [50]. The LSG “Meteorology” consists of lexical units denoting meteorological phenomena, terms and processes. The seme of this LSG (“meteorology”) reflects the semantic affinity of lexical meaning in the field of meteorology. For instance: “The warm Pacific temperatures have also led to a record number of hurricanes and cyclones. Scientists have warned for years that extreme weather would become more common as a result of climate change, but have until recently fought shy of attributing single events to global warming” (G, 27.12.2015) [50].
+In addition to LSG of nouns, LSG of adjectives, verbs and adverbs are singled out. They are smaller in number, but deserve attention because they help to reveal the motif of weather in the individual author’s perspective. Thus, in the corpus of the studied texts we distinguish LSG of adjectives: “Weather description” (seme – “weather” / “character”) (subgroups: “Duration, regularity”, “Intensity”, “Temperature”, “Influence on the object / result”, “Nature / origin ”, “Character ”, “Humidity”), “Weather evaluation” (sub-groups: “weather”/“evaluation”) (subgroups: “Positive evaluation”, “Negative evaluation”) and “Emotional appeal” (seme – „emotion”/„appeal”) (subgroups: “Cause”, “Emotional appeal as expression of mental state”, “Intensity”, “Peculiarities of emotional appeal”).
+LSG “Weather description” contains lexical units which refer to the descriptive identification of the weather by detailing the textual narrative, specifying and clearly describing the weather events. Here is an example of lexical-semantic actualization of this group in the text fragment: “London has had its first significant snowfall of the year as flurries moved in across the South East overnight with forecasters predicting a new band of freezing cold air will blow in from central Europe on Friday” (DM, 03.02.2015) [51]; “April has been a warm, dry and sunny month, so the rain is probably much needed from some areas" (G, 01.05.2015) [50].
+Among LSG of verbs LSG “Change” (subgroups: “Appearance”, “Change of the state”, “Influence”, “External manifestation of action or state” , “Weather verbs”), LSG “Physical activity” (subgroups: “Existence”, “Physiological processes”, “Process”, “Ownership”, “Physical action”,“ Start / end of action”, “Perception”, “Movement”), LSG “Emotional and psychological state” (subgroups: “Modality”, “Emotional state”, “Psychological state”) and “Mental activity” (subgroups: “Mental and speech activity”, “Prediction / caution”) are distinguished.
+It is worthy of mentioning that using the classification of verbs by B. Levin the subgroup “Weather verbs” is further subclassified into “Precipitation verbs”, “Temperature events” and “Other weather events”. To illustrate, let us consider the following example of temperature event verb: “Commuters struggle with the summer heat on the Underground in London as the Central Line sweltered in the high temperatures” (DM, 19.07.2016) [51].
+The LSG of adverbs include the LSG of “Place”, “Manner” and “Time”. Based on the analysis of the studied corpus, we have found that the semantic differentiation within the LSGs of adverbs is determined by the peculiarities of the use of adjectives and verbs: often adverbs perform the function of specification or intensification of the evaluation expressed by the adjective or verb (surprisingly long, impact specifically). In this view, the LSGs of adverbs with the corresponding lexical content serve as a means of introducing and specifying the textual narrative of WNS. In this regard, adverbs can be
+
+classified into adverbs-intensifiers and adverbs-specifiers [30]. To the adverbs-intensifiers we include the following ones: surprisingly, simply, largely, completely, inexorably, and to the adverbs-specifiers ‒ unseasonably, bitterly, unusually, traditionally, calmly. For example: “The company blamed unseasonably high temperatures and strong winds throughout November and December” (G, 23.12.2015) [50].
+We finally turn to the analysis of lexical and quantitative composition of the abovementioned LSGs the results of which are shown in the following table (see Table 1):
+
+Table 1 Lexical and quantitative composition of lexical-semantic groups in WNS
+
+Lexical-semantic groups
+
+Quantitative composition
+Quality newspapers
+
+LSGs of nouns
+
+1. LSG „Atmosphere” (integral seme – „fall”/„atmosphere”/„state”)
+
+1) precipitation (rain (= the condensed moisture of the atmosphere
+
+falling visibly in separate drops). Synonyms: rainfall, precipitation,
+
+raindrops, rainwater, the wet, sprinkle, drizzle, mizzle, shower,
+
+rainstorm, cloudburst, torrent, downpour, deluge, squall,
+
+thunderstorm, washout (inform); snow (= atmospheric water vapour
+
+frozen into ice crystals and falling in light white flakes or lying on the
+
+ground as a white layer). Synonyms: snowflakes, snowfall, blizzard, snowdrift, snowstorm, sleet, flurry; hail (= pellets of frozen rain
+
+30
+
+which fall in showers from cumulonimbus clouds). Synonyms: frozen
+
+rain, hailstones, sleet, hailstorm, hail shower
+
+2) state of atmosphere (temperature (heat, heatwave, freeze),
+
+humidity (moisture, damp) wind (subgroup is also composed of
+
+synonyms: gale, monsoon, tradewind,gust, breeze, blast, zepthyr,
+
+whirlwind), sky and cloudiness (lightning, cloud, thunder,
+
+sunshine), air/condensation deposits (pressure, fog, mist, haze,
+
+dew, hoarfrost, frost, ice)
+
+Total number of words
+
+54
+
+2.LSG „Weather extremes” (integral seme –
+
+„weather”/„extreme”/„great”)
+
+10
+
+1) atmosphere extremes (storm, thunderstorm, thundersnow,
+
+hailstorm, heatwave, gale, squall, acid rain, thundersnow,blizzard)
+
+3
+
+2) hydrosphere extremes (flood, tsunami, drought, tornado)
+
+Total number of words
+
+13
+
+3.LSG „Time” (integral seme – „time”)
+
+1) seasons (springtime, summer, winter, spring, autumn)
+
+4
+
+2) parts of the day/weekday (weekend, week, Friday afternoon,
+
+fortnight, morning)
+
+20
+
+3) calendar cycle (month – June, July, holiday – Christmas Eve,
+
+Boxing Day, Easter, date – the 17th)
+
+16
+
+Total number of words
+
+40
+
+Quantitative composition
+Mass newspapers
+28
+51 10 4 14 5 19 14 36
+
+4.LSG „Meteorology” (integral seme – „meteorology”) 1) meteorological terms (yellow warning, red warning, cyclone,
+
+10
+
+4
+
+heat-island, cumulus clouds, weather bomb, Saharan dust plume, jet stream, stratospheric warming, F2, F5)
+
+2
+
+2
+
+2) gathers of weather data (Met. Office, meteorologist) 3) measuring instruments (mercury, thermometer)
+
+2
+
+3
+
+Total number of words
+
+14
+
+9
+
+5.LSG „Location” (integral seme – „location”/„place”) 1) city/town (London, Miami, Yorkshire, Leeds, Manchester)
+
+29
+
+30
+
+2) place (airport, castle, farmhouse, office, park, city, town, coast, theatre)
+
+17
+
+20
+
+3) country (Scotland, Nothern Ireland, Wales, Australia, England, Britain)
+
+16
+
+9
+
+4) region (midland, Cumbria, Lancashire, Yorkshire)
+
+11
+
+4
+
+Total number of words
+
+73
+
+63
+
+6.LSG „People” (integral seme – „people”)
+
+1) general names (woman, child, man, friend, boy, toddler)
+
+10
+
+15
+
+2) nationality (British, Italian)
+
+8
+
+7
+
+3) profession (doctor, meteorologist, forecaster, driver), activity
+
+(worker, student, expert, scientist), position (prime minister, soldier,
+
+9
+
+5
+
+officer), title (queen, prince)
+
+4) single and collective names (people, passengers, tourist,
+
+10
+
+11
+
+commuter, owner, member, pedestrian, sunbather, beach-goer)
+
+Total number of words
+
+37
+
+33
+
+7.LSG „Emotional state” (integral seme – „emotion”/„state”) 1) сause (fear, alarm, alert, distress, panic, triumph, surprise,
+
+20
+
+29
+
+frustration) 2) рeculiarities of state (enthusiasm, fury, disbelief, temper (= a
+
+18
+
+19
+
+sudden outburst of anger) 3) іntensity (fury, rage, love, astonishment, despair, joy)
+
+7
+
+13
+
+4) mental state (hopelessness, glee, cheer, pain, responsibility, indifference, confusion)
+
+13
+
+17
+
+Total number of words
+
+58
+
+78
+
+LSG of adjectives
+
+8. LSG „Weather description” (integral seme –
+
+„weather”/„character”)
+
+1) duration, regularity (incessant, patchy, (un)settled, unsteady,
+
+variable, unpredictable, turbulent, uncertain, varying, changeable,
+
+15
+
+14
+
+prolonged)
+
+2) intensity (strong, heavy, ferocious, mild, harsh, intense)
+
+3) temperature (cold temperature: freezing, arctic, icy, fresh, cold,
+
+18
+
+25
+
+chilly; warm temperature: hot, scorching (inf.), baking, soaring,
+
+8
+
+11
+
+sticky)
+
+4) influence on the object/result (devastating, damaging, soaking)
+
+5) nature/origin/source (north, tropical, rainy, sunny, windy, east,
+
+15
+
+17
+
+thundery, atlantic, Saharan, storm-plagued, hurricane-force, breezy,
+
+hazy, misty, foggy, showery)
+
+23
+
+25
+
+6) character (total, hard, falling, clear, crisp, broken, blazing,
+
+scattered, isolated)
+
+7) humidity (humid, dry, squally, damp, wet, muddy)
+
+10
+
+9
+
+3
+
+2
+
+Total number of words
+
+92
+
+103
+
+9.LSG „Weather evaluation” (integral seme –
+
+„weather”/„evaluation”)
+
+1) positive evaluation (cool, balmy, natural, decent, bright, calm,
+
+delightful, excellent, exceptional, fair, favourable, fine, glorious,
+
+good, great, ideal, light, lovely, mild, nice, clear, pleasant, promising,
+
+superb, perfect, clear, suitable, improved, gentle, fantastic,
+
+10
+
+15
+
+delightful, amazing)
+
+2) negative evaluation (extreme, severe, chilly, dirty, bad, failed,
+
+unpleasant, adverse, shocking, awkward, odd, unseasonable,
+
+miserable, relentless, appalling, awful, beastly, brutal, difficult,
+
+depressing, disgusting, disturbed, dull, foul, gloomy, grey, grim,
+
+30
+
+37
+
+hard, nasty, overcast, rough, filthy, frightful, terrible, ugly,
+
+unfavourable, harsh, fierce, freak, rotten, deteriorating, poor, heavy,
+
+vicious, apocalyptic)
+
+Total number of words
+
+40
+
+52
+
+10.LSG „Emotional appeal” (integral seme – „emotion”/„appeal”)
+
+1) cause (angry, proud, ashamed, outraged, surprised, happy, afraid
+
+7
+
+8
+
+(= cheerful, disappointed, happy))
+
+2) emotional appeal as expression of mental state (worried,
+
+10
+
+13
+
+hopeless, deranged)
+
+3) intensity (angry, mad, scared, outraged, terrified)
+
+5
+
+6
+
+4) peculiarities of emotional appeal (disappointed, miserable,
+
+uneasy, worried)
+
+5
+
+5
+
+Total number of words
+
+27
+
+32
+
+LSG of verbs
+
+11. LSG „Change”
+
+1) appearance (appear, seem, happen, allow, occur)
+
+5
+
+4
+
+2) change of state (turn, change, become, update, cancel, set, rise,
+
+break, cover, die, modify)
+
+9
+
+7
+
+3) influence (affect, cause, change, hit, lead, frighten, influence)
+
+7
+
+5
+
+4) external expression of action or state (shine, show, lash)
+
+2
+
+3
+
+5) weather verbs (to drizzle, to hail, to fog to mizzle, to pelt, to
+
+pour, to precipitate, to rain, to shower, to sleet, to snow, to spit, to
+
+7
+
+9
+
+spot, to sprinkle, to freeze, to swelter, to hot up, to roast)
+
+Total number of words 12. LSG „Physical activity” 1) existence (be, live, remain, stay) 2) physiological processes (breathe, sweat, swallow) 3) process (last, continue, follow) 4) possession (have, give, take, own, use, keep) 5) physical action (do, make, meet, fall, force, put, evacuate) 6) start/end of action (close, begin, start, open, stop) 7) perception (see, look, feel, watch)
+
+30
+
+28
+
+3
+
+3
+
+3
+
+1
+
+3
+
+3
+
+5
+
+4
+
+5
+
+6
+
+4
+
+5
+
+3
+
+4
+
+8) movement (go, come, reach, leave, send, move, return)
+
+7
+
+6
+
+Total number of words
+
+33
+
+32
+
+13. LSG „Emotional and psychological state”
+
+1) модальності/modality (can, may, shall, need, must) 2) емоційного стану/emotional state (enjoy, love, like, hate, annoy)
+
+4
+
+4
+
+2
+
+6
+
+3) психологічного стану/psychological state (outrage, ashame, satisfy, frustrate, confuse, anticipate, embarrass, disappoint)
+
+5
+
+8
+
+Total number of words
+
+11
+
+18
+
+14. LSG „Mental activity”
+
+1) thinking and speech activities (know, think, ask, believe, tell,
+
+include say, talk, report)
+
+9
+
+13
+
+2) prediction / caution (warn, expect, predict, issue, bring, prepare,
+
+forecast, urge, threaten, alert, delay, avoid)
+
+9
+
+6
+
+Total number of words
+
+18
+
+19
+
+LSG of adverbs
+
+15) LSG „Place” (far away, there, nearby, again, always, outside, here, northwards)
+
+6
+
+7
+
+16) LSG „Manner”
+
+(largely, violently, completely, barely, slightly, physically, simply, naturally, calmly, commonly)
+
+8
+
+10
+
+17) LSG „Time” (overnight, immediately, temporarily, soon, today, at last, tonight,
+
+10
+
+11
+
+occasionally, still, now and again, sometimes)
+
+Total number of words
+
+24
+
+28
+
+The data from Table 1 proves, that there are differences in the quantitative composition of LSGs of different parts of speech in quality and mass newspapers. The prevailing number of lexical units forming LSG of “Emotional state”, “Emotional appeal”, “Weather description” and “Weather evaluation” in mass newspapers in comparison with quality ones indicates more emotional and subjective nature of the narration in the mass newspapers. Instead, in quality newspapers LSG “Time”, “Meteorology”, “Location” are dominant, which is due to the functional and informational features of WNS in this type of press: quality newspapers are more informative, factual, concise and standard in the presentation of information. In addition, the total number of word constituents of LSG is not identical to the sum of all words from subgroups, which is explained by the fact that according to their semantic meaning some words may belong to several subgroups. This fact vividly illustrates semantic diversity within the structure of lexical meaning in WNS.
+The analysis of the factual material also showed that there are fewer adjectives of positive semantics than adjectives of negative semantics in the corpus of the studied texts. This is also explained by the functional and informative features of WNS, i.e. usually these are atypical, unusual or abnormal weather events / conditions that cause uncomfortable or even dangerous conditions/environment for humans.
+
+5. Conclusions
+
+This small-scale study has examined lexical structure of weather news stories in British quality and mass press (2014‒2017). Specifically, it has analyzed qualitative characteristics of lexical-semantic groups representing weather in the texts under analysis. Lexical-semantic groups (LSGs) are singled out according to the part of speech and comprise groups of nouns (7 groups), adjectives (3 groups), verbs (4 groups) and adverbs (3 groups). The analysis has shown that there is a variation regarding the
+
+quantitative composition of lexical-semantic groups. It has been observed that such variation appears to be related to the type of newspapers. As a whole, quality and mass newspapers have identical LSGs, however, there are some differences in the quantity and functioning of their constituents. The dominant LSGs in mass newspapers are: „Emotional state”, „Weather description” and „Weather evaluation” which testifies to the more emotional and subjective nature of the WNS in mass newspapers. In contrast, LSGs „Time”, „Meteorology” and „Location” are dominant in quality newspapers indicating more informative, factual and concise mode of news presentation. The data also show that adjectives of negative semantics prevail over the adjectives of positive semantics in the corpus of the studied texts. This is explained by the functional and informative features of WNS: these are usually the news about abnormal weather events or weather catastrophes, leading to the destruction of the material environment, mutilation and death of people.
+This investigation is preliminary in the sense that the relations of the lexical constituents that are on the surface of the text have been analyzed. It indicates the need for further study of relations among lexical groups and intra-sentence relations within a specified text. Hence, the results of this study might contribute to the quantitative analysis of other text corpora, as well as the integration of NLP applications into the research of lexical-semantic relations in texts of other genres and of various functional styles of the language.
+An obvious area for further research is the study of thematic vocabulary and associative relations of lexical units representing weather in texts of WNS by applying the methods of content analysis and associative test. Of special research interest might be lexical relations of weather vocabulary in terms of syntagmatic and paradigmatic structures of the lexical units in texts of WNS. In this case statistical and distributional analysis supported with appropriate computational techniques may be of great use. To further enhance the results of the scrutiny, local newspapers from different regions can be chosen as a material for research.
+6. References
+[1] M. A. K. Halliday, R. Hasan, Cohesion in English, London, 1976. [2] A. Cruse, Lexical Semantics, Cambridge: Cambridge University Press, 1986. [3] M.A.K. Halliday, R. Hasan, Language, Context and Text: Aspects of language in a social-semiotic
+perspective, Deakin University Press, Geelong, Victoria, (republished by Oxford University Press, 1989. [4] J. Martin, English text: System and structure, Amsterdam: John Benjamins Publishing Co, 1992. [5] J. Trier, Der deutsche Wortschatz im Sinnbezirk des Verstandes [German vocabulary in the semantic field of the mind], Winter, Heidelberg, 1931. [6] D. Biber, Representativeness in Corpus Design, Literary and Linguistic Computing 8(4), 1991, pp. 243-257 [7] W. Porzig, Wesenhafte Bedeutungsbeziehungen [essential semantic relations], Beiträge zur Geschichte der Deutschen Sprache und Literatur, 58, 1934. pp. 70–97 [8] H. G. Widdowson, Text, Context, Pretext: Critical Issues in Discourse Analysis, Blackwell Publishing, Oxford, 2004. [9] H. P. Grice, Logic and conversation. Syntax and semantics, Vol. 3, P. Cole and J. L. Morgan (Eds), New York: Academic Press, 1975. [10] J. Lyons, Semantics, Vol. 1, Cambridge: Cambridge University Press, 1977. [11] G. Lakoff, Women, Fire and Dangerous Things, University of Chicago Press, Chicago, 1987. [12] L. Lipka, English Lexicology: Lexical Structure, Word Semantics and Word Formation, Narr, Tübingen, 2002. [13] D. Geeraerts, Theories of Lexical Semantics, Oxford University Press, 2010. [14] N. Evans, D. Wilkins, In the mind’s ear: the semantic extensions of perception verbs in Australian languages, № 76 (3), Language, 2000, pp. 546–592. [15] J. Ch. Fillmore, C. Baker. A frames approach to semantic analysis, in: B. Heine and H. Narrog (Eds.), The Oxford Handbook of Linguistic Analysis, Oxford University Press, Oxford, 2010, pp. 313–340. [16] M. Burke, The Routledge Handbook of Stylistics, Routledge, New York, 2014.
+
+[17] R. Carter, P. Simpson, Language, Discourse and Literature: An Introductory Reader in
+
+Discourse Stylistics, Routledge, London, 2003.
+
+[18] J. Angermuller, Poststructuralist Discourse Analysis: Subjectivity in Enunciative Pragmatics,
+
+Warwick, 2014.
+
+[19] E. Black, Pragmatic Stylistics, Edinburgh, 2006.
+
+[20] S. Chapman, B. Clark, Pragmatic literary stylistics. Palgrave Studies in Pragmatics, Language
+
+and Cognition Basingstoke, Palgrave Macmillan, UK, 2014.
+
+[21] L. Hickey, Stylistics, Pragmatics and Pragmastylistics, Vol. 71, Revue belge de philologie et
+
+d’histoire, Langues et littératures modernes, 1993.
+
+[22] Ch. Fellbaum, WordNet: An electronic lexical database, The MIT Press, Cambridge, 1998.
+
+[23] R. Chaffin, D. Herrmann, The similarity and diversity of semantic relations, Memory and
+
+Cognition, 12(2), 1984, pp. 134–141.
+
+[24] C. Paradis, Ontologies and construal in lexical semantics. Axiomathes 15, 2005, pp. 541-573.
+
+[25] B. Levin, English Verb Classes and Alternations: A Preliminary Investigation, CUP, Chicago,
+
+1993.
+
+[26] Oxford Paperback Thesaurus, M. Waite (Ed.), Oxford University Press, Oxford, 2001.
+
+[27] M. Harrison, Rain: Four Walks in English Weather, Faber&Faber, 2016.
+
+[28] A. Cruse, Meaning in Language: An Introduction to Semantics and Pragmatics, Oxford
+
+University Press, New York, 2000.
+
+[29] Collins English Dictionary, Complete & Unabridged, 10th Edition, Harper Collins Publishers,
+
+London, 2006.
+
+[30] D. Biber, S. Conrad, G. Leech, Longman student grammar of spoken and written English,
+
+Pearson Education Limited, 2002.
+
+[31] T. A. Van Dijk, Text and Context. Exploration in the Semantics and Pragmatics of Discource,
+
+Amsterdam, 1977.
+
+[32] C. J. Fillmore, Semantic fields and semantic frames, Quaderni di Semantica, 6.2, 1985,
+
+pp. 222‒254.
+
+[33] R. Barzilay, M. Elhadad, Using lexical chains for text summarization, in: Inderjeet Mani and
+
+Mark Maybury (Eds.), Advances in text summarization, 1999, pp. 111–121.
+
+[34] H. G. Silber, K. F. McCoy, Efficiently computed lexical chains as an intermediate
+
+representation for automatic text summarization, Computational Linguistics, 28(4), 2002 pp.487–
+
+496.
+
+[35] D. Riffe, S. Lacy, F. Fico, B. Watson, Analyzing Media Messages: Using Quantitative Content
+
+Analysis in Research, Routledge, 2019.
+
+[36] D. Kelsey, Statistical Analysis of British Newspapers after the 7 July Bombings, in: Media,
+
+Myth
+
+and
+
+Terrorism.
+
+Palgrave
+
+Macmillan,
+
+London,
+
+2015.
+
+https://doi.org/10.1057/9781137410696_4
+
+[37] F.Kaefer, J. Roper, P. Sinha, A Software-Assisted Qualitative Content Analysis of News
+
+Articles: Example and Reflections, Woman: Methodological Implications of Multiple
+
+Positionalities in Migration Studies, Researcher, Migrant, Vol. 16 No. 2, 2015
+
+[38] A. Bell, Language of News Media, Blackwell, Oxford, 1991.
+
+[39] J. Yates , W. Orlikowski, J. Rennecker, Collaborative Genres for Collaboration: Genre Systems
+
+in Digital Media, Proceedings of the Hawaii International Conference on System Sciences, Vol. 6,
+
+1997, pp. 50–59.
+
+[40] V. K. Bhatia Analysing genre – language use in professional settings, Routledge, New York,
+
+London, 2014.
+
+[41] P. R. R. White. Evaluative semantics and ideological positioning in journalistic discourse, in:
+
+I. Lassen (Ed), Image and Ideology in the Mass Media, John Benjamins, Amsterdam/Philadelphia,
+
+2006. pp. 45‒73.
+
+[42] R. Grandy, In defense of semantic fields, in: E. Le Pore (Ed.), New directions in semantics,
+
+Academic Press, New York, 1987, pp. 261‒280.
+
+[43] W. Humboldt, Über der Verschiedenheit des Menschlichen Sprachbaues, Berlin, 1936.
+
+[44] E. F. Kittay, A. Lehrer, Semantic fields and the structure of metaphor, Studies in Language, 5,
+
+1981, pp. 31‒63.
+
+[45] J. Lyons, Semantics (Vol. 1,2), Cambridge University Press, Cambridge, 1977.
+
+[46] L. Lipka, English Lexicology: Lexical Structure, Word Semantics & Word-formation, volume 941, issue 8105 of the series Narr Studienbücher, Gunter Narr Verlag, 2002.
+[47] J. Morris, G. Hirst, Lexical cohesion computed by thesaural relations as an indicator of the structure of text, Computational Linguistics, 17(1), 1991, pp. 21– 48
+[48] L. Weisgerber, Vom Weltbild der deutschen Sprache, Schwann, Düsseldorf, 1950. [49] R. Sinoara, J. Antunes, S. Rezende, Text mining and semantics: a systematic mapping study, J
+Braz Comput Soc 23, 9, 2017. doi.org/10.1186/s13173-017-0058-7 [50] G – The Guardian, 2014–2017. URL: https://www.theguardian.com/uk. [51] DM– The Daily Mail, 2014–2017. URL: https://www.thedailymail.co.uk. [52] S – The Sun, 2014–2017. URL: https://www.thesun.co.uk. [53] T – The Times, 2014–2017. URL: https://www.thetimes.co.uk.
+
