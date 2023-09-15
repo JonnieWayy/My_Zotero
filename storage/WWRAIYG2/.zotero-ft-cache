@@ -1,0 +1,1187 @@
+OpenIns3D: Snap and Lookup for 3D Open-vocabulary Instance Segmentation
+Zhening Huang1 Xiaoyang Wu2 Xi Chen2 Hengshuang Zhao2 Lei Zhu3, 4 Joan Lasenby1∗
+1University of Cambridge 2The University of Hong Kong 3HKUST (Guangzhou) 4HKUST
+https://zheninghuang.github.io/OpenIns3D/
+
+arXiv:2309.00616v2 [cs.CV] 4 Sep 2023
+
+“furniture that is capable of producing music”
+
+“device to watch BBC news”
+
+“Ma Long's domain of excellence ”
+
+Figure 1: Open-vocabulary Instance Segmentation Examples of OpenIns3D (LISA). OpenIns3D
+
+seamlessly transfers the open-world capability of 2D Vision and Language (VL) models into the 3D
+
+domain. LISA [27] is an LLM-based reasoning segmentation model.
+
+Abstract
+
+Current 3D open-vocabulary scene understanding methods mostly utilize wellaligned 2D images as the bridge to learn 3D features with language. However, applying these approaches becomes challenging in scenarios where 2D images are absent. In this work, we introduce a completely new pipeline, namely, OpenIns3D, which requires no 2D image inputs, for 3D open-vocabulary scene understanding at the instance level. The OpenIns3D framework employs a "Mask-Snap-Lookup" scheme. The "Mask" module learns class-agnostic mask proposals in 3D point clouds. The "Snap" module generates synthetic scene-level images at multiple scales and leverages 2D vision language models to extract interesting objects. The "Lookup" module searches through the outcomes of "Snap" with the help of Mask2Pixel maps, which contain the precise correspondence between 3D masks and synthetic images, to assign category names to the proposed masks. This 2D input-free, easy-to-train, and flexible approach achieved state-of-the-art results on a wide range of indoor and outdoor datasets with a large margin. Furthermore, OpenIns3D allows for effortless switching of 2D detectors without re-training. When integrated with state-of-the-art 2D open-world models such as ODISE and GroundingDINO, superb results are observed on open-vocabulary instance segmentation. When integrated with LLM-powered 2D models like LISA, it demonstrates a remarkable capacity to process highly complex text queries, including those that require intricate reasoning and world knowledge. The code and model will be made publicly available.
+1 Introduction
+3D scene understanding plays a critical role in various domains, such as autonomous driving, robotic sensing, AR/VR, and manufacturing, among others. While the development of 3D closed-set
+∗Corresponding author. Email: jl221@cam.ac.uk
+
+(a) OpenIns3D
+
+3d Point Cloud
+
+SNAP
+
+2D openworld detector
+
+MASK Synthetic Scene-level Images LOOKUP
+
+Class Lookup Tables
+
+Mask projection
+
+Class-agnostic Mask Proposals
+
+Mask2Pixel Map
+
+3D Open-vocabulary Instance Segmentation
+
+(b) Results Comparison
+Average Precision
+
+50.0 Indoor Outdoor
+
+39.5
+
+40.2
+
+40.0
+
+37.0
+
+33.0
+
+30.0
+
+21.6
+
+22.9
+
+20.0 10.0
+0.0
+
+OV-3DET P-ClipV2 (CVPR23) 13.8 (ICCV23)
+Lowis3D
+(Arxiv23)
+
+OVOD OVOD ScanNetv2 ScanNetv2
+11 class 14 class
+
+OVIS S3DIS 4 class
+
+15.8
+
+15.2
+
+Lowis3D (Arxiv23)
+
+5.3 P-ClipV2 (ICCV23)
+
+OVIS S3DIS 6 class
+
+OVIS SPTLS3D 12 class
+
+OVOD-Scan Net-11-Class OVOD-Scan Net-14-Class
+OV IS-S3DIS- 4-C lass OV IS-S3DIS- 6-C lass OVIS-STPLS3D-12-Class
+
+Figure 2: High-level Illustrations of OpenIns3D and Quantitative Results. (a) OpenIns3D follows the “Mask-Snap-Lookup” steps for open-vocabulary scene understanding. (b) A list of SOTA results has been achieved on both indoor and outdoor datasets. OVOD: open-vocabulary object detection. OVIS: open-vocabulary instance segmentation. P-CLIPV2 [68]; Lowis3D [14]; OV-3DET [36].
+
+understanding is relatively mature, scene understanding in an open-vocabulary setting is still in its infancy. Closed-set understanding, however, can only handle a predefined set of concepts and scenarios; it fails to provide valid responses when faced with unfamiliar concepts or variations in language usage. This limitation impacts its performance in dynamic and ever-changing contexts.
+Thanks to internet-scale image-text datasets, significant progress has been made in 2D image openvocabulary understanding [42, 65, 25, 10, 58, 4, 16, 64, 43]. However, unlike 2D data that can be easily collected from the internet, acquiring 3D data presents challenges due to its lack of direct availability and the substantial domain gap across diverse 3D datasets captured by various sensors. Constructing a large-scale 3D-text dataset, therefore, poses a non-trivial task. As a result, the most viable approach to achieving 3D open-vocabulary understanding involves leveraging 2D images as a bridge to align features between language and 3D data [36, 62, 23, 40, 14, 59, 47].
+In this direction, there have been several notable works, such as OpenScene [40], PLA-family [15, 59, 14], and CLIP2Scene [8]. These works leverage well-aligned 2D images and 3D point clouds to conduct feature distillation or employ 2D caption models to construct 3D-text pairs. One prerequisite of these methods, however, is the availability of well-aligned 2D images and 3D point clouds. This means that posed 2D images and associated depth maps need to be accessible as inputs to the network. For this reason, these methods are mostly applied to RGB-D-formed point clouds [51, 13, 47, 6]. In real-life scenarios, there are numerous cases where meeting this prerequisite is challenging, either because 2D images are unavailable, or the information required to align 2D and 3D data is missing. For example, point clouds formed with LiDAR often exist without accompanying 2D images [20, 53, 46, 22, 45, 3], and point clouds generated by photogrammetry frequently lack depth maps [21, 22, 7, 33, 54, 34]. Moreover, when the point cloud is generated through the registration of multiple scans from various sensors or converted from 3D simulations/CAD models [39, 19], the corresponding 2D images might not be available in the first place. In the past, there have been attempts at 3D open-vocabulary understanding that do not require 2D input. However, these methods [23, 62, 68] primarily focus on object-level classification and face challenges in achieving satisfactory performance at the scene level.
+To address this issue, we introduce OpenIns3D, a framework that exclusively utilizes 3D point clouds as input to perform Open-vocabulary Instance understanding. Overall, OpenIns3D comprises three core steps: Mask, Snap, and Lookup. A overall illustration of OpenIns3D is presented in Figure 2a.
+Mask: Given a 3D point cloud, the first part of OpenIns3D learns class-agnostic mask proposals with a Mask Proposal Module (MPM). This process is trained without any classification labels. To control the quality of the mask, MPM proposes a learnable Mask Scoring module to predict the quality of each mask output and implements a list of Mask Filtering techniques to discard invalid, low-quality masks. MPM outputs a list of class-agnostic masks in the scene.
+Snap: We generate multiple synthetic scene-level images with calibrated and optimized camera poses and intrinsic parameters. These images are specifically designed to encompass all relevant
+
+2
+
+masks, aiming to minimize the need for multiple renderings. Instead of individually inferring each mask [68, 62, 36], we input the scene-level images into 2D open-world models for the simultaneous understanding of interesting objects present in the scene. A Class Lookup Table (CLT) is then constructed to store all the detected object categories alongside their respective pixel locations.
+Lookup: To precisely determine the positions of mask proposals in each image, Mask2Pixel maps are constructed. These maps project all 3D mask proposals onto 2D images with identical camera parameters used in Snap. In the Lookup phase, OpenIns3D searches through the CLT with the help of Mask2Pixel maps to precisely assign category names to 3D mask proposals. Results from multiple views are combined to establish initial mask classification outcomes. For remaining masks, a similar Lookup procedure is carried out on a local scale to facilitate classification. Lastly, we refine the 3D mask proposals by removing masks lacking class assignments after both global and local Lookup.
+This simple and flexible approach proves to be highly effective across a variety of indoor and outdoor benchmarks (Figure 2b). For indoor scenes, OpenIns3D is evaluated on the S3DIS [1] and ScanNetv2 [13] datasets without utilizing any 2D images, pose information or depth maps. It is compared with other models, irrespective of their input prerequisites. For outdoor scenes, tests were conducted on an outdoor aerial photogrammetry dataset, STPLS3D [7]. OpenIns3D achieved state-of-the-art results in open-vocabulary instance segmentation (OVIS) on both S3DIS (>+17.2%) and STPLS3D (>+10.1%). When converting mask proposals into 3D bounding boxes, OpenIns3D also achieved state-of-the-art results in open-vocabulary object detection (OVOD) on ScanNetv2 (>+17.4%).
+Additionally, the Snap and Lookup modules operate under a zero-shot scheme, allowing the 2D detector to be changed without the need for re-training. This confers a significant advantage to OpenIns3D, enabling it to seamlessly adapt to the latest 2D VL models. As a result, when integrated with robust 2D VL models like ODISE [58] and GroundingDINO [35], impressive segmentation results are achieved across various benchmarks. Moreover, when integrated with LISA [27], an LLM-powered reasoning segmentation model, OpenIns3D exhibits a strong capability to comprehend highly intricate language queries, including those requiring complex reasoning or world knowledge, as illustrated in Figure 1. Our contributions are:
+• Unlike other 3D-language feature alignment methods for 3D open-world scene understanding, OpenIns3D employs a distinct pipeline that operates without the need for well-aligned images, conducting understanding in a zero-shot learning manner. This approach not only achieves state-of-the-art results across a range of benchmarks but also possesses the strong capability to comprehend highly complex input queries.
+• We proposed a Mask Proposal Module to effectively learn class-agnostic mask proposals and filter out low-quality outputs without the need for classification labels.
+• We introduced a framework to optimize and calibrate the pose and intrinsic parameters of cameras to produce high-quality synthetic scene-level images from 3D point clouds, which proves to be more compatible with 2D VL models.
+• We designed a Mask2Pixel Guided Lookup in the Lookup module to seamlessly link 2D results with the 3D mask, proving to be very highly effective.
+• Compared with other work that requires generating images from point clouds, our synthetic scene-level image approach not only requires less rendering time and inference time but also achieves much stronger results.
+2 Related work
+2.1 3D Open-vocabulary Understanding
+The realm of 2D open-world understanding has witnessed significant progress, thanks to the availability of various large-scale datasets and early pioneering work [42, 31, 42, 4, 44]. As a result, works addressing open-vocabulary detection and segmentation [32, 35, 67, 18, 58, 10, 50, 9, 16] have shown robust performance, and models connected with large language models (LLM) [27, 63, 41, 56, 61, 29, 30] demonstrates impressive results in handling complex input queries.
+Conversely, progress in 3D open-vocabulary understanding has been relatively slow. In the domain of object classification tasks, methods like PointCLIP [62], PointCLIPV2 [68], and CLIP2Point [23] project 3D point clouds into depth maps and link them with 2D models for classification. However, these methods lack performance in scene-level understanding, where points are often overlapped and incomplete. For scene-level understanding, most of the work has primarily focused on leveraging
+3
+
+MASK
+
+Mask Proposals
+
+Mask Proposal Module
+
+…
+
+…
+
+0.86 0.36
+
+0.78
+
+Mask Scores
+
+Input
+
+“fridge, …, counter ” Text queries
+
+Filtered Class-agnostic Mask Proposals
+SNAP
+
+Mask2Pixel Guided Lookup
+
+1st phrase class assignment
+
+LOOKUP
+Local Enforced Lookup
+
+Final Mask Filtering 2nd phrase class assignment
+Output
+
+N Class Look-up Tables
+
+Snap Module
+
+2D Open-world Detector
+
+3D Point Cloud
+
+N Synthetic Scene-level images
+
+Open Vocabulary Instance Segmentation
+
+Figure 3: General Pipeline of OpenIns3D Framework. As a 3D-only framework, OpenIns3D first passes the point clouds into the MPM to generate both 3D mask proposals and mask scores. The Snap module (detailed in Figure 4) is then carried out to render N synthetic scene-level images, which are later passed into the 2D open-world model along with the input text queries. The detection results from the 2D model are stored in Class Lookup Table (CLT). Finally, both the mask proposals and CLT are fed into the Lookup module, where Mask2Pixel Guided Lookup (detailed in Figure 5) is performed at the global level, followed by a Local Enforced Lookup (Figure 7) at the local level to unlock the semantic meaning of mask proposals. The final mask filtering refines the mask proposals and obtains the final results.
+
+well-aligned 2D posed images, depth maps, and point clouds [8, 40, 47, 15, 59, 14]. One notable example is OpenScene [40], which takes posed 2D images, depth maps, and 3D data as input, and feature distillation is performed to transfer 2D language-aligned features from images to 3D point clouds. Similarly, Clip2Scene [8] builds dense pixel-point pairs by calibrating the LiDAR point cloud with corresponding images captured by six cameras. However, achieving instance-level understanding is not feasible with these methods as they focus solely on semantic-level understanding. On the other hand, PLA [15] and its follow-up work RegionPLA [59] and Lowis3D [14] utilize a 2D caption model to construct 3D-text pairs using images and a trained model with partial labels. They use instance proposals generated by SoftGroup [55] for instance understanding. However, PLA relies on a binary head to classify the input object as seen or unseen, and the transferability of this binary head to different splits is very limited, posing a challenge for flexible applications.
+On the other hand, a common issue with these methods is their reliance on well-aligned 3D and 2D pairs in the input, which may not always be available in real applications. Simplifying input requirements can enhance flexibility and compatibility, so exploring how to conduct open-vocabulary understanding without 2D images is an interesting avenue to pursue.
+2.2 Image Generation from 3D
+Projection-based methods have been extensively explored in the past for 3D understanding and have proven to be beneficial for obtaining complementary features. For instance, MVCNN [52] projects 3D objects to different views to aid in feature learning, while LAR [2] introduces object centre projection methods to generate images for 3D objects from various angles, assisting visual grounding tasks. Additionally, Virtual View Fusion [26] employs the original camera pose but enlarges the field of view, resulting in enhanced 2D feature transfer. However, these methods encounter challenges like best view selection, object occlusion, information loss during projection, and long rendering times.
+In the context of open-vocabulary settings, the quality of the projected image plays a crucial role in model performance. In our work, We evaluate different projection methods, along with their compatibility with 2D open-vocabulary models, to identify an optimal solution that achieves good results and is efficient to evaluate.
+3 Baseline and Challenges
+The general framework of OpenIns3D is inspired by recent unified image segmentation models [11, 5, 69], which follow a two-stage paradigm: binary mask extraction and mask classification. In our OpenIns3D, the Mask Proposal Module (MPM) focuses on the first tasks and the Snap and Lookup modules focus on the second task and are combined to form the final instance segmentation results. We built a naive baseline of OpenIns3D by adopting the recent 3D instance segmentation
+
+4
+
+Mask2Pixel map Synthetic scene-level image 2
+
+Synthetic scene-level image 3 Mask2Pixel map Pose 3
+
+Synthetic scene-level image 4 Mask2Pixel map
+
+Mask2Pixel map Synthetic scene-level image 1
+
+3D point cloud (overlapped with proposed masks)
+
+Synthetic scene-level image N Mask2Pixel map
+
+Figure 4: Snap and Mask2Pixel Maps. Cameras are positioned evenly at the outer boundary of the
+
+scene and elevated by 1m to capture a clear view. Each camera is pointed towards the scene centre.
+
+All images are calibrated to encompass all proposed masks. Pose and intrinsic matrix are stored in
+
+CLT, which is later used to generate the Mask2Pixel maps (using the same color to represent 2D-3D
+
+correspondences) to guide the search for category names.
+
+backbone Mask3D [49] to generate mask proposals. To make Mask3D fit for the open-vocabulary setting, we remove all components in Mask3d that use the classification labels. Later, PointCLIP [68] is adopted for mask understanding. This naive approach, although is indeed 3D inputs only, has long rendering times and unsatisfactory performance (more details on Table 2, 12). The issues of the baseline model include:
+• Excessive mask proposals. The model generates a large number of low-quality mask proposals. Originally, mask proposals were filtered by the mask classification logit, which was removed due to the lack of classification labels. Therefore, an effective mask filtering scheme is needed.
+• Low quality of 3D instances. 3D instances extracted from scene scans are typically broken, distorted, and sparse, posing challenges for rendering quality 2D images. As a result, the generated images are hard to be understood by 2D VL models.
+• Lack of context information. As humans, our ability to recognize imperfect 3D point clouds in a scene stems from our overall scene comprehension. However, individual mask point cloud projections lack this contextual information. A straightforward solution is to project not just the mask but also the background onto the images. However, this introduces additional distracting objects and irrelevant elements, potentially confusing classification-level VL models like CLIP.
+• Domain gap between projected images and natural images. It is challenging for a VL model to understand rendered images, as they are very different from the images used in the training process, which poses a domain gap.
+
+4 OpenIns3D
+
+In this following section, we present our design in OpenIns3D, which targets the aforementioned four challenges. The overall pipeline of OpenIns3D is shown in Figure 3.
+
+4.1 Mask Proposal Module
+
+Mask Scoring Inspired by [24, 25, 10], we propose a simple yet effective Mask Scoring design to eliminate low-quality masks in the inference process. Specifically, we feed the instance queries in the Mask Module in the 3D backbone to a shallow MLP module to predict the quality of the mask using IoU as the indicator. The predicted IoU is supervised by the ground truth IoU value during the training stages, which is calculated between the predicted mask and its matched ground truth mask in the bipartite matching. For unmatched prediction masks, we label the IoU value as zero. L2 loss is used to compute the loss. To avoid overly high IoU value predictions in this quality module, a hyper-parameter γ is introduced to weigh down the loss for unmatched masks. Therefore, the total loss function for the mask quality module is:
+
+Ltotal = γ (IoUu)2 + (IoUm − IoUgt)2
+
+(1)
+
+Mask Filtering To enhance mask quality, we applied three filters. Firstly, we retained masks with a model-predicted IoU score above a threshold of β, ensuring that only high-quality masks were kept.
+
+5
+
+Secondly, drawing inspiration from SAM [25], we focused on stable masks by comparing two binary masks derived from the same underlying soft mask using different threshold values. Specifically, we introduced an offset value α and selected masks where the IoU between the pair of thresholded masks (one with −α and the other with +α) equalled or exceeded 80%. Lastly, we observed that small objects in the scene often led to invalid proposals, so we filtered out mask proposals that had a point number lower than Nmin. With both designs in place, we massively reduce the number of mask proposals (Challenge 1) and obtain cleaner and higher quality masks for subsequent mask understanding tasks.
+
+4.2 Snap: Synthetic Scene-level View Generation
+
+Mask2Pixel map 2D detectors results Mask2Pixel guided lookup
+
+Ensemble results from N images
+
+Rendering images from points can be a time-
+
+consuming task, especially when the number of ren-
+
+dering jobs is high. After exploring various tech-
+
+window 78.9%
+
+counter 6.7%
+
+… … …
+
+niques, we propose a synthetic scene-level image
+
+rendering scheme that is not only highly efficient but
+
+also effective (Challenges 2 and 3). Details of other
+
+attempts can be found in Sec 5.3 and Appendix D.
+
+Door Window
+
+74.3% 8.6%
+
+Camera Extrinsic Cameras are strategically po-
+
+Mask2Pixel guided lookup
+
+sitioned above the scene to capture a clearer view.
+
+0.00
+
+0.00
+
+These camera positions are evenly distributed in a
+
+0.66
+
+…
+
+circular arrangement, ensuring images are captured
+
+0.18
+
+from various perspectives (Figure 4). Each camera
+is oriented to point directly towards the centre of the scene. With the camera position coordinate Pcam, and target coordinate Ptarget, as well as the up axis of the scene U , we could use the Lookat function to
+
+3D point cloud (overlapped with mask proposals)
+
+0.00 0.00 0.26
+… 0.58
+Class assignment for masks
+
+determine the pose matrix P ose. We elaborate on Figure 5: Mask2Pixel Guided Lookup Illus-
+
+this method in detail in the Appendix A.2.
+
+tration. Mask proposals in 3D are projected
+
+onto the 2D plane with the same camera pa-
+
+Camera Intrinsic Calibration Once the camera rameters to form Mask2Pixel maps. IoUs
+
+extrinsic matrix is established, we proceed with cam- between the 2D detection results and the pro-
+
+era intrinsic calibration, with the goal of encompass- jected masks are the guidance to assign class
+
+ing the entire scene within the images. To achieve names to 3D masks. Results from multiple
+
+this, we initiate the calibrated camera intrinsic param- images are ensembled for the final prediction.
+
+eters using an arbitrary camera intrinsic matrix and
+
+then adjust the focal lengths (fx and fy) and the central coordinates of the image (cx and cy) through
+
+scaling. This ensures that the entire scene is captured within the image and maximizes the utilization
+
+of image pixels.
+
+Class Lookup Table Upon obtaining N synthetic scene-level images, we input them into a 2D open-vocabulary detector. With text queries provided for interested classes, we compile a list of detected objects in synthetic images. Subsequently, we store information about these detected objects, including their location and class, in a designated Class Lookup Table (CLT). This table will later be retrieved to allocate class categories to 3D mask proposals. The primary objective of the 2D open-vocabulary backbone is to identify as many objects as possible, and the structure of location information remains adaptable. This means that any 2D models for open-vocabulary segmentation or detection will be suitable (Challenge 4).
+4.3 Lookup: Mask Classification through Searching
+Mask2Pixel Guided Lookup For accurate searching within the CLT, we introduce a Mask2Pixel Guided Lookup (MGL). The concept involves projecting each 3D mask proposal onto a 2D plane using the same camera extrinsic and intrinsic matrix that was utilized to generate the 2D image, as depicted in Figure 4. With knowledge of the precise pixel locations of each mask in images, we can conduct an accurate search through the CLT to identify the most likely class for each mask. The Mask2Pixel map is developed with a consideration for occlusion, integrating depth information. To accomplish the matching, we follow a three-step approach: 1. Based on the masks’ projection onto the 2D plane, we select the best-matched class categories in terms of IoU values. 2. If the IoU value of the best-matched object on the 2D plane is below 20%, the match is disregarded. 3. We aggregate
+
+6
+
+Table 1: 3D Open-vocabulary Instance Segmentation Results on S3DIS and ScanNetv2. We compare our zero-shot performance on the same novel class splits with PLA-family works. Significant improvements are achieved on the S3DIS dataset, and competitive results are observed on ScanNetv2.
+
+Indoor. OVIS.
+
+S3DIS
+
+ScanNetv2
+
+Method
+
+B/N AP50
+
+AP25
+
+B/N AP50
+
+AP25
+
+use 2D
+
+PLA [15] RegionPLC [59] Lowis3D[14] Mask3D-P-CLIP [62] OpenIns3D (ours)
+
+8/4 08.6
+
+−
+
+−−
+
+−
+
+8/4 13.8
+
+−
+
+–/4 05.4
+
+10.3
+
+–/4 37.0 (+23.2) 39.3 (+29.0)
+
+10/7 21.9 10/7 32.3 10/7 31.2 –/7 04.5 –/7 27.9
+
+−
+
+✓
+
+−
+
+✓
+
+−
+
+✓
+
+07.8
+
+✗
+
+42.6 (+34.8)
+
+✗
+
+PLA [15] RegionPLC [59] Lowis3D [14] Mask3D-P-CLIP [62] OpenIns3D (ours)
+
+6/6 09.8
+
+−
+
+−−
+
+−
+
+6/6 15.8
+
+−
+
+–/6 08.5
+
+10.6
+
+–/6 33.0 (+17.2) 38.9 (+28.3)
+
+8/9 25.1 8/9 32.2 8/9 38.1 –/9 05.6 –/9 19.5
+
+−
+
+✓
+
+−
+
+✓
+
+−
+
+✓
+
+06.7
+
+✗
+
+27.9 (+21.2)
+
+✗
+
+Mask3D-P-CLIP [62] –/6 08.6
+
+09.3
+
+–/9 04.5
+
+14.4
+
+✗
+
+OpenIns3D (ours)
+
+–/12 28.3 (+19.7) 29.5 (+20.2) –/17 28.7 (+24.2) 38.9 (+24.5)
+
+✗
+
+Table 2: Rendering and Inference Time Ablations. Results tested on scenes with 50 masks. OpenIns3D requires less rendering time, and inference time, and has a much stronger performance.
+
+Rendering
+
+Img needed 2D backbone Img size Trender Tinfer
+
+Ttotal
+
+AP25
+
+(w × h) (s/scene) (s/scene) (s/scene) (%)
+
+PointCLIP [62] LAR [2] Mask rendering [66]
+OpenIns3D (ours) OpenIns3D (ours)
+
+250
+
+CLIP [43] 1282
+
+5.2
+
+15.3
+
+250
+
+CLIP [43] 1282
+
+14.3
+
+18.7
+
+250
+
+CLIP [43] 1282
+
+42.6
+
+19.5
+
+8
+
+G-DINO [35] 10002
+
+2.3
+
+6.2
+
+8
+
+ODISE [58] 10002
+
+2.3
+
+8.2
+
+20.5
+
+9.3
+
+33.0
+
+10.5
+
+62.1
+
+7.3
+
+8.5
+
+29.8
+
+10.5
+
+35.1
+
+results from multiple views to formulate the final prediction, calculating probability scores using their normalized average IoU values. This process is illustrated in Figure 5.
+Local Enforced Lookup While the Mask2Pixel Guided Lookup assigns class categories to mask proposals, some masks may not correspond to objects in the CLT. To address this, we introduce a Local Enforced Lookup (LEL) approach. We crop out the remaining masks from 2D scene-level images using enlarged bounding boxes and process them with the 2D detector to encourage the detection. To select the best views, we introduce an Occlusion Report method (Appendix A.3) to assess occlusion conditions for each mask in each projection, then choose the top K views for LEL.
+Final Mask Proposal Refinement To date, we have obtained filtered mask proposals and class category predictions for certain masks. The final step of the network is to further refine the proposed masks in the MPM module with the class categories prediction results. Specifically, we eliminate all masks that have not obtained labels after MGL and LEL stages.
+5 Experiments
+5.1 Setting
+Datasets and Class Definition We test OpenIns3D on three datasets that contain instance segmentation ground truth: S3DIS [1], ScanNetv2 [13], and STPLS3D [7]. S3DIS and ScanNetv2 are indoor point cloud datasets generated from RGB-D images, while STPLS3D is an aerial photogrammetryconstructed outdoor dataset. We exclusively utilized the 3D data from these datasets and did not employ any of the 2D images, poses, or depth maps.
+In the closed-set instance segmentation, ScanNetv2 consists of 18 classes, S3DIS contains 13 classes, and STPLS3D contains 14 classes. While many other works randomly pick several classes for evaluation, we use the following scheme to faithfully follow the closed-set setting. We mostly agree on the categories setting of PLA, excluding the "other furniture" class in ScanNetv2 and the "clutter" class in S3DIS due to their vague meanings. For STPLS3D, we merge the low, medium, and high vegetation classes into one “vegetation” class and keep all the rest.
+Adapted Metrics for Comparison with SOTA We adopted various comparison schemes to align with existing methods. For 3D Instance Segmentation, we compare with PLA [15], and its follow-up
+
+7
+
+Table 3: OVIS on STPLS3D. OpenIns3D also works well on outdoor point clouds.
+
+Table 4: Number of Views Ablation. We tested on ScanNetv2 OVIS. LEL: Local Enforced Lookup.
+
+Methods
+
+AP50
+
+AP25
+
+IDX 4
+
+8
+
+16
+
+LEL AP50 AP25
+
+Mask3D-P-CLIP [62] 02.6
+
+04.0
+
+Mask3D-P-CLIPV2 [68] 03.1
+
+05.2
+
+1✓
+
+2
+
+✓
+
+3
+
+✓
+
+OpenIns3D (ours)
+
+13.3 (+10.2) 15.3 (+10.1) 4
+
+✓
+
+18.3 27.1 22.7 35.1 24.8 37.5 ✓ 28.7 38.9
+
+Table 5: CA-Mask Quality Evaluation. Table 6: Cross-domain Ablations. Results of models Results tested on ScanNetv2 Validation set. when trained and tested on different datasets.
+
+Method
+
+AP50
+
+AP25
+
+Test
+
+Model
+
+Training Data AP50 AP25
+
+Mask3d-Supervised [49] 74.7
+
+80.9
+
+CA-Mask3d
+
+47.5
+
+49.2
+
+CA-Mask3d + MS
+
+50.2 (+02.7) 53.3 (+04.1)
+
+CA-Mask3d + MF
+
+61.6 (+14.1) 71.0 (+21.8)
+
+CA-Mask3d + MS + MF 64.6 (+17.0) 73.4 (+24.2)
+
+S3DIS ScanNet
+
+Mask3D-P-CLIP [62] ScanNetv2
+
+OpenIns3D
+
+ScanNet
+
+OpenIns3D
+
+S3DIS
+
+Mask3D-P-CLIP [62] S3DIS
+
+OpenIns3D
+
+S3DIS
+
+OpenIns3D
+
+ScanNetv2
+
+04.5 14.4 28.7 38.9 21.5 33.6 03.5 06.8 28.3 29.5 14.2 19.8
+
+works RegionPLC [59] and Lowis3D [14]. Unlike the zero-shot inference of OpenIns3D, these three works are trained on various base categories and tested on novel categories. For a fair comparison, we follow their category split and compare our results on novel classes, as demonstrated in Table For the STPLS3D, since no previous work has been tested on it, we compare OpenIns3D with our baseline model whose mask classification module is replaced with PointCLIPV2 [68], as shown in Table 3.
+For 3D Object Detection, we compare our method with PointCLIP [62] and PointCLIPV2 [68], as well as OV-3DET [36]. PointCLIP and PointCLIPV2 use pre-trained 3DETR [38] to generate bounding box proposals, while OV-3DET utilizes posed 2D images and pre-trained 2D DETR [5] to generate bounding box proposals. OpenIns3D’s MPM is trained from scratch and uses no classification labels. Note that these OVOD methods are evaluated only on some categories. For a fair comparison, Table 7 lists our per-category results and compare them fairly with their settings.
+5.2 Comparison with SOTA
+3D Instance Segmentation Compared to works in the PLA family [14, 59, 14], OpenIns3D does not require assistance from original images or training on base categories. It still achieves significantly higher results on the S3DIS dataset, both in the 4 novel categories split and the 6 novel categories group, surpassing the previous state-of-the-art (SOTA) by 23.2% and 17.2%, respectively. In ScanNetv2, OpenIns3D demonstrates competitive performance. In SPTLS3D, OpenIns3D outperforms the baseline model PointCLIPV2 by 10.2% and 10.1% in AP50 and AP25, respectively.
+
+3D Object Detection OpenIns3D showcases the superb performance, outperforming all previous methods by more than 17%, even though no pre-trained models or 2D images are needed during inference. More detailed comparisons and visualization can be found in the appendix C.
+5.3 Ablation Study
+Mask Quality Ablation Following the evaluation on ScanNetv2, we assessed the class-agnostic mask quality using the Average Precision score. We treated all classes as universal since the predictions are class-agnostic. The evaluation was conducted on the ScanNetv2 Validation set. Table 6 demonstrates the effectiveness of the Mask Scoring and Mask Filtering designs.
+Multi-view Ablation We also studied the effects of using different numbers of views (Table 4). Increasing the number of views used in the Lookup module leads to better results. Additionally, LEL provided a final boost to the results.
+Projection and 2D Backbone Ablation Before delving into scene-level synthetic view generation, we conducted a comprehensive study on various rendering methods and their interaction with the 2D backbone to identify a suitable approach. We report the rendering time and inference performance
+
+8
+
+Table 7: 3D Open-vocabulary Object Detection Results on ScanNetv2, in AP25. P-3DE: pretrained 3DETR [38]. P-2DET : pre-trained DETR [5] + projection. MPM: 3D box from MPM.
+
+Methods
+
+BBox 11-class 14-class all-class cab bed chair sofa table door cntr desk sink bath win bkshf cur fri toi pic shower
+
+PointCLIP [62] P-3DE 9.1
+
+−
+
+− 6.0 4.8 45.2 4.8 7.4 4.6 1.0 4.0 13.4 6.5 2.2 − − − − − −
+
+PointCLIPV2 [68] P-3DE 21.6
+
+−
+
+− 19.3 21.0 61.9 15.6 23.8 13.2 12.4 21.4 14.5 16.8 17.4 − − − − − −
+
+OV-3DET [36] P-2DE −
+
+22.8
+
+− 3.0 42.3 27.1 31.5 14.2 9.6 0.3 19.7 31.6 56.3 − 5.6 10.5 11.0 57.3 − −
+
+OIS3D (ours) MPM 39.5(+17.9) 40.2(+17.4) 36.0 17.1 57.5 74.5 59.2 36.9 29.3 31.1 32.2 42.1 6.6 47.5 26.4 55.4 39.1 57.4 0.0 0.0
+
+for each method. OpenIns3D not only excels in terms of rendering time but also demonstrates strong performance across all evaluated methods. More details of this ablation can be found in Appendix D
+Cross-domain Analysis We conduct a cross-domain analysis where OpenIns3D is trained and tested on different datasets to examine its generalization capability, as shown in Table 5. The crossdomain models also demonstrate impressive performance on both datasets when compared with the baseline. Notably, within the 17 classes of ScanNetv2, 11 classes do not exist in S3DIS. However, OpenIns3D, trained on S3DIS, still achieves decent performance among these unseen classes. We provide a detailed analysis on Appendix C.2.
+Free-flow Language Capability While previous models relied on feature alignments between 3D and Language for open-world learning, OpenIns3D entirely outsources the open-world detection task to 2D VL models, making it super flexible to absorb the advance of 2D models and transfer the results into the 3D domain seamlessly. One example is when integrating OpenIns3D with the 2D VL model powered by LLM, such as LISA [27], OpenIns3D can handle highly sophisticated, abstract inputs that require prior knowledge of the world or complex reasoning, and carry out segmentation tasks in the 3D domain. This capability has never been seen in other models before. We demonstrate its capability when integrating with ODISE and LISA in Figure 6.
+
+OpenIns3D (LISA) OpenIns3D (ODISE)
+
+“bookshelf above tables”
+
+“blue seats under windows”
+
+“sit”
+
+“penciling down ideas during brainstorming” “furniture offers recreational enjoyment with friends” “most comfortable area to sit in the room”
+Figure 6: Qualitative Results from OpenIns3D. OpenIns3D can freely interchange 2D backbones without requiring re-training, providing it with the flexibility to quickly evolve with the latest SOTA models. OpenIns3D (ODISE) demonstrates the ability to manage a versatile vocabulary. OpenIns3D (LISA) can handle queries demanding complex reasoning, and world knowledge.
+6 Conclusion
+Achieving 3D open-world scene understanding is a challenging task, primarily due to the lack of extensive 3D-text data. Currently, most work in this domain focuses on using 2D images to bridge the gap between 3D and language. This, however, not only requires a good alignment between 2D and 3D but also evolves slowly due to the significant effort needed for retraining when changing the 2D backbone.
+Differently, OpenIns3D introduces a completely new pipeline, i.e. Mask-Snap-Lookup, for this task. The MASK module generates authentic masks in the 3D domain; Snap renders scene-level images in 2D domains, and the Lookup module links the results from 2D to 3D precisely. This pipeline requires no 2D input, i.e. it is more applicable, achieves much stronger performance, i.e. is more powerful, and can evolve seamlessly with a 2D model through training, i.e. more fast-evolving. We hope our work will provide a fresh perspective for researchers working towards open-world 3D scene understanding and set next-level benchmarks for various tasks in the domain.
+9
+
+7 Acknowledgment
+
+This work is supported by the Girton College Graduate Research Fellowship, the School of Technology scholarship at the University of Cambridge, and the EPSRC Centres for Doctoral Training. We would also like to express our appreciation to Yunhan Yang for his help in exploring rendering techniques, and Chengyao Wang for sharing his implementation of Mask3D with Pointcept [12].
+
+Appendix
+
+A More Details on Methodologies
+
+A.1 Class-agnostic Mask Proposal Module
+
+We modified components in Mask3D [49] that require classification labels to make it a class-agnostic setting. This includes removing semantic probability components in Hungarian Matching, eliminating semantic classification loss, discarding classification logits-based ranking, and getting rid of classification logits-based filtering. Instead, we added the Mask Scoring module and Mask Filtering techniques to acquire high-quality mask proposals without relying on semantic labels.
+A.2 Camera Pose Generation with Lookat Function
+Here we detail how the pose matrix P ose can be obtained using the Lookat function, followed by [17].
+Given the camera position coordinates Pcam, which are located even at the top of the scene, and the camera target coordinate Ptarget, which is always the centre of the scene, along with the up axis of the scene U (i.e. [0, 0, −1]), the pose matrix P ose can be obtained as follows:
+
+rightx upx −f orwardx Tx
+
+P
+
+ose
+
+=
+
+righty rightz
+
+upy upz
+
+−f orwardy −f orwardz
+
+Ty  Tz 
+
+0
+
+0
+
+0
+
+1
+
+Following the convention, "right" corresponds to the positive x-axis, "up" corresponds to the positive y-axis, and "forward" corresponds to the negative z-axis. The normalized forward vector is the negative normalized direction from Pcam to Ptarget:
+f orward = Pcam − Ptarget ∥Pcam − Ptarget∥
+The normalized right vector is the cross-product between the up axis U and the forward vector: U × f orward
+right = ∥U × f orward∥
+
+The normalized up vector is the cross-product between the forward vector and the right vector: f orward × right
+up = ∥f orward × right∥
+
+The translation values Tx, Ty, and Tz are simply the components of the camera position Pcam: Tx = Pcamx , Ty = Pcamy , Tz = Pcamz
+Finally, the P ose matrix can be obtained by assembling these values into the 4 × 4 matrix format. A.3 Local Enforced Lookup Here, we provide a detailed explanation of the Occlusion Report module that we proposed to effectively evaluate the occlusion condition of masks in all synthetic images. Specifically, the following four steps are executed:
+• Step 1. Point Count Array: We initiate the process by constructing a 3D array with dimensions W × H × (M + 1), where M represents the number of masks, and 1 is added
+
+10
+
+View angle
+
+10.8
+
+0.0
+
+90.2 80.3
+
+…
+
+32.9
+
+Occlusion Rate (%)
+
+Cropped images Mask2Pixel map
+
+Occlusion Report
+
+Input text queries “fridge, …, counter ”
+2D Open-world Detector
+
+Assemble multi-view results
+
+Unmatched masks after MGL
+
+Top K best views
+
+This is a “cabinet”
+
+Figure 7: Illustration of Local Enforced Lookup. The remaining masks from phase one first go through the Occlusion Report module to select the best K views. The selected images are cropped before being processed by the 2D detectors to encourage a classification result.
+
+to account for the background points. This array will be denoted as P C, i.e. point count, as it is designed to store the number of points of the 3D mask projected onto each pixel in the images. For example, if the pixel at coordinates i, j is occupied by two points from the 3D mask k during the projection, P Ti,j,k will be assigned the value 2.
+• Step 2. Foremost Point Identification: Utilizing the depth map generated during the projection process, we construct a 2D array named F P with dimensions W × H, which is used to identify the foremost point in each pixel and indicate the originating mask number. For example, if pixel i,j’s foremost point is projected from Mask k, we denote F Pi,j = k.
+• Step 3. Occlusion Rate Calculation: To evaluate the occlusion rate (OR) for mask k within specific images, we compute the following formula:
+
+ORk =
+
+W i=1
+
+H j=1
+
+P Ci,j,k
+
+·
+
+(F Pi,j
+
+=
+
+k)
+
+Tk
+
+where T represent the total number of point in mask k.
+
+• Step 4. All Images Report: Finally, we repeat steps 1-3 for all images to obtain an overall report of the occlusion rate of each mask across all images, forming the final Occlusion Report.
+
+After selecting the best view, synthetic scene-level images are cropped to focus on a specific mask proposal and then reprocessed by 2D detectors. The results are also searched with the help of Mask2Pixel maps to form the final classification prediction for the mask, as shown in Figure 7.
+B Implementation Details
+B.1 Mask
+The Mask Proposal Module is built upon a lightweight version of Mask3D [49] with 3 decoder layers. During training, we used 100 non-parameter queries for mask proposals. The bipartite matching process relies solely on the focal loss (weighted by 5) and dice loss (weighted by 2), without incorporating classification results. Despite not utilizing classification information, the Mask Proposal module is still capable of generating high-quality results. This is attributed to the diverse spatial distribution of 3D points, where two losses based on spatial information alone are sufficient for effective matching. For the mask quality scoring module, we set λ to 0.1 to down-weight zero IOU masks.
+The Mask Proposal module is trained using the ADAM optimizer with a learning rate of 0.0003, and the one-cycle scheduler is applied. For ScanNetv2, we follow the downsampling approach described
+
+11
+
+in [57], voxelizing the original input with a resolution of 0.02. We apply a series of augmentations, including flipping, elastic distortion, random rotation, chromatic auto-contrast, chromatic jitter, and translation. For S3DIS, we adopt the same settings as described in [49], training the MPM on Areas 1, 2, 3, 4, and 6, and testing on Area 5. For STPLS3D, we split the scene into 50-meter spans and use preprocessing steps as outlined in [49]. We follow the training and validation split on STPLS3D and evaluate the performance of the validation set. All datasets are trained for 600 epochs on a single Nvidia A100 80G GPU.
+B.2 Snap
+We captured 16 images of the scene, evenly distributed along its outer boundary and focused on the centre of the scene. For all three datasets, we capture images with dimensions of 1000 x 1000 for a great trade-off between speed and performance. Additionally, to avoid the occlusion effect caused by the ceiling, we discard the top 0.3m points in the STPLS3D and ScanNetv2 datasets. As a result, the ceiling categories in the S3DIS dataset are completely discarded. We assign it a value of 0 in all matrices when evaluating and comparing with other methods. For STPLS3D, the camera position is located 5m higher than the top of the scene to acquire a better view.
+B.3 Lookup
+During the Lookup stage, we only assign a classification label to each mask if the results have been verified in at least two views. This approach ensures a higher level of confidence in the assigned class labels. In the case of Local Enforced Lookup, we crop the images using bounding boxes that are twice the size of the target masks. The results are then fed into 2D detectors to refine the results. Mask2Pixel maps, in this case, binary maps, are used to accurately search for the detection results, as shown in Figure 7.
+C Per Categories Analysis
+C.1 Comparison with SOTA
+Table 8 and Table 9 provide the per-class results of the proposed OpenIns3D on the S3DIS and ScanNetv2 datasets. We follow the performance of PLA and highlight the novel (unseen) classes. Note per categories results for RegionPLA and Lowis3D are not available. Table 10 represents the per-categories results for STPLS3D data, compared with PointCLIP and PointCLIPV2.
+In S3DIS, OpenIns3D consistently achieves high results for novel classes. We attribute this to the high quality of 3D point data in S3DIS, which ensures favourable conditions for recognition in Snap images.
+However, for classes like columns, OpenIns3D struggles to produce meaningful results. Our performance on categories such as windows, floors, doors, tables, and sofas is typically at least 20% higher than PLA results. It is worth noting that PLA is partially trained on the base class and requires 2D images for captioning purposes.
+For the ScanNetv2 dataset, our model performs better than PLA in certain categories such as chairs, sofas, tables, bookshelves, pictures, counters, and bathtubs. However, it slightly underperforms PLA in categories like beds, fridges, shower curtains, toilets, and sinks. In ScanNetv2, the quality of the point cloud data is not very high, especially for scans with higher scene IDs. As a result, the quality of Snap output is limited by the original point cloud, leading to slightly lower performance. Nevertheless, OpenIns3D, as a 2D input-free and label-free scheme, still achieves competitive performance on the ScanNetv2 dataset.
+In the case of STPLS3D, our model outperforms PointCLIP and PointCLIPV2 by a significant margin in almost every category, achieving very high results, particularly in categories such as buildings, vehicles, trucks, and aircraft. However, the performance on very small objects, such as bikes, motorbikes, signs, and light poles, is not as strong. This is because the Snap module positions the camera at a high-level point to capture point cloud data from buildings, resulting in a limited number of pixels available for these smaller objects. This presents a challenge for OpenIns3D.
+C.2 Cross-domain Analysis
+Table 11 presents the per-category results for the cross-domain OpenIns3D model, trained on S3DIS and tested on ScanNetv2. Despite the performance being relatively lower than that of the in-domain model (trained and tested on the same dataset), the performance is still competitive when compared
+12
+
+Table 8: Per-class Results of 3D Open-vocabulary Instance Segmentation on S3DIS AP50. Performance on novel classes is marked in blue .
+
+ceiling floor wall beam
+column window
+door table chair sofa bookcase board
+
+Methods Partition
+
+PLA [15] OpenIns3D
+
+B8/N4 B6/N6 –/N12
+
+89.5 100.0 50.8 00.0 35.3 36.2 60.5 00.1 84.6 01.9 00.8 59.4 89.5 60.2 17.9 00.0 41.5 10.2 02.1 00.6 86.2 45.1 00.1 02.2 00.0 84.4 29.0 00.0 00.0 62.6 25.2 25.5 52.0 60.0 00.0 00.0
+
+Table 9: Per-class Results of 3D Open-vocabulary Instance Segmentation on ScanNet AP50. Performance on novel classes is marked in blue .
+
+cabinet bed chair sofa table door
+window bookshelf picture counter
+desk curtain fridge shower c. toilet
+sink bathtub
+
+Methods Partition
+B13/N4 50.5 77.0 82.9 43.4 75.4 49.0 46.0 43.7 46.5 33.7 23.2 54.1 49.6 56.0 97.8 47.5 85.8 PLA [15] B10/N7 53.7 62.7 11.2 70.5 27.2 47.7 45.7 30.0 01.5 39.9 40.8 50.6 68.6 84.6 92.9 24.6 00.0
+B8/N9 45.1 77.4 82.2 84.2 74.2 48.9 51.0 30.0 00.5 02.1 16.8 44.9 28.3 35.1 94.3 16.6 00.0 OpenIns3D –/N17 24.3 52.5 75.7 61.6 40.6 39.7 45.5 54.8 0.5 33.5 16.7 48.1 18.5 4.3 50.1 16.8 7.6
+Table 10: Per-class Results of 3D Open-vocabulary Instance Segmentation on STPLS3D AP50. All models are tested in a zero-shot manner.
+
+building veg
+vehicle truck aircraft mil-veh bike motorbike lightpole signs clutter fence
+
+Methods
+PointCLIP 15.3 0.4 10.2 06.6 00.0 00.0 00.0 00.0 00.0 00.0 00.0 00.0 PointCLIPV2 20.3 0.2 12.3 5.8 00.0 00.0 00.0 00.0 00.0 00.0 00.0 00.0 OpenIns3D 40.4 01.2 54.2 24.2 30.0 05.5 02.1 03.0 00.0 00.0 00.0 08.3
+
+to other SOTA results. Note that these SOTA models use pre-trained 2D/3D models to propose bounding boxes, which are trained with in-domain data (ScanNetv2)
+The class categories between S3DIS and ScanNetv2 are very different. Within the 17 classes in ScanNetv2, only 6 classes exist in S3DIS. However, OpenIns3D, trained on S3DIS, can still perform relatively well in other categories that have never been seen before, demonstrating its good generalization capability.
+This outcome is as anticipated, as the design of MPM closely resembles that of SAM in the 2D context, which has shown remarkable capabilities in mask proposal generation after being trained on a substantial amount of data. We believe that with more 3D class-agnostic labels available, the MPM module is capable of generating higher-quality Class-agnostic mask proposals.
+
+Table 11: Cross-domain Analysis of OpenIns3D on OVOD on ScanNetv2 AP25. OpenIns3D achieves competitive results on the cross-domain dataset, even on categories at are not available on the
+training dataset, highlighted in blue . Compared with other SOTA models on OVOD, cross-domain OpenIns3D still has competitive performance. MPM-SC: MPM trained on ScanNetv2; MPM-S3: MPM trained on S3DIS.
+
+BBox Prop cabinet bed chair sofa table door window
+bookshelf picture counter desk curtain fridge shower c. toilet sink bathtub
+
+Methods
+
+OpenIns3D
+
+MPM-SC 17.1 57.5 74.5 59.2 36.9 29.3 47.5 26.4 0.0 31.1 32.2 55.4 39.1 0.0 57.4 42.1 6.6
+
+OpenIns3D
+
+MPM-S3 16.1 43.5 45.7 41.8 28.6 17.7 18.3 31.9 1.2 1.0 29.3 23.1 20.1 8.0 63.6 16.4 1.7
+
+SOTA models
+
+PointCLIP [62] P-3DE [38] 6.0 4.8 45.2 4.8 7.4 4.6 2.2 - - 1.0 4.0 -
+
+- - - 13.4 6.5
+
+PointCLIPV2 [68] P-3DE [38] 19.3 21.0 61.9 15.6 23.8 13.2 17.4 - - 12.4 21.4 -
+
+- - - 14.5 16.8
+
+OV-3DET [36]
+
+P-2DE [5] 3.0 42.3 27.1 31.5 14.2 9.6 - 5.6 - 0.3 19.7 10.5 11.0 - 57.3 31.6 56.3
+
+D Other Attempts for Image Generation
+
+Figures 8 and Table 12 illustrate the alternative approaches we explored before arriving at the conclusion that synthetic scene-level images offer the optimal solution for open vocabulary instance segmentation. These methods primarily relied on per-mask rendering, i.e. generating multiple 2D images for each mask.
+
+13
+
+I
+II
+III
+IV
+V
+VI
+VII
+VIII
+Figure 8: Visualization of Attempts Made to Generate 2D Images from 3D. I: LAR-point projection; II: LAR-point-bg-project; III: Mesh rendering; IV Mesh-in-scene Rendering; V: Mesh-bgRendering; VI: Cropped from Original 2D images; VII: Scene Level Rendering from Mesh; VIII: Scene Level Rendering from Point. Performance can be found in Table 12.
+14
+
+Table 12: Evolution of Snap and Lookup Module. The corresponding image visualization is shown in Figure 8. Scene-level rendering not only requires fewer images but also achieves superb results when compared to other pre-mask levels of rendering. *: The image sizes of VI are adjusted to fit the size of the mask area on the
+original images.
+
+Idx
+
+Methods
+
+Job intensity Imgs needed Original 2D Img size 2D backbone AP50 AP25
+
+I LAR-point projection [2] per mask
+
+250
+
+II LAR-point-bg-projection [2] per mask
+
+250
+
+III mesh-rendering [66]
+
+per mask
+
+250
+
+IV mesh-scene-rendering [66] per mask
+
+250
+
+V mesh-bg-rendering [66] per mask
+
+250
+
+VI
+
+crop-orignal2d
+
+per mask
+
+250
+
+VII scene-mesh-rendering
+
+per scene
+
+8
+
+VIII scene-point-rendering
+
+per scene
+
+8
+
+✗
+
+1282 CLIP [43] 5.3 8.6
+
+✗
+
+1282 CLIP [43] 6.3 10.5
+
+✗
+
+1282 CLIP [43] 6.8 7.2
+
+✗
+
+1282 CLIP [43] 6.7 7.3
+
+✗
+
+1282 CLIP [43] 4.3 5.3
+
+✓
+
+−∗
+
+CLIP [43] 24.3 29.6
+
+✗
+
+10002 ODISE [58] 28.7 38.9
+
+✗
+
+10002 ODISE [58] 21.5 33.6
+
+Attempts I, II: Inspired by the success of LAR [2], which uses synthetic images of objects to assist in the 3D visual grounding task, we first explore a similar approach. This involves positioning the camera around the object and projecting point clouds to generate multi-view images for each mask. However, these approaches yielded unsatisfactory performance when integrated with the CLIP model, even with their background being projected. This is mainly due to the fact that many masks are too broken, and the projected images are difficult to recognize even for humans.
+Attempts III, IV, V: We redirected our attention to the mesh model. Although meshes are not always available for all 3D point clouds, we decided to investigate whether the mesh model could enhance the quality of rendered images, thereby making them more recognizable with 2D models. However, the outcomes of pre-mask rendering III, IV, V still encountered challenges in achieving reasonable performance, not to mention the considerable rendering time they demanded. The problem still boils down to the quality of the point clouds themselves. For masks with very clear and complete point clouds, such as the chair presented in Figures 8, these approaches can produce reasonable results. However, most masks are very difficult to recognize even in the mesh model. Even for human beings, a substantial amount of contextual information is required to understand those broken, distorted, and sparse mask instances.
+Attempt VI: We then start to experiment with using original images and cropping out masks in the images for evaluation VI. We believe this offers the best quality of images, therefore making them most likely to be recognizable with 2D models. We use Occlusion Reports methods to select the top K views from all frames and crop out mask pixels with an enlarged bounding box. This approach did achieve notable performance, primarily due to the high quality of 2D images. However, we ultimately abandoned this approach due to concerns about its applicability in general scenarios for two reasons:
+1. Such an approach requires well-aligned 2D images in both the training and inference stages. Our argument is that if well-aligned 2D images are readily available and can be seamlessly linked with 3D data, meaning they have pose, intrinsic, and depth information, it is much easier to approach open-world tasks from a 2D perspective. The open-world understanding of 3D can be achieved by conducting open-world detection in 2D images and projecting the results into 3D point clouds using available camera models and depth maps. Similar approaches have been shown to be feasible in SAM3D [60]. Therefore, the motivation for such an approach is questionable.
+2. In many instances, 2D images occupy a significant portion of storage space, and it would be more practical to not rely solely on 2D images. For example, in ScanNetv2, the point cloud/mesh file of a scene occupies around 3MB, while the entire 2D image collection consumes roughly 3GB. Additionally, in many cases, 2D images are not available, as discussed in the introduction section.
+Attempt VII, VIII: Shifting our focus to scene-level rendering, our model began to produce high-quality results. This was because, by observing all broken instances from a distance and incorporating a large amount of contextual information, objects became clear and recognizable. As a result, the scene-level images had a small domain gap with the images used to train 2D VL models. The CLIP model is not suitable for scene-level images due to its inability to simultaneously detect multiple objects; it can only generate global features. While rendering by the mesh model contributed
+
+15
+
+to improved clarity (VII) in images, leading to enhanced results, rendering from the point cloud made the approach more applicable, and the performance remained decent when compared to other state-of-the-art methods. This is why we rendered from the point cloud in most of the datasets we tested.
+E Limitations and Future Work
+
+OpenIns3D is a novel framework that achieves remarkable performance in open-vocabulary instance segmentation, surpassing many existing methods. However, there are some limitations of OpenIns3D that need further investigation in future studies.
+
+• Reliance on Ground Truth Instance Masks: Similar to SAM [25], OpenIns3D still relies on ground truth mask supervision. While it does prove to have the capability to generalize masks that have never been seen before, providing a vast amount of class-agnostic masks can be helpful. Approaches like UnScene3D [48] might serve as alternative methods for mask proposal, linking it with Snap and the Lookup module for open-vocabulary understanding. This requires further investigation.
+• Limited Performance in Semantic Segmentation: OpenIns3D heavily relies on filtering to refine the mask proposals, discarding masks with low quality directly. While this approach benefits instance segmentation by reducing false positive instances, it may limit its performance in semantic segmentation. We have also calculated the semantic segmentation results of OpenIns3D on four categories, as reported by OpenScene [40], as shown in Table 13. Our method still exhibits a gap compared to OpenScene in terms of semantic segmentation.
+• Small Object Performance: The performance of OpenIns3D is ultimately closely linked to the quality of the point cloud itself. Masks that are very small or made of sparse point clouds would be difficult to recognize in the rendered images, as they either occupy a small portion of the image pixels or are too fragmented to be detected by the 2D models.
+
+Nonetheless, while most researchers in the community are focused on aligning point and image features for open-world capabilities in the 3D domain, we aim to propose a simple, flexible, and powerful framework that requires no 2D input but can still achieve impressive results. OpenIns3D can easily evolve with the rapid development of 2D open-world models. In this era of rapid evolution of foundation models, we believe this attribute makes OpenIns3D powerful in many settings.
+
+Table 13: Comparison with OpenScene and other Frameworks on Semantic Segmentation. Our framework prioritises mask quality and suffers overall semantic segmentation results.
+
+Semantic Seg.
+
+mIoU
+
+mAcc
+
+Methods
+
+Bookshelf Desk Sofa Toilet Mean Bookshelf Desk Sofa Toilet Mean
+
+3DGenZ [37]
+
+6.3 3.3 13.1 8.1 7.7
+
+13.4 5.9 5.9 26.3 12.9
+
+MSeg Voting [28]
+
+47.8 40.3 56.5 68.8 53.3
+
+50.1 67.7 67.7 81.0 66.6
+
+OpenScene-LSeg [40]
+
+67.1 46.4 60.2 77.5 62.8
+
+85.5 69.5 69.5 90.0 78.6
+
+OpenScene-OpenSeg [40]
+
+64.1 27.4 49.6 63.7 51.2
+
+73.7 73.4 73.4 95.3 79.0
+
+OpenIns3D
+
+54.8 16.7 61.6 50.6 45.9
+
+59.0 32.3 76.7 79.8 61.9
+
+F Visualization
+Mask Proposal Figure 9 and 10 present a qualitative evaluation of the mask proposal module. The learned mask proposals exhibit great similarity to the ground truth masks, often capturing additional unlabeled masks. This demonstrates the effectiveness of our class-label-free learning scheme in producing high-quality class-agnostic mask proposals. Moreover, through the application of Mask Scoring and Mask Filtering techniques, we are able to connect fragmented or fragile masks, resulting in a substantial improvement in mask quality. These advancements provide a strong foundation for the Snap and Lookup understanding scheme.
+Snap visualization Figure 11, 12 and 13 demonstrate the capability of the Snap module. With the proposed pose and intrinsic optimization scheme, the Snap module is capable of generating decent-quality images from point clouds, regardless of whether the dataset is indoor or outdoor.
+Lookup Results Visualization The Lookup module effectively links 2D results with 3D. Here, we present visualizations of its outcomes from all three datasets (Figure 14, 15, 16). OpenIns3D is capable of capturing the most interesting objects in the scene without relying on any corresponding 2D images.
+
+16
+
+Raw point clouds
+
+GT instance masks
+
+Predicted masks without filtering
+
+Predicted masks with filtering
+
+Raw point clouds
+
+GT instance masks
+
+Predicted masks without filtering
+
+Predicted masks with filtering
+
+Figure 9: Qualitative Evaluation of the Mask Proposals. Our class-label-free approach produces high-quality masks that closely resemble the ground truth. Additionally, the incorporation of Mask Scoring and Mask Filtering further enhances the overall quality of the masks. Quantitative evaluation is shown in Table 6.
+
+17
+
+Raw point clouds
+
+GT instance masks
+
+Predicted masks without filtering
+
+Predicted masks with filtering
+
+Raw point clouds
+
+GT instance masks
+
+Predicted masks without filtering
+
+Predicted masks with filtering
+
+Figure 10: Qualitative Evaluation of the Mask Proposals. Our class-label-free approach produces high-quality masks that closely resemble the ground truth. Additionally, the incorporation of Mask Scoring and Mask Filtering further enhances the overall quality of the masks. Quantitative evaluation is shown in Table 6.
+
+18
+
+Figure 11: Synthetic Scene-level Images of S3DIS Generated by Snap. The first image is the original spare point cloud, and the following three images are outcomes of the Snap module.
+19
+
+Figure 12: Synthetic Scene-level Images of ScanNetv2 Generated by Snap. The first image is the original spare point cloud, and the following three images are outcomes of the Snap module.
+20
+
+Figure 13: Synthetic Scene-level Images of STPLS3D Generated by Snap. The first image is the original spare point cloud, and the following three images are outcomes of the Snap module.
+21
+
+Input Queries: 'ceiling', 'floor', 'wall', 'beam', 'column', 'window', 'door', 'table', 'chair', 'sofa', 'bookcase', 'board'
+Figure 14: Open-vocabulary Instance Segmentation Results of S3DIS by OpenIns3D (ODISE). Instance and class labels are presented in the same color.
+22
+
+Input Queries: 'cabinet', 'bed', 'chair', 'sofa', 'table', 'door', 'window', 'bookshelf', 'picture', 'counter', 'desk', 'curtain', 'refrigerator', 'shower curtain', 'toilet', 'sink', 'bathtub'
+Figure 15: Open-vocabulary Instance Segmentation Results of ScanNetv2 by OpenIns3D (ODISE). Instance and class labels are presented in the same color.
+23
+
+Input Queries: 'building', 'vegetation', 'vehicle', 'truck', 'Aircraft', 'military vehicle', 'bike', 'motorcycle', 'light pole', 'street sign', 'clutter', 'fence'
+Figure 16: Open-vocabulary Instance Segmentation Results of STPLS3D by OpenIns3D (ODISE). Instance and class labels are presented in the same color.
+24
+
+References
+[1] Iro Armeni, Ozan Sener, Amir R. Zamir, Helen Jiang, Ioannis Brilakis, Martin Fischer, and Silvio Savarese. 3d semantic parsing of large-scale indoor spaces. In CVPR, 2016. 3, 7
+[2] Eslam Mohamed Bakr, Yasmeen Youssef Alsaedy, and Mohamed Elhoseiny. Look around and refer: 2d synthetic semantics knowledge distillation for 3d visual grounding. In Advances in Neural Information Processing Systems, 2022. 4, 7, 15
+[3] Jens Behley, Martin Garbade, Andres Milioto, Jan Quenzel, Sven Behnke, Cyrill Stachniss, and Jurgen Gall. Semantickitti: A dataset for semantic scene understanding of lidar sequences. In ICCV, 2019. 2
+[4] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are few-shot learners. In NeurIPS, 2020. 2, 3
+[5] Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-end object detection with transformers. In ECCV, 2020. 4, 8, 9, 13
+[6] Angel Chang, Angela Dai, Thomas Funkhouser, Maciej Halber, Matthias Niessner, Manolis Savva, Shuran Song, Andy Zeng, and Yinda Zhang. Matterport3d: Learning from rgb-d data in indoor environments. In 3DV, 2017. 2
+[7] Meida Chen, Qingyong Hu, Zifan Yu, Hugues THOMAS, Andrew Feng, Yu Hou, Kyle McCullough, Fengbo Ren, and Lucio Soibelman. Stpls3d: A large-scale synthetic and real aerial photogrammetry 3d point cloud dataset. In BMVA, 2022. 2, 3, 7
+[8] Runnan Chen, Youquan Liu, Lingdong Kong, Xinge Zhu, Yuexin Ma, Yikang Li, Yuenan Hou, Yu Qiao, and Wenping Wang. Clip2scene: Towards label-efficient 3d scene understanding by clip. In CVPR, 2023. 2, 4
+[9] Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. A simple framework for contrastive learning of visual representations. In ICML, 2020. 3
+[10] Xi Chen, Shuang Li, Ser-Nam Lim, Antonio Torralba, and Hengshuang Zhao. Open-vocabulary panoptic segmentation with embedding modulation. In ICCV, 2023. 2, 3, 5
+[11] Bowen Cheng, Ishan Misra, Alexander G. Schwing, Alexander Kirillov, and Rohit Girdhar. Maskedattention mask transformer for universal image segmentation. In CVPR, 2022. 4
+[12] Pointcept Contributors. Pointcept: A codebase for point cloud perception research. https://github. com/Pointcept/Pointcept, 2023. 10
+[13] Angela Dai, Angel X. Chang, Manolis Savva, Maciej Halber, Thomas Funkhouser, and Matthias Nießner. Scannet: Richly-annotated 3d reconstructions of indoor scenes. In CVPR, 2017. 2, 3, 7
+[14] Runyu Ding, Jihan Yang, Chuhui Xue, Wenqing Zhang, Song Bai, and Xiaojuan Qi. Lowis3d: Languagedriven open-world instance-level 3d scene nderstanding, 2023. 2, 4, 7, 8
+[15] Runyu Ding, Jihan Yang, Chuhui Xue, Wenqing Zhang, Song Bai, and Xiaojuan Qi. Pla: Language-driven open-vocabulary 3d scene understanding. In CVPR, 2023. 2, 4, 7, 13
+[16] Zheng Ding, Jieke Wang, and Zhuowen Tu. Open-vocabulary panoptic segmentation with maskclip. In arXiv, 2022. 2, 3
+[17] Bianca Falcidieno, Ivan Herman, and Caterina Pienovi. Computer Graphics and Mathematics. Springer Verlag, 1992. 10
+[18] Golnaz Ghiasi, Xiuye Gu, Yin Cui, and Tsung-Yi Lin. Scaling open-vocabulary image segmentation with image-level labels. In ECCV, 2022. 3
+[19] David Griffiths and Jan Boehm. SynthCity: A large-scale synthetic point cloud. In arXiv, 2019. 2
+[20] Timo Hackel, N. Savinov, L. Ladicky, Jan D. Wegner, K. Schindler, and M. Pollefeys. SEMANTIC3D.NET: A new large-scale point cloud classification benchmark. In ISPRS Annals of the Photogrammetry, Remote Sensing and Spatial Information Sciences, 2017. 2
+[21] Qingyong Hu, Bo Yang, Sheikh Khalid, Wen Xiao, Niki Trigoni, and Andrew Markham. Towards semantic segmentation of urban-scale 3d point clouds: A dataset, benchmarks and challenges. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2021. 2
+[22] Qingyong Hu, Bo Yang, Sheikh Khalid, Wen Xiao, Niki Trigoni, and Andrew Markham. Sensaturban: Learning semantics from urban-scale photogrammetric point clouds. In International booktitle of Computer Vision, 2022. 2
+[23] Tianyu Huang, Bowen Dong, Yunhan Yang, Xiaoshui Huang, Rynson WH Lau, Wanli Ouyang, and Wangmeng Zuo. Clip2point: Transfer clip to point cloud classification with image-depth pre-training. In ICCV, 2023. 2, 3
+25
+
+[24] Zhaojin Huang, Lichao Huang, Yongchao Gong, Chang Huang, and Xinggang Wang. Mask scoring R-CNN. In arXiv, 2019. 5
+[25] Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alexander C. Berg, Wan-Yen Lo, Piotr Dollár, and Ross Girshick. Segment anything. In ICCV, 2023. 2, 5, 6, 16
+[26] Abhijit Kundu, Xiaoqi Yin, Alireza Fathi, David A. Ross, Brian Brewington, Thomas A. Funkhouser, and Caroline Pantofaru. Virtual multi-view fusion for 3d semantic segmentation. In ECCV, 2020. 4
+[27] Xin Lai, Zhuotao Tian, Yukang Chen, Yanwei Li, Yuhui Yuan, Shu Liu, and Jiaya Jia. Lisa: Reasoning segmentation via large language model. In arXiv, 2023. 1, 3, 9
+[28] John Lambert, Zhuang Liu, Ozan Sener, James Hays, and Vladlen Koltun. Mseg: A composite dataset for multi-domain semantic segmentation. In TPAMI, 2021. 16
+[29] Bo Li, Yuanhan Zhang, Liangyu Chen, Jinghao Wang, Jingkang Yang, and Ziwei Liu. Otter: A multi-modal model with in-context instruction tuning. In arXiv, 2023. 3
+[30] Junnan Li, Dongxu Li, Silvio Savarese, and Steven Hoi. Blip-2: Bootstrapping language-image pre-training with frozen image encoders and large language models. In arXiv, 2023. 3
+[31] Junnan Li, Dongxu Li, Caiming Xiong, and Steven Hoi. Blip: Bootstrapping language-image pre-training for unified vision-language understanding and generation, 2022. 3
+[32] Liunian Harold Li, Pengchuan Zhang, Haotian Zhang, Jianwei Yang, Chunyuan Li, Yiwu Zhong, Lijuan Wang, Lu Yuan, Lei Zhang, Jenq-Neng Hwang, et al. Grounded language-image pre-training. In CVPR, 2022. 3
+[33] Xinke Li, Chongshou Li, Zekun Tong, Andrew Lim, Junsong Yuan, Yuwei Wu, Jing Tang, and Raymond Huang. Campus3d: A photogrammetry point cloud benchmark for hierarchical understanding of outdoor scene. In ACM MM, 2020. 2
+[34] Yuqing Liao, Xinke Li, Zekun Tong, Yabang Zhao, Andrew Lim, Zhenzhong Kuang, and Cise Midoglu. Reproducibility companion paper: Campus3d: A photogrammetry point cloud benchmark for outdoor scene hierarchical understanding. In ACM MM, 2021. 2
+[35] Shilong Liu, Zhaoyang Zeng, Tianhe Ren, Feng Li, Hao Zhang, Jie Yang, Chunyuan Li, Jianwei Yang, Hang Su, Jun Zhu, et al. Grounding dino: Marrying dino with grounded pre-training for open-set object detection. In arXiv, 2023. 3, 7
+[36] Yuheng Lu, Chenfeng Xu, Xiaobao Wei, Xiaodong Xie, Masayoshi Tomizuka, Kurt Keutzer, and Shanghang Zhang. Open-vocabulary point-cloud object detection without 3d annotation. In CVPR, 2023. 2, 3, 8, 9, 13
+[37] Björn Michele, Alexandre Boulch, Gilles Puy, Maxime Bucher, and Renaud Marlet. Generative zero-shot learning for semantic segmentation of 3D point cloud. In 3DV, 2021. 16
+[38] Ishan Misra, Rohit Girdhar, and Armand Joulin. An end-to-end transformer model for 3d object detection. In ICCV, 2021. 8, 9, 13
+[39] Kaichun Mo, Shilin Zhu, Angel X. Chang, Li Yi, Subarna Tripathi, Leonidas J. Guibas, and Hao Su. PartNet: A large-scale benchmark for fine-grained and hierarchical part-level 3D object understanding. In CVPR, 2019. 2
+[40] Songyou Peng, Kyle Genova, Chiyu "Max" Jiang, Andrea Tagliasacchi, Marc Pollefeys, and Thomas Funkhouser. Openscene: 3d scene understanding with open vocabularies. In CVPR, 2023. 2, 4, 16
+[41] Renjie Pi, Jiahui Gao, Shizhe Diao, Rui Pan, Hanze Dong, Jipeng Zhang, Lewei Yao, Jianhua Han, Hang Xu, Lingpeng Kong, and Tong Zhang. Detgpt: Detect what you need via reasoning. In arXiv, 2023. 3
+[42] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In ICML, 2021. 2, 3
+[43] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In ICML, 2021. 2, 7, 15
+[44] Yongming Rao, Wenliang Zhao, Guangyi Chen, Yansong Tang, Zheng Zhu, Guan Huang, Jie Zhou, and Jiwen Lu. Denseclip: Language-guided dense prediction with context-aware prompting. In arXiv, 2021. 3
+[45] Jean Pierre Richa, Jean-Emmanuel Deschaud, François Goulette, and Nicolas Dalmasso. Adasplats: Adaptive splatting of point clouds for accurate 3d modeling and real-time high-fidelity lidar simulation. In Remote Sensing, 2022. 2
+[46] Xavier Roynard, Jean-Emmanuel Deschaud, and François Goulette. Paris-lille-3d: A large and high-quality ground-truth urban point cloud dataset for automatic segmentation and classification. In The International booktitle of Robotics Research, 2018. 2
+26
+
+[47] David Rozenberszki, Or Litany, and Angela Dai. Language-grounded indoor 3d semantic segmentation in the wild. In ECCV, 2022. 2, 4
+[48] David Rozenberszki, Or Litany, and Angela Dai. Unscene3d: Unsupervised 3d instance segmentation for indoor scenes. In arXiv, 2023. 16
+[49] Jonas Schult, Francis Engelmann, Alexander Hermans, Or Litany, Siyu Tang, and Bastian Leibe. Mask3D: Mask Transformer for 3D Semantic Instance Segmentation. In ICRA, 2023. 5, 8, 10, 11, 12
+[50] Sheng Shen, Shijia Yang, Tianjun Zhang, Bohan Zhai, Joseph E. Gonzalez, Kurt Keutzer, and Trevor Darrell. Multitask vision-language prompt tuning. In arXiv, 2022. 3
+[51] Nathan Silberman, Derek Hoiem, Pushmeet Kohli, and Rob Fergus. Indoor segmentation and support inference from rgbd images. In ECCV, 2012. 2
+[52] Hang Su, Subhransu Maji, Evangelos Kalogerakis, and Erik G. Learned-Miller. Multi-view convolutional neural networks for 3d shape recognition. In ICCV, 2015. 4
+[53] Weikai Tan, Nannan Qin, Lingfei Ma, Ying Li, Jing Du, Guorong Cai, Ke Yang, and Jonathan Li. Toronto3D: A large-scale mobile lidar dataset for semantic segmentation of urban roadways. In CVPRW, 2020. 2
+[54] Nina M. Varney, Vijayan K. Asari, and Quinn Graehling. Dales: A large-scale aerial lidar data set for semantic segmentation. In CVPRW, 2020. 2
+[55] Thang Vu, Kookhoi Kim, Tung M. Luu, Xuan Thanh Nguyen, and Chang D. Yoo. Softgroup for 3d instance segmentation on 3d point clouds. In CVPR, 2022. 4
+[56] Wenhai Wang, Zhe Chen, Xiaokang Chen, Jiannan Wu, Xizhou Zhu, Gang Zeng, Ping Luo, Tong Lu, Jie Zhou, Yu Qiao, et al. Visionllm: Large language model is also an open-ended decoder for vision-centric tasks. In arXiv, 2023. 3
+[57] Xiaoyang Wu, Yixing Lao, Li Jiang, Xihui Liu, and Hengshuang Zhao. Point transformer v2: Grouped vector attention and partition-based pooling. In NeurIPS, 2022. 12
+[58] Jiarui Xu, Sifei Liu, Arash Vahdat, Wonmin Byeon, Xiaolong Wang, and Shalini De Mello. OpenVocabulary Panoptic Segmentation with Text-to-Image Diffusion Models. In CVPR, 2023. 2, 3, 7, 15
+[59] Jihan Yang, Runyu Ding, Zhe Wang, and Xiaojuan Qi. Regionplc: Regional point-language contrastive learning for open-world 3d scene understanding, 2023. 2, 4, 7, 8
+[60] Yunhan Yang, Xiaoyang Wu, Tong He, Zhao Hengshuang, and Xihui Liu. Sam3d: Segment anything in 3d scenes. In arXiv, 2023. 15
+[61] Qinghao Ye, Haiyang Xu, Guohai Xu, Jiabo Ye, Ming Yan, Yiyang Zhou, Junyang Wang, Anwen Hu, Pengcheng Shi, Yaya Shi, et al. mplug-owl: Modularization empowers large language models with multimodality. In arXiv, 2023. 3
+[62] Renrui Zhang, Ziyu Guo, Wei Zhang, Kunchang Li, Xupeng Miao, Bin Cui, Yu Qiao, Peng Gao, and Hongsheng Li. Pointclip: Point cloud understanding by CLIP. In CVPR, 2022. 2, 3, 7, 8, 9, 13
+[63] Shilong Zhang, Peize Sun, Shoufa Chen, Min Xiao, Wenqi Shao, Wenwei Zhang, Kai Chen, and Ping Luo. Gpt4roi: Instruction tuning large language model on region-of-interest. In arXiv, 2023. 3
+[64] Chong Zhou, Chen Change Loy, and Bo Dai. Denseclip: Extract free dense labels from clip. In arXiv, 2021. 2
+[65] Chong Zhou, Chen Change Loy, and Bo Dai. Extract free dense labels from clip. In ECCV, 2022. 2 [66] Qian-Yi Zhou, Jaesik Park, and Vladlen Koltun. Open3D: A modern library for 3D data processing. In
+arXiv, 2018. 7, 15 [67] Xingyi Zhou, Rohit Girdhar, Armand Joulin, Philipp Krähenbühl, and Ishan Misra. Detecting twenty-
+thousand classes using image-level supervision. In ECCV, 2022. 3 [68] Xiangyang Zhu, Renrui Zhang, Bowei He, Ziyu Guo, Ziyao Zeng, Zipeng Qin, Shanghang Zhang, and
+Peng Gao. Pointclip v2: Prompting clip and gpt for powerful 3d open-world learning. In ICCV, 2023. 2, 3, 5, 8, 9, 13 [69] Xizhou Zhu, Weijie Su, Lewei Lu, Bin Li, Xiaogang Wang, and Jifeng Dai. Deformable detr: Deformable transformers for end-to-end object detection. In ICLR, 2020. 4
+27
+

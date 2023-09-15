@@ -1,0 +1,565 @@
+LISA: REASONING SEGMENTATION VIA LARGE LANGUAGE MODEL
+Xin Lai1∗ Zhuotao Tian2∗ Yukang Chen1 Yanwei Li1 Yuhui Yuan3 Shu Liu2 Jiaya Jia1,2 1The Chinese University of Hong Kong 2SmartMore 3Microsoft Research Asia
+
+arXiv:2308.00692v2 [cs.CV] 3 Aug 2023
+
+ABSTRACT
+
+Although perception systems have made remarkable advancements in recent years, they still rely on explicit human instruction to identify the target objects or categories before executing visual recognition tasks. Such systems lack the ability to actively reason and comprehend implicit user intentions. In this work, we propose a new segmentation task — reasoning segmentation. The task is designed to output a segmentation mask given a complex and implicit query text. Furthermore, we establish a benchmark comprising over one thousand image-instruction pairs, incorporating intricate reasoning and world knowledge for evaluation purposes. Finally, we present LISA: large Language Instructed Segmentation Assistant, which inherits the language generation capabilities of the multi-modal Large Language Model (LLM) while also possessing the ability to produce segmentation masks. We expand the original vocabulary with a <SEG> token and propose the embeddingas-mask paradigm to unlock the segmentation capability. Remarkably, LISA can handle cases involving: 1) complex reasoning; 2) world knowledge; 3) explanatory answers; 4) multi-turn conversation. Also, it demonstrates robust zero-shot capability when trained exclusively on reasoning-free datasets. In addition, fine-tuning the model with merely 239 reasoning segmentation image-instruction pairs results in further performance enhancement. Experiments show our method not only unlocks new reasoning segmentation capabilities but also proves effective in both complex reasoning segmentation and standard referring segmentation tasks. Code, models, and demo are available at github.com/dvlab-research/LISA.
+
+Complex Reasoning
+
+• USER: <IMAGE> Which part of this picture looks strange? Please output segmentation mask.
+• ASSISTANT: Sure, the segmentation result is <SEG>.
+(Remark: Dogs do not have horns.)
+
+• USER: <IMAGE> There are two washing machines as shown in the picture. If I need to do laundry, where in the picture would I put the clothes? Please output segmentation mask.
+• ASSISTANT: <SEG>.
+
+• USER: <IMAGE> What is the food that makes people feel spicy or hot in this image? Please output segmentation mask.
+• ASSISTANT: <SEG>.
+World Knowledge
+
+• USER: <IMAGE> What is the place where the driver can observe
+the speed in this image? Please output segmentation mask. • ASSISTANT: <SEG>.
+
+• USER: <IMAGE> Who is the loser in this image? Please output segmentation mask
+
+and explain why. • ASSISTANT: Sure, it is <SEG>. In the image, the two men are grappling on the
+
+Explanatory
+
+ground in a ring, with one of them appearing to be on top of the other. The man on top is likely the winner of the match, as he has control over the other
+
+Answers
+
+fighters body. The other man is on the bottom, possibly losing the match or
+
+experiencing a momentary setback in the action. The outcome of the match would
+
+depend on various factors such as the skill level of the fighters, the duration
+
+of the action, and the specific rules of the match.
+
+Multi-turn Conversation
+
+• USER: <IMAGE> In the living room, people often sit on the sofa to watch tv or chat.
+
+What object can they use to adjust the TV screen or change channels?
+scene0000_00_3000.jpg • ASSISTANT: In the living room, people can use the TV remote to adjust the TV screen or change channels. The TV remote is located on the couch, which is where the people
+
+stacynpdeincfaueln0lcyt0i0soin0ts_,0toa0lwl_ao3tw0cihn0g0TVt_.hiemTmhgeto_r0ee.mnjojptogey
+
+is essential for controlling the TV's their TV shows or movies with ease.
+
+settings
+
+• USER: Please output segmentation mask for it.
+
+• ASSISTANT: Sure, <SEG>.
+
+Figure 1: We unlock new segmentation capabilities for current multi-modal LLMs. The resulting model (LISA) is capable to deal with cases involving: 1) Complex Reasoning; 2) World Knowledge; 3) Explanatory Answers; 4) Multi-turn Conversation.
+∗Equal contribution.
+
+1
+
+1 INTRODUCTION
+In daily life, users tend to issue direct commands like “Change the TV channel” to instruct a robot, rather than providing explicit step-by-step instructions such as “Go to the table first, find the TV remote, and then press the button to change the channel.” However, existing perception systems consistently rely on humans to explicitly indicate target objects or pre-define categories before executing visual recognition tasks. These systems lack the capacity to actively reason and comprehend users’ intentions based on implicit instructions. This self-reasoning ability is crucial in developing next-generation intelligent perception systems and holds substantial potential for industrial applications, particularly in robotics.
+In this work, we introduce a new segmentation task — reasoning segmentation, which requires generating a binary segmentation mask based on an implicit query text involving complex reasoning. Notably, the query text is not limited to a straightforward reference (e.g., “the orange”), but a more complicated description involving complex reasoning or world knowledge (e.g., “the food with high Vitamin C”). To accomplish this task, the model must possess two key abilities: 1) reasoning complex and implicit text queries jointly with the image; 2) producing segmentation masks.
+Inspired by the exceptional capacity of the Large Language Model (LLM) to reason and comprehend user intentions, we aim to leverage this capability to address the aforementioned first challenge. However, while several studies have integrated robust reasoning capabilities into multi-modal LLMs to accommodate visual input, the majority of these models primarily concentrate on text generation tasks and still fall short in performing vision-centric tasks that necessitate fine-grained output formats, such as segmentation masks.
+In this work, we introduce LISA: a large Language Instructed Segmentation Assistant, a multi-modal LLM capable of producing segmentation masks. To equip the multi-modal LLM with segmentation abilities, we incorporate an additional token, i.e., <SEG>, into the existing vocabulary. Upon generating the <SEG> token, its hidden embedding is further decoded into the corresponding segmentation mask. By representing the segmentation mask as an embedding, LISA acquires segmentation capabilities and benefits from end-to-end training. Remarkably, LISA demonstrates robust zero-shot abilities. Training the model solely on standard semantic segmentation and referring segmentation datasets yields surprisingly effective performance on the complex reasoning segmentation task. Furthermore, we find that LISA’s performance can be significantly enhanced by fine-tuning on just 239 image-instruction reasoning segmentation pairs. As illustrated in Fig. 1, LISA can handle various scenarios, including: 1) complex reasoning; 2) world knowledge; 3) explanatory answers; and 4) multi-turn conversations.
+In addition, to validate the effectiveness, we establish a benchmark for reasoning segmentation evaluation, called ReasonSeg. Comprising over one thousand image-instruction pairs, this benchmark offers persuasive evaluation metrics for the task. To align more closely with practical applications, we annotate the images from OpenImages (Kuznetsova et al., 2020) and ScanNetv2 (Dai et al., 2017) with implicit text queries that necessitate complex reasoning.
+In summary, our contributions are as follows:
+• We introduce the reasoning segmentation task, which necessitates reasoning based on implicit human instructions. This task emphasizes the importance of self-reasoning ability, crucial for building a genuinely intelligent perception system.
+• We establish a reasoning segmentation benchmark, ReasonSeg, containing over one thousand image-instruction pairs. This benchmark is essential for evaluation and encourages the community to develop new techniques.
+• We present our model — LISA, which employs the embedding-as-mask paradigm to incorporate new segmentation capabilities. LISA demonstrates robust zero-shot ability on the reasoning segmentation task when trained on reasoning-free datasets and achieves further performance boost by fine-tuning on just 239 image-instruction pairs involving reasoning. We believe LISA will promote the development of perceptual intelligence and inspire new advancements in this direction.
+2
+
+2 RELATED WORK
+2.1 IMAGE SEGMENTATION
+Semantic segmentation aims to assign a class label to every pixel in an image. Numerous studies (Shelhamer et al., 2017; Noh et al., 2015; Badrinarayanan et al., 2017; Ronneberger et al., 2015; Chen et al., 2018; Yu & Koltun, 2016; Liu et al., 2015; Zhao et al., 2017; 2018a; Yang et al., 2018; Fu et al., 2019; Huang et al., 2019; Zhao et al., 2018b; Zhu et al., 2019; Cheng et al., 2021; Lai et al., 2021; Tian et al., 2022; 2023) have proposed diverse designs (such as encoder-decoder, dilated convolution, pyramid pooling module, non-local operator, and more) to effectively encode semantic information. Research on instance segmentation (He et al., 2017; Zhang et al., 2021; Cheng et al., 2022) and panoptic segmentation (Kirillov et al., 2019; Xiong et al., 2019; Cheng et al., 2020; Li et al., 2021) has introduced various architectural innovations for instance-level segmentation, including DETR (Carion et al., 2020)-based structures, mask attention, and dynamic convolution. In recent years, typical segmentation tasks have made significant progress and become increasingly mature. Consequently, it is imperative to develop more intelligent interaction ways for image segmentation.
+The referring segmentation task (Kazemzadeh et al., 2014; Nagaraja et al., 2016) enables interaction with human language, aiming to segment the target object based on a given explicit text description. Recently, Kirillov et al. (2023) introduced SAM, trained with billions of high-quality masks, supporting bounding boxes and points as prompts while demonstrating exceptional segmentation quality. X-Decoder (Zou et al., 2023a) bridges vision and language, unifying multiple tasks within a single model. SEEM (Zou et al., 2023b) further supports various human interaction methods, including text, audio, and scribble. However, these studies primarily focus on addressing multi-task compatibility and unification, neglecting the injection of new capabilities. In this work, we present LISA to tackle the reasoning segmentation task and enhance existing visual segmentors with self-reasoning abilities.
+2.2 MULTI-MODAL LARGE LANGUAGE MODEL
+Motivated by the remarkable reasoning abilities of LLMs, researchers are exploring ways to transfer these capabilities into the vision domain, developing multi-modal LLMs. Flamingo (Alayrac et al., 2022) employs a cross-attention structure to attend to visual contexts, enabling visual in-context learning. Models such as BLIP-2 (Li et al., 2023b) and mPLUG-OWL (Ye et al., 2023) propose encoding image features with a visual encoder, which are then fed into the LLM alongside text embeddings. Otter (Li et al., 2023a) further incorporates robust few-shot capabilities through incontext instruction tuning on the proposed MIMIC-IT dataset. LLaVA (Liu et al., 2023b) and MiniGPT-4 (Zhu et al., 2023) first conduct image-text feature alignment followed by instruction tuning. Koh et al. (2023) also investigates image retrieval for LLMs. Moreover, numerous works (Wu et al., 2023; Yang et al., 2023b; Shen et al., 2023; Liu et al., 2023c; Yang et al., 2023a) utilize prompt engineering, connecting independent modules via API calls, but without the benefits of endto-end training. Recently, there have been studies examining the intersection between multi-modal LLMs and vision tasks. VisionLLM (Wang et al., 2023) offers a flexible interaction interface for multiple vision-centric tasks through instruction tuning but fails to fully exploit LLMs for complex reasoning. Kosmos-2 (Peng et al., 2023) constructs large-scale data of grounded image-text pairs, infusing grounding capabilities into LLMs. DetGPT (Pi et al., 2023) bridges the fixed multi-modal LLM and open-vocabulary detector, enabling detection to be performed based on users’ instructions. GPT4RoI (Zhang et al., 2023) introduces spatial boxes as input and trains the model on region-text pairs. In contrast, our work aims to 1) efficiently inject segmentation capabilities into multi-modal LLMs and 2) unlock self-reasoning abilities for current perception systems.
+3 REASONING SEGMENTATION
+3.1 PROBLEM DEFINITION
+The reasoning segmentation task is to output a binary segmentation mask M , given an input image ximg and an implicit query text instruction xtxt. The task shares a similar formulation with the referring segmentation task (Kazemzadeh et al., 2014), but is far more challenging. The key distinction lies in the complexity of the query text in reasoning segmentation. Instead of a straightforward phrase (e.g., ”the trash can”), the query text may include more intricate expressions (e.g., ”something that
+3
+
+the camera lens that is more suitable for photographing nearby objects
+
+Toddlers are curious and often enjoy exploring their surroundings. What object in the picture can provide a
+safe and enclosed space for a toddler to play in?
+
+Figure 2: Examples of the annotated image-instruction pairs. Left: short query. Right: long query.
+
+the garbage should be put into”) or longer sentences (e.g., ”After cooking, consuming food, and preparing for food, where can we throw away the rest of the food and scraps?”) that involve complex reasoning or world knowledge.
+3.2 BENCHMARK
+Given the lack of quantitative evaluation, it is imperative to establish a benchmark for the reasoning segmentation task. To ensure reliable assessment, we have collected a diverse set of images from OpenImages (Kuznetsova et al., 2020) and ScanNetv2 (Dai et al., 2017), annotating them with implicit text instructions and high-quality target masks. To cover different scenarios, our text instructions consist of two types: 1) short phrases; 2) long sentences; as illustrated in Figure 2. The resulting ReasonSeg benchmark comprises a total of 1218 image-instruction pairs. This dataset is further partitioned into three splits: train, val, and test, containing 239, 200, and 779 image-instruction pairs, respectively. As the primary purpose of the benchmark is evaluation, the validation and testing sets include a larger number of image-instruction samples.
+
+4 OUR METHOD
+
+In this section, we first introduce the model architecture in Sec. 4.1. After that, we elaborate on the training data preparation and training parameters in Sec. 4.2.
+
+4.1 ARCHITECTURE
+
+Embedding as Mask. Most current multi-modal LLMs (such as LLaVA, Flamingo (Alayrac et al., 2022), BLIP-2 (Li et al., 2023b), Otter (Li et al., 2023a), etc.) support image and text as input and text as output, but they cannot directly output fine-grained segmentation masks. VisionLLM (Wang et al., 2023) offers a solution by parsing segmentation masks as sequences of polygons, enabling the representation of segmentation masks as plain text and allowing end-to-end training within the framework of existing multi-modal LLMs. However, end-to-end training with the polygon sequences introduces optimization challenges and may compromise generalization ability unless a massive amount of data and computational resources are employed. For instance, training a 7B model, VisionLLM requires 4 × 8 NVIDIA 80G A100 GPUs and 50 epochs, which is computationally prohibitive. In contrast, training LISA-7B requires only 10,000 training steps on 8 NVIDIA 24G 3090 GPUs.
+
+To this end, we propose the embedding-as-mask paradigm to infuse new segmentation capabilities into the multi-modal LLM. The pipeline of our method is illustrated in Fig. 3. Specifically, we first expand the original LLM vocabulary with a new token, i.e., <SEG>, which signifies the request for the segmentation output. Given a text instruction xtxt along with the input image ximg, we feed them into the multi-modal LLM F , which in turn outputs a text response yˆtxt. It can be formulated as
+
+yˆtxt = F (ximg, xtxt).
+
+(1)
+
+When the LLM intends to generate a binary segmentation mask, the output yˆtxt should include a <SEG> token. We then extract the last-layer embedding hˆ seg corresponding to the <SEG> token and
+
+4
+
+Vision Backbone
+
+Decoder
+
+❄️
+
+🔥
+
+What is the food with the most Vitamin C in this image? Please output segmentation mask.
+
+Multi-Modal LLM
+
+LoRA
+
+❄️ 🔥
+
+It is <SEG>.
+
+🔥 Trainable ❄️ Frozen
+
+Figure 3: The pipeline of LISA. Given the input image and text query, the multi-modal LLM generates text output. The last-layer embedding for the <SEG> token is then decoded into the segmentation mask via the decoder. The choice of vision backbone can be flexible (e.g., SAM, Mask2Former).
+
+apply an MLP projection layer γ to obtain hseg. Simultaneously, the vision backbone Fenc extracts the visual embeddings f from the visual input ximg. Finally, hseg and f are fed to the decoder Fdec to produce the final segmentation mask Mˆ . The detailed structure of the decoder Fdec follows Kirillov et al. (2023). The process can be formulated as
+hseg = γ(hˆ seg), f = Fenc(ximg), (2)
+Mˆ = Fdec(hseg, f ).
+
+Training Objectives. The model is trained end-to-end using the text generation loss Ltxt and the segmentation mask loss Lmask. The overall objective L is the weighted sum of these losses, determined by λtxt and λmask:
+
+L = λtxtLtxt + λmaskLmask.
+
+(3)
+
+Specifically, Ltxt is the auto-regressive cross-entropy loss for text generation, and Lmask is the mask loss, which encourages the model to produce high-quality segmentation results. To compute Lmask, we employ a combination of per-pixel binary cross-entropy (BCE) loss and DICE loss, with corresponding loss weights λbce and λdice. Given the ground-truth targets ytxt and M , these losses can be formulated as:
+
+Ltxt = CE(yˆtxt, ytxt), Lmask = λbceBCE(Mˆ , M ) + λdiceDICE(Mˆ , M ).
+
+(4)
+
+4.2 TRAINING
+Training Data Formulation. As illustrated in Fig. 4, our training data consists of three parts, all of which are derived from widely-used public datasets. The details are as follows:
+• Semantic Segmentation Dataset. Semantic segmentation datasets typically consist of images and the corresponding multi-class labels. During training, we randomly choose several categories for each image. To generate data that matches the format of visual question answering, we employ a question-answer template like “USER: <IMAGE> Can you segment the {CLASS NAME} in this image? ASSISTANT: It is <SEG>.”, where {CLASS NAME} is the chosen category, and <IMAGE> denotes the placeholder for tokens of image patches. The corresponding binary segmentation mask is used as the ground truth to provide mask loss supervision. During training, we also use other templates to generate the QA data to ensure data diversity. We adopt ADE20K, COCO-Stuff, and LVIS-PACO part segmentation datasets.
+• Vanilla Referring Segmentation Dataset. Referring segmentation datasets provide an input image and an explicit short description of the target object. Thus, it is easy to convert them into questionanswer pairs using a template like “USER: <IMAGE> Can you segment {description} in this image? ASSISTANT: Sure, it is <SEG>.”, where {description} is the given explicit description. For this part, we adopt refCOCO, refCOCO+, refCOCOg, and refCLEF datasets.
+
+5
+
+Raw Data
+
+x
+
+the lady
+
+with the
+
+blue shirt
+
+Processed Data
+• USER: <IMAGE> Can you segment the table in this image?
+• ASSISTANT: It is <SEG>.
+
+• USER: <IMAGE> Can you segment the lady with the blue shirt in this image?
+• ASSISTANT: Sure, it is <SEG>.
+x
+
+• USER: What type of sign and traffic device can be
+seen in the image? <IMAGE> • ASSISTANT: In the image,
+there is a street sign and a traffic light above a city road. • USER: How many traffic lights are visible in the image? •…
+
+Semantic Segmentation Data
+
+Referring Segmentation Data
+
+No Binary Segmentation Mask VQA Data
+
+Figure 4: The illustration of training data formulation from different types of data, including semantic segmentation data, referring segmentation data, and visual question answering (VQA) data.
+
+• Visual Question Answering Dataset. To preserve the original Visual Question Answering (VQA) ability of the multi-modal LLM, we also include the VQA dataset during training. We directly use the LLaVA-Instruct-150k data (Liu et al., 2023b) generated by GPT-4.
+Notably, the training set does not include any reasoning segmentation sample. Instead, it only contains samples where the target objects are explicitly indicated in the query texts. Surprisingly, even without complex reasoning training data, LISA demonstrates impressive zero-shot ability on the ReasonSeg benchmark. Moreover, we find that further performance boost could be yielded by finetuning the model on only 239 image-instruction reasoning segmentation pairs.
+Trainable Parameters. To preserve the generalization ability of the pre-trained multi-modal LLM F (i.e., LLaVA in our experiments), we leverage LoRA (Hu et al., 2021) to perform efficient fine-tuning, and completely freeze the vision backbone Fenc. The decoder Fdec is fully fine-tuned. Additionally, the word embeddings of the LLM and the projection layer of γ are also trainable.
+5 EXPERIMENT
+5.1 EXPERIMENTAL SETTING
+Network Architecture. Unless otherwise specified, we use LLaVA-7B-v1-1 or LLaVA-13B-v1-1 as the multi-modal LLM F , and adopt the ViT-H SAM backbone as the vision backbone Fenc. The projection layer of γ is an MLP with channels of [256, 4096, 4096].
+Implementation Details. We adopt 8 NVIDIA 24G 3090 GPUs for training. The training scripts are based on deepspeed (Rasley et al., 2020) engine. We use AdamW (Loshchilov & Hutter, 2017) optimizer with the learning rate and weight decay set to 0.0003 and 0, respectively. We also adopt WarmupDecayLR as the learning rate scheduler, where the warmup iterations are set to 100. The weights of the text generation loss λtxt gen and the mask loss λmask are set to 1.0 and 1.0, respectively, and those of the bce loss λbce and the dice loss λdice are set to 2.0 and 0.5, respectively. Besides, the batch size per device is set to 2, and the gradient accumulation step is set to 10. During training, we select at most 3 categories for each image in semantic segmentation datasets.
+6
+
+Method
+OVSeg (Liang et al., 2023) GRES (Liu et al., 2023a) X-Decoder (Zou et al., 2023a) SEEM (Zou et al., 2023b) LISA-7B LISA-7B (ft) LISA-13B LISA-13B (ft) LISA-Llama2-13B (ft)
+
+val
+overall
+gIoU cIoU
+28.5 18.6 22.4 19.9 22.6 17.9 25.5 21.2
+44.4 46.0 52.9 54.0
+48.9 46.9 56.2 62.9 60.0 67.8
+
+short query
+gIoU cIoU
+18.0 15.5 17.6 15.0 20.4 11.6 20.1 11.5
+37.6 34.4 40.6 40.6
+39.9 43.3 44.3 42.0 43.9 45.8
+
+test
+long query
+gIoU cIoU
+28.7 22.5 22.6 23.8 22.2 17.5 25.6 20.8
+36.6 34.7 49.4 51.0
+46.4 46.5 54.0 54.3 54.0 53.8
+
+overall
+gIoU cIoU
+26.1 20.8 21.3 22.0 21.7 16.3 24.3 18.7
+36.8 34.1 47.3 48.4
+44.8 45.8 51.7 51.1 51.5 51.3
+
+Table 1: Reasoning segmentation results among LISA (ours) and previous related works. ‘ft’ denotes using 239 reasoning segmentation image-instruction pairs to finetune the model.
+
+Datasets. As mentioned in Sec. 4.2, our training data is composed of three types of datasets: (1) For the semantic segmentation dataset, we use ADE20K (Zhou et al., 2017) and COCO-Stuff (Caesar et al., 2018). Besides, to enhance the segmentation results for some part of an object, we also use part semantic segmentation datasets, including PACO-LVIS (Ramanathan et al., 2023), PartImageNet (He et al., 2022), and PASCAL-Part (Chen et al., 2014); (2) For the referring segmentation dataset, we use refCLEF, refCOCO, refCOCO+ (Kazemzadeh et al., 2014), and refCOCOg (Mao et al., 2016). (3) For the visual question answering (VQA) dataset, we use LLaVA-Instruct-150k dataset (Liu et al., 2023b). In order to avoid data leakage, we exclude the COCO samples whose images are present in the refCOCO(+/g) validation sets during training. Furthermore, we surprisingly find that by finetuning the model on only 239 samples of ReasonSeg image-instruction pairs, the model’s performance can be further boosted.
+
+Evaluation Metrics. We follow most previous works on referring segmentation (Kazemzadeh et al., 2014; Mao et al., 2016) to adopt two metrics: gIoU and cIoU. gIoU is defined by the average of all per-image Intersection-over-Unions (IoUs), while cIoU is defined by the cumulative intersection over the cumulative union. Since cIoU is highly biased toward large-area objects and it fluctuates too much, gIoU is preferred.
+
+5.2 REASONING SEGMENTATION RESULTS
+The reasoning segmentation results are shown in Table 1. It is worth noting that existing works fail to handle the task, but our model can accomplish the task involving complex reasoning with more than 20% gIoU performance boost. As mentioned before, the reasoning segmentation task is essentially different from previous referring segmentation in that it requires the model to possess reasoning ability or access world knowledge. Only by truly understanding the query, can the model do well in the task. The existing works are limited to explicit referring and have no proper way to understand an implicit query, but our model exploits multi-modal LLM to reach the goal.
+Another finding is that LISA-13B outperforms the 7B counterpart substantially, especially on the longquery scenarios, which indicates that the current performance bottleneck may still lie in understanding the query text, and a stronger multi-modal LLM might lead to even better results.
+
+5.3 VANILLA REFERRING SEGMENTATION RESULTS
+To show that our model is also competent in the vanilla referring segmentation task, we make a comparison with existing state-of-the-art methods in Table 2. We evaluate the methods on refCOCO, refCOCO+, refCOCOg validation and testing sets. Our model achieves state-of-the-art results across various referring segmentation benchmarks.
+7
+
+Method
+MCN (Luo et al., 2020) VLT (Ding et al., 2021) CRIS (Wang et al., 2022) LAVT (Yang et al., 2022) ReLA (Liu et al., 2023a) X-Decoder (Zou et al., 2023a) SEEM (Zou et al., 2023b)
+LISA-7B LISA-7B (ft)
+
+refCOCO
+
+val testA testB
+
+62.4 64.2 59.7
+
+67.5 70.5 65.2
+
+70.5 73.2 66.1
+
+72.7 75.8 68.8
+
+73.8 76.5 70.2
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+74.1 76.5 71.1 74.9 79.1 72.3
+
+refCOCO+
+
+val testA testB
+
+50.6 55.0 44.7
+
+56.3 61.0 50.1
+
+62.3 68.1 53.7
+
+62.1 68.4 55.1
+
+66.0 71.0 57.7
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+62.4 67.4 56.5 65.1 70.8 58.1
+
+refCOCOg
+
+val(U) test(U)
+
+49.2 49.4
+
+55.0 57.7
+
+59.9 60.4
+
+61.2 62.1
+
+65.0 66.0
+
+64.6
+
+-
+
+65.7
+
+-
+
+66.4 68.5 67.9 70.6
+
+Table 2: Referring segmentation results (cIoU) among LISA (ours) and existing methods. ‘ft’ denotes using the referring segmentation datasets (refCOCO(+/g)) to finetune the model.
+
+Exp. ID
+1 2 3 4 5 6 7 8
+
+SemanticSeg ADE20K COCO-Stuff
+
+PartSeg
+
+ReferSeg
+
+VQA
+
+ReasonSeg
+
+gIoU
+48.9 48.5 46.7 46.6 30.4 47.7 44.4 52.9
+
+cIoU
+53.5 50.8 50.9 46.7 20.4 51.1 46.0 54.0
+
+5.4 ABLATION STUDY
+
+Table 5: Ablation study on training data.
+
+In this section, we conduct an extensive ablation study to reveal the contribution of each component. Unless otherwise specified, we report the metrics of gIoU and cIoU of LISA-7B on the validation set.
+
+Vision Backbone
+Mask2Former-Swin-L SAM (w/ LoRA) SAM
+Mask2Former-Swin-L (ft) SAM w/ LORA (ft) SAM (ft)
+
+gIoU
+42.4 41.5 44.4
+50.7 51.8 52.9
+
+cIoU
+38.8 37.3 46.0
+52.3 51.9 54.0
+
+Table 3: Ablation study on the design choice of vision backbone. ‘ft’ denotes finetuning on ReasonSeg training set.
+
+Exp. ID Pre-trainSAM MLP γ rephrasing gIoU cIoU
+
+1
+
+35.9 44.6
+
+2
+
+53.2 51.0
+
+3
+
+50.7 51.1
+
+4
+
+52.9 54.0
+
+Table 4: Ablation study on SAM pre-trained weight, MLP for projection layer γ, and rephrasing.
+
+Design Choices of Vision Backbone. We emphasize that vision backbones other than SAM are also applicable in our framework. To verify this fact, we conduct ablation in Table 3. No matter whether we finetune the model on ReasonSeg training set, SAM performs better than Mask2FormerSwin-L. We explain that SAM is trained with billions of high-quality masks, and thus yields a higher metric than Mask2Former that is trained on merely the COCO dataset (Lin et al., 2014). We also notice that even with Mask2Former, our framework achieves a decent performance on the reasoning segmentation task, significantly outperforming previous works such as X-Decoder (Zou et al., 2023a). This reveals the fact that the design choice of vision backbone is flexible and not limited to SAM.
+
+SAM LoRA Fintuning. We also investigate the effectiveness of applying LoRA on SAM backbone. In Table 3, we note that the performance of LoRA finetuned SAM backbone is inferior to that of the
+
+8
+
+the most likely object that someone else has left behind
+
+the object used for stirring milk or coffee
+
+In cold days, dogs may need extra protection to keep them warm. what object in the picture can a dog wear to provide warmth during snowy walks?
+
+When a plane is ready to land on the airport runway, what area in the picture will it eventually land on?
+
+Query
+
+Image
+
+OVSeg
+
+GRES
+
+X-Decoder
+
+SEEM
+
+Ours
+
+GT
+
+Figure 5: Visual comparison among LISA (ours) and existing related methods. More illustrations are given in the Appendix.
+
+frozen one. A potential reason is that fine-tuning impairs the generalization ability of the origianl SAM model.
+SAM Pre-trained Weight. To demonstrate the contribution of SAM pre-trained weight, we make a comparison between Experiments 1 and 3 in Table 4. Without being initialized by SAM pre-trained weight, the vision backbone is trained from scratch. This causes the performance falling behind that of the baseline model substantially.
+MLP vs. Linear Projection Layer. In experiments 2 and 3 of Table 4, we notice that making γ an MLP yields little performance decrease in gIoU, but a relatively higher performance in cIoU.
+Contribution of All Types of Training Data. In Table 5, we show the contribution of each type of data to the performance. It is worth noting that in Exp. 4, we do not use any semantic segmentation dataset, and the performance drops a lot. We conjecture that semantic segmentation datasets provides a large amount of ground-truth binary masks for training, since a multi-class label can induce multiple binary masks. This shows that semantic segmentation datasets are crucial in training.
+Instruction Rephrasing by GPT-3.5. During finetuning on the reasoning segmentation imageinstruction pairs, we rephrase the text instruction by GPT-3.5, and randomly choose one. The comparison between Experiments 3 and 4 in Table 4 shows that the performance is increased by 2.2% gIoU and 2.9% cIoU. This result verifies the effectiveness of such data augmentation.
+5.5 QUALITATIVE RESULTS
+As depicted in Fig. 5, we provide a visual comparison with existing related works, including the model for open-vocabulary semantic segmentation (OVSeg), referring segmentation (GRES), and the generalist models for segmentation (X-Decoder and SEEM). These models fail to handle the displayed cases with various errors, while our approach produces accurate and high-quality segmentation results.
+6 CONCLUSION
+In this work, we have proposed a new segmentation task—reasoning segmentation. This task is significantly more challenging than the vanilla referring segmentation task, as it requires the model to actively reason based on implicit user instructions. To enable effective evaluation, we have introduced
+9
+
+a benchmark for this task, namely ReasonSeg. We hope this benchmark will be beneficial for the development of related technologies. Finally, we have presented our model — LISA. By employing the embedding-as-mask paradigm, it injects new segmentation capabilities into current multi-modal LLMs and performs surprisingly well on the reasoning segmentation task, even when trained on reasoning-free datasets. Consequently, it demonstrates the ability to chat with segmentation mask outputs in various scenarios. We believe our work will shed new light on the direction of combining LLMs and vision-centric tasks.
+REFERENCES
+Jean-Baptiste Alayrac, Jeff Donahue, Pauline Luc, Antoine Miech, Iain Barr, Yana Hasson, Karel Lenc, Arthur Mensch, Katherine Millican, Malcolm Reynolds, et al. Flamingo: a visual language model for few-shot learning. NeurIPS, 2022.
+Vijay Badrinarayanan, Alex Kendall, and Roberto Cipolla. Segnet: A deep convolutional encoderdecoder architecture for image segmentation. TPAMI, 2017.
+Holger Caesar, Jasper Uijlings, and Vittorio Ferrari. Coco-stuff: Thing and stuff classes in context. In CVPR, 2018.
+Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-end object detection with transformers. In ECCV, 2020.
+Liang-Chieh Chen, George Papandreou, Iasonas Kokkinos, Kevin Murphy, and Alan L. Yuille. Deeplab: Semantic image segmentation with deep convolutional nets, atrous convolution, and fully connected crfs. TPAMI, 2018.
+Xianjie Chen, Roozbeh Mottaghi, Xiaobai Liu, Sanja Fidler, Raquel Urtasun, and Alan Yuille. Detect what you can: Detecting and representing objects using holistic models and body parts. In CVPR, 2014.
+Bowen Cheng, Maxwell D Collins, Yukun Zhu, Ting Liu, Thomas S Huang, Hartwig Adam, and Liang-Chieh Chen. Panoptic-deeplab: A simple, strong, and fast baseline for bottom-up panoptic segmentation. In CVPR, 2020.
+Bowen Cheng, Alex Schwing, and Alexander Kirillov. Per-pixel classification is not all you need for semantic segmentation. NeurIPS, 2021.
+Bowen Cheng, Ishan Misra, Alexander G Schwing, Alexander Kirillov, and Rohit Girdhar. Maskedattention mask transformer for universal image segmentation. In CVPR, 2022.
+Angela Dai, Angel X. Chang, Manolis Savva, Maciej Halber, Thomas Funkhouser, and Matthias Nießner. Scannet: Richly-annotated 3d reconstructions of indoor scenes. In CVPR, 2017.
+Henghui Ding, Chang Liu, Suchen Wang, and Xudong Jiang. Vision-language transformer and query generation for referring segmentation. In ICCV, 2021.
+Jun Fu, Jing Liu, Haijie Tian, Yong Li, Yongjun Bao, Zhiwei Fang, and Hanqing Lu. Dual attention network for scene segmentation. In CVPR, 2019.
+Ju He, Shuo Yang, Shaokang Yang, Adam Kortylewski, Xiaoding Yuan, Jie-Neng Chen, Shuai Liu, Cheng Yang, Qihang Yu, and Alan Yuille. Partimagenet: A large, high-quality dataset of parts. In ECCV, 2022.
+Kaiming He, Georgia Gkioxari, Piotr Dolla´r, and Ross Girshick. Mask r-cnn. In ICCV, 2017.
+Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. Lora: Low-rank adaptation of large language models. arXiv:2106.09685, 2021.
+Zilong Huang, Xinggang Wang, Lichao Huang, Chang Huang, Yunchao Wei, and Wenyu Liu. Ccnet: Criss-cross attention for semantic segmentation. In ICCV, 2019.
+Sahar Kazemzadeh, Vicente Ordonez, Mark Matten, and Tamara Berg. Referitgame: Referring to objects in photographs of natural scenes. In EMNLP, 2014.
+10
+
+Alexander Kirillov, Kaiming He, Ross Girshick, Carsten Rother, and Piotr Dolla´r. Panoptic segmentation. In CVPR, 2019.
+Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alexander C Berg, Wan-Yen Lo, et al. Segment anything. arXiv:2304.02643, 2023.
+Jing Yu Koh, Ruslan Salakhutdinov, and Daniel Fried. Grounding language models to images for multimodal inputs and outputs. 2023.
+Alina Kuznetsova, Hassan Rom, Neil Alldrin, Jasper Uijlings, Ivan Krasin, Jordi Pont-Tuset, Shahab Kamali, Stefan Popov, Matteo Malloci, Alexander Kolesnikov, Tom Duerig, and Vittorio Ferrari. The open images dataset v4: Unified image classification, object detection, and visual relationship detection at scale. IJCV, 2020.
+Xin Lai, Zhuotao Tian, Li Jiang, Shu Liu, Hengshuang Zhao, Liwei Wang, and Jiaya Jia. Semisupervised semantic segmentation with directional context-aware consistency. In CVPR, 2021.
+Bo Li, Yuanhan Zhang, Liangyu Chen, Jinghao Wang, Jingkang Yang, and Ziwei Liu. Otter: A multi-modal model with in-context instruction tuning. arXiv:2305.03726, 2023a.
+Junnan Li, Dongxu Li, Silvio Savarese, and Steven Hoi. Blip-2: Bootstrapping language-image pre-training with frozen image encoders and large language models. arXiv:2301.12597, 2023b.
+Yanwei Li, Hengshuang Zhao, Xiaojuan Qi, Liwei Wang, Zeming Li, Jian Sun, and Jiaya Jia. Fully convolutional networks for panoptic segmentation. In CVPR, 2021.
+Feng Liang, Bichen Wu, Xiaoliang Dai, Kunpeng Li, Yinan Zhao, Hang Zhang, Peizhao Zhang, Peter Vajda, and Diana Marculescu. Open-vocabulary semantic segmentation with mask-adapted clip. In CVPR, 2023.
+Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr Dolla´r, and C Lawrence Zitnick. Microsoft coco: Common objects in context. In ECCV, 2014.
+Chang Liu, Henghui Ding, and Xudong Jiang. Gres: Generalized referring expression segmentation. In CVPR, 2023a.
+Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee. Visual instruction tuning. arXiv:2304.08485, 2023b.
+Wei Liu, Andrew Rabinovich, and Alexander C. Berg. Parsenet: Looking wider to see better. arXiv, 2015.
+Zhaoyang Liu, Yinan He, Wenhai Wang, Weiyun Wang, Yi Wang, Shoufa Chen, Qinglong Zhang, Yang Yang, Qingyun Li, Jiashuo Yu, et al. Internchat: Solving vision-centric tasks by interacting with chatbots beyond language. arXiv:2305.05662, 2023c.
+Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv:1711.05101, 2017.
+Gen Luo, Yiyi Zhou, Xiaoshuai Sun, Liujuan Cao, Chenglin Wu, Cheng Deng, and Rongrong Ji. Multi-task collaborative network for joint referring expression comprehension and segmentation. In CVPR, 2020.
+Junhua Mao, Jonathan Huang, Alexander Toshev, Oana Camburu, Alan L Yuille, and Kevin Murphy. Generation and comprehension of unambiguous object descriptions. In CVPR, 2016.
+Varun K Nagaraja, Vlad I Morariu, and Larry S Davis. Modeling context between objects for referring expression understanding. In ECCV, 2016.
+Hyeonwoo Noh, Seunghoon Hong, and Bohyung Han. Learning deconvolution network for semantic segmentation. In ICCV, 2015.
+Zhiliang Peng, Wenhui Wang, Li Dong, Yaru Hao, Shaohan Huang, Shuming Ma, and Furu Wei. Kosmos-2: Grounding multimodal large language models to the world. arXiv:2306.14824, 2023.
+11
+
+Renjie Pi, Jiahui Gao, Shizhe Diao, Rui Pan, Hanze Dong, Jipeng Zhang, Lewei Yao, Jianhua Han, Hang Xu, Lingpeng Kong, and Tong Zhang. Detgpt: Detect what you need via reasoning. arXiv:2305.14167, 2023.
+Vignesh Ramanathan, Anmol Kalia, Vladan Petrovic, Yi Wen, Baixue Zheng, Baishan Guo, Rui Wang, Aaron Marquez, Rama Kovvuri, Abhishek Kadian, et al. Paco: Parts and attributes of common objects. In CVPR, 2023.
+Jeff Rasley, Samyam Rajbhandari, Olatunji Ruwase, and Yuxiong He. Deepspeed: System optimizations enable training deep learning models with over 100 billion parameters. In SIGKDD, 2020.
+Olaf Ronneberger, Philipp Fischer, and Thomas Brox. U-net: Convolutional networks for biomedical image segmentation. In MICCAI, 2015.
+Evan Shelhamer, Jonathan Long, and Trevor Darrell. Fully convolutional networks for semantic segmentation. TPAMI, 2017.
+Yongliang Shen, Kaitao Song, Xu Tan, Dongsheng Li, Weiming Lu, and Yueting Zhuang. Hugginggpt: Solving ai tasks with chatgpt and its friends in huggingface. arXiv:2303.17580, 2023.
+Zhuotao Tian, Pengguang Chen, Xin Lai, Li Jiang, Shu Liu, Hengshuang Zhao, Bei Yu, Ming-Chang Yang, and Jiaya Jia. Adaptive perspective distillation for semantic segmentation. TPAMI, 2022.
+Zhuotao Tian, Jiequan Cui, Li Jiang, Xiaojuan Qi, Xin Lai, Yixin Chen, Shu Liu, and Jiaya Jia. Learning context-aware classifier for semantic segmentation. AAAI, 2023.
+Wenhai Wang, Zhe Chen, Xiaokang Chen, Jiannan Wu, Xizhou Zhu, Gang Zeng, Ping Luo, Tong Lu, Jie Zhou, Yu Qiao, et al. Visionllm: Large language model is also an open-ended decoder for vision-centric tasks. arXiv:2305.11175, 2023.
+Zhaoqing Wang, Yu Lu, Qiang Li, Xunqiang Tao, Yandong Guo, Mingming Gong, and Tongliang Liu. Cris: Clip-driven referring image segmentation. In CVPR, 2022.
+Chenfei Wu, Shengming Yin, Weizhen Qi, Xiaodong Wang, Zecheng Tang, and Nan Duan. Visual chatgpt: Talking, drawing and editing with visual foundation models. arXiv:2303.04671, 2023.
+Yuwen Xiong, Renjie Liao, Hengshuang Zhao, Rui Hu, Min Bai, Ersin Yumer, and Raquel Urtasun. Upsnet: A unified panoptic segmentation network. In CVPR, 2019.
+Maoke Yang, Kun Yu, Chi Zhang, Zhiwei Li, and Kuiyuan Yang. Denseaspp for semantic segmentation in street scenes. In CVPR, 2018.
+Rui Yang, Lin Song, Yanwei Li, Sijie Zhao, Yixiao Ge, Xiu Li, and Ying Shan. Gpt4tools: Teaching large language model to use tools via self-instruction. arXiv:2305.18752, 2023a.
+Zhao Yang, Jiaqi Wang, Yansong Tang, Kai Chen, Hengshuang Zhao, and Philip HS Torr. Lavt: Language-aware vision transformer for referring image segmentation. In CVPR, 2022.
+Zhengyuan Yang, Linjie Li, Jianfeng Wang, Kevin Lin, Ehsan Azarnasab, Faisal Ahmed, Zicheng Liu, Ce Liu, Michael Zeng, and Lijuan Wang. Mm-react: Prompting chatgpt for multimodal reasoning and action. arXiv:2303.11381, 2023b.
+Qinghao Ye, Haiyang Xu, Guohai Xu, Jiabo Ye, Ming Yan, Yiyang Zhou, Junyang Wang, Anwen Hu, Pengcheng Shi, Yaya Shi, et al. mplug-owl: Modularization empowers large language models with multimodality. arXiv:2304.14178, 2023.
+Fisher Yu and Vladlen Koltun. Multi-scale context aggregation by dilated convolutions. In ICLR, 2016.
+Shilong Zhang, Peize Sun, Shoufa Chen, Min Xiao, Wenqi Shao, Wenwei Zhang, Kai Chen, and Ping Luo. Gpt4roi: Instruction tuning large language model on region-of-interest. arXiv:2307.03601, 2023.
+12
+
+Wenwei Zhang, Jiangmiao Pang, Kai Chen, and Chen Change Loy. K-net: Towards unified image segmentation. NeurIPS, 2021.
+Hengshuang Zhao, Jianping Shi, Xiaojuan Qi, Xiaogang Wang, and Jiaya Jia. Pyramid scene parsing network. In CVPR, 2017.
+Hengshuang Zhao, Xiaojuan Qi, Xiaoyong Shen, Jianping Shi, and Jiaya Jia. Icnet for real-time semantic segmentation on high-resolution images. In ECCV, 2018a.
+Hengshuang Zhao, Yi Zhang, Shu Liu, Jianping Shi, Chen Change Loy, Dahua Lin, and Jiaya Jia. Psanet: Point-wise spatial attention network for scene parsing. In ECCV, 2018b.
+Bolei Zhou, Hang Zhao, Xavier Puig, Sanja Fidler, Adela Barriuso, and Antonio Torralba. Scene parsing through ade20k dataset. In CVPR, 2017.
+Deyao Zhu, Jun Chen, Xiaoqian Shen, Xiang Li, and Mohamed Elhoseiny. Minigpt-4: Enhancing vision-language understanding with advanced large language models. arXiv:2304.10592, 2023.
+Zhen Zhu, Mengde Xu, Song Bai, Tengteng Huang, and Xiang Bai. Asymmetric non-local neural networks for semantic segmentation. In ICCV, 2019.
+Xueyan Zou, Zi-Yi Dou, Jianwei Yang, Zhe Gan, Linjie Li, Chunyuan Li, Xiyang Dai, Harkirat Behl, Jianfeng Wang, Lu Yuan, et al. Generalized decoding for pixel, image, and language. In CVPR, 2023a.
+Xueyan Zou, Jianwei Yang, Hao Zhang, Feng Li, Linjie Li, Jianfeng Gao, and Yong Jae Lee. Segment everything everywhere all at once. arXiv:2304.06718, 2023b.
+13
+
+A APPENDIX
+A.1 MORE QUALITATIVE RESULTS
+What is the reflection of the object? Please output segmentation mask.
+
+It is <SEG>.
+
+When we need to access or store things above our reach, what would be helpful to stand on? Please output segmentation mask.
+
+<SEG>.
+
+The office is a place where people focus on their work. What structure in the room can help block noise and reduces interruptions from the outside environment? Please output segmentation mask.
+
+<SEG>.
+
+After cooking, consuming food, and preparing for food, where can we throw away the rest of the food and scraps? Please output segmentation mask.
+
+<SEG>.
+
+14
+
+What object in a typical modern kitchen can be used to quickly heat up leftovers, boil water, or cook frozen food? Please output segmentation mask.
+
+It is <SEG>.
+
+What is the stronger mario in this image? Please output segmentation mask.
+
+<SEG>.
+
+Where to wash hands in this image? Please output segmentation mask.
+
+<SEG>.
+
+15
+
+When serving wine, it is common to pour it into a glass from a container. What object in the picture could be used to pour wine? Please output segmentation mask.
+
+It is <SEG>.
+
+What is something that prevents people from getting into the building in this image? Please output segmentation mask.
+
+<SEG>.
+
+Where to wash hands in this image? Please output segmentation mask.
+
+Sure, the segmentation result is <SEG>.
+
+Figure 6: More qualitative results of LISA-13B. 16
+
+When serving wine, it is common to pour it into a glass from a container. What object in the picture could be used to pour wine? Please output segmentation mask.
+
+Sure, it is <SEG>. The driver can see the car speed on the speedometer, which is located in front of them while sitting in the driver's seat.
+
+What can make the woman stand higher? Please output segmentation mask and explain why.
+
+Sure, [SEG]. The woman is standing higher by using a ladder to reach the top of the house. She is holding onto the ladder for support and stability while working on the roof. This allows her to access areas that would be difficult or unsafe to reach from the ground level.
+
+Figure 7: More qualitative results of LISA-13B with explanatory answers. 17
+
